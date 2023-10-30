@@ -22,7 +22,7 @@ require (
 	k8s.io/component-base v0.26.1
 	k8s.io/klog/v2 v2.80.1
 	k8s.io/utils v0.0.0-20230711102312-30195339c3c7
-	sigs.k8s.io/cluster-api v1.4.6
+	sigs.k8s.io/cluster-api v1.4.7
 	sigs.k8s.io/controller-runtime v0.14.5
 )
 
@@ -90,7 +90,3 @@ require (
 )
 
 replace github.com/dgrijalva/jwt-go => github.com/golang-jwt/jwt/v4 v4.0.0 // Indirect upgrade to address https://github.com/advisories/GHSA-w73w-5m7g-f7qc
-
-replace sigs.k8s.io/cluster-api/test => sigs.k8s.io/cluster-api/test v1.4.6
-
-replace sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.4.6
