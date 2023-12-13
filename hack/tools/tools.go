@@ -21,7 +21,6 @@ package tools
 import (
 	_ "github.com/a8m/envsubst"
 	_ "github.com/golang/mock/mockgen"
-	_ "github.com/onsi/ginkgo/ginkgo"
 	_ "github.com/onsi/ginkgo/v2/ginkgo"
 	_ "honnef.co/go/tools/cmd/staticcheck"
 	_ "k8s.io/code-generator/cmd/conversion-gen"
@@ -29,5 +28,5 @@ import (
 	_ "sigs.k8s.io/cluster-api/hack/tools/mdbook/releaselink"
 	_ "sigs.k8s.io/controller-tools/cmd/controller-gen"
 	_ "sigs.k8s.io/kind"
-	_ "sigs.k8s.io/kustomize/kustomize/v4"
+	_ "sigs.k8s.io/kustomize/kustomize/v5"
 )

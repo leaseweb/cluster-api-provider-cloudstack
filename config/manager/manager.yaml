@@ -23,9 +23,8 @@ spec:
       - command:
         - /manager
         args:
-        - --leader-elect
-        - --cloudstackcluster-concurrency=${CAPC_CLOUDSTACKCLUSTER_CONCURRENCY:=10}
-        - --cloudstackmachine-concurrency=${CAPC_CLOUDSTACKMACHINE_CONCURRENCY:=10}
+        - "--leader-elect"
+        - "--metrics-bind-addr=localhost:8080"
         image: controller:latest
         name: manager
         securityContext:

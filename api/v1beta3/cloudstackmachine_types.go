@@ -55,7 +55,7 @@ type CloudStackMachineSpec struct {
 
 	// CloudStack disk offering to use.
 	// +optional
-	DiskOffering CloudStackResourceDiskOffering `json:"diskOffering,omitempty"`
+	DiskOffering *CloudStackResourceDiskOffering `json:"diskOffering,omitempty"`
 
 	// CloudStack ssh key to use.
 	// +optional
