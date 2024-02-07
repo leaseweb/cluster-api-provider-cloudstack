@@ -13,8 +13,8 @@ require (
 	k8s.io/apimachinery v0.27.7
 	k8s.io/klog/v2 v2.90.1
 	k8s.io/utils v0.0.0-20230711102312-30195339c3c7
-	sigs.k8s.io/cluster-api v1.5.4
-	sigs.k8s.io/cluster-api/test v1.5.4
+	sigs.k8s.io/cluster-api v1.5.5
+	sigs.k8s.io/cluster-api/test v1.5.5
 	sigs.k8s.io/controller-runtime v0.15.3
 )
 
@@ -99,11 +99,11 @@ require (
 	github.com/stoewer/go-strcase v1.2.0 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
 	github.com/valyala/fastjson v1.6.4 // indirect
-	golang.org/x/crypto v0.14.0 // indirect
+	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/oauth2 v0.11.0 // indirect
-	golang.org/x/sys v0.14.0 // indirect
-	golang.org/x/term v0.13.0 // indirect
+	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/term v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.9.3 // indirect
