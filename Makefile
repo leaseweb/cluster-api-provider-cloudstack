@@ -129,8 +129,8 @@ lint: $(GOLANGCI_LINT) $(STATIC_CHECK) generate-mocks ## Run linting for the pro
 
 .PHONY: modules
 modules: ## Runs go mod to ensure proper vendoring.
-	go mod tidy -compat=1.19
-	cd $(TOOLS_DIR); go mod tidy -compat=1.19
+	go mod tidy -compat=1.20
+	cd $(TOOLS_DIR); go mod tidy -compat=1.20
 
 .PHONY: generate-all
 generate-all: generate-mocks generate-deepcopy generate-manifests
@@ -244,7 +244,7 @@ delete-kind-cluster:
 	kind delete cluster --name $(KIND_CLUSTER_NAME)
 
 cluster-api: ## Clone cluster-api repository for tilt use.
-	git clone --branch v1.5.4 --depth 1 https://github.com/kubernetes-sigs/cluster-api.git
+	git clone --branch v1.5.5 --depth 1 https://github.com/kubernetes-sigs/cluster-api.git
 
 cluster-api/tilt-settings.json: hack/tilt-settings.json cluster-api
 	cp ./hack/tilt-settings.json cluster-api
