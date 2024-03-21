@@ -1,6 +1,6 @@
 module sigs.k8s.io/cluster-api-provider-cloudstack
 
-go 1.20
+go 1.21
 
 require (
 	github.com/apache/cloudstack-go/v2 v2.15.0
@@ -22,7 +22,7 @@ require (
 	k8s.io/component-base v0.27.7
 	k8s.io/klog/v2 v2.90.1
 	k8s.io/utils v0.0.0-20230711102312-30195339c3c7
-	sigs.k8s.io/cluster-api v1.5.5
+	sigs.k8s.io/cluster-api v1.5.7
 	sigs.k8s.io/controller-runtime v0.15.3
 )
 
@@ -78,7 +78,7 @@ require (
 	golang.org/x/tools v0.9.3 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.3.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/protobuf v1.31.0 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	k8s.io/apiextensions-apiserver v0.27.7 // indirect
