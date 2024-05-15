@@ -137,7 +137,15 @@ func (c *client) ResolveTemplate(
 		}
 		return csMachine.Spec.Template.ID, nil
 	}
-	templateID, count, err := c.cs.Template.GetTemplateID(csMachine.Spec.Template.Name, "executable", zoneID)
+	templateID, count, err := c.cs.Template.GetTemplateID(csMachine.Spec.Template.Name, "executable", zoneID, func(cs *cloudstack.CloudStackClient, i interface{}) error {
+		v, ok := i.(*cloudstack.ListTemplatesParams)
+		if !ok {
+			return fmt.Errorf("expected a cloudstack.ListTemplatesParams but got a %T", i)
+		}
+		v.SetShowunique(true)
+
+		return nil
+	})
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 		return "", multierror.Append(retErr, errors.Wrapf(
