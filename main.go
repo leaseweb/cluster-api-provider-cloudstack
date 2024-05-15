@@ -89,8 +89,10 @@ type managerOpts struct {
 	WebhookCertDir       string
 	WebhookPort          int
 
-	CloudStackClusterConcurrency int
-	CloudStackMachineConcurrency int
+	CloudStackClusterConcurrency       int
+	CloudStackMachineConcurrency       int
+	CloudStackAffinityGroupConcurrency int
+	CloudStackFailureDomainConcurrency int
 }
 
 func setFlags() *managerOpts {
@@ -156,6 +158,18 @@ func setFlags() *managerOpts {
 		"cloudstackmachine-concurrency",
 		10,
 		"Maximum concurrent reconciles for CloudStackMachine resources",
+	)
+	flag.IntVar(
+		&opts.CloudStackAffinityGroupConcurrency,
+		"cloudstackaffinitygroup-concurrency",
+		5,
+		"Maximum concurrent reconciles for CloudStackAffinityGroup resources",
+	)
+	flag.IntVar(
+		&opts.CloudStackFailureDomainConcurrency,
+		"cloudstackfailuredomain-concurrency",
+		5,
+		"Maximum concurrent reconciles for CloudStackFailureDomain resources",
 	)
 
 	return opts
@@ -288,11 +302,11 @@ func setupReconcilers(ctx context.Context, base utils.ReconcilerBase, opts manag
 		setupLog.Error(err, "unable to create controller", "controller", "CloudStackIsoNetReconciler")
 		os.Exit(1)
 	}
-	if err := (&controllers.CloudStackAffinityGroupReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr); err != nil {
+	if err := (&controllers.CloudStackAffinityGroupReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: opts.CloudStackAffinityGroupConcurrency}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CloudStackAffinityGroup")
 		os.Exit(1)
 	}
-	if err := (&controllers.CloudStackFailureDomainReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr); err != nil {
+	if err := (&controllers.CloudStackFailureDomainReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: opts.CloudStackFailureDomainConcurrency}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CloudStackFailureDomain")
 		os.Exit(1)
 	}

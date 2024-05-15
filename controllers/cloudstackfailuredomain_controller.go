@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sort"
 
 	"github.com/pkg/errors"
@@ -265,8 +266,9 @@ func (r *CloudStackFailureDomainReconciliationRunner) RemoveFinalizer() (ctrl.Re
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (reconciler *CloudStackFailureDomainReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
+func (reconciler *CloudStackFailureDomainReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, opts controller.Options) error {
 	return ctrl.NewControllerManagedBy(mgr).
+		WithOptions(opts).
 		For(&infrav1.CloudStackFailureDomain{}).
 		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(ctrl.LoggerFrom(ctx), reconciler.WatchFilterValue)).
 		Complete(reconciler)
