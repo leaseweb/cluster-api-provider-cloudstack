@@ -8,7 +8,7 @@ import (
 	"github.com/smallfish/simpleyaml"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	pointer "k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/test/fakes"
@@ -224,7 +224,7 @@ func SetDummyCSMachineVars() {
 		},
 		Spec: infrav1.CloudStackMachineSpec{
 			Name:              "test-machine-1",
-			InstanceID:        pointer.String("Instance1"),
+			InstanceID:        pointer.To("Instance1"),
 			FailureDomainName: GetYamlVal("CLOUDSTACK_FD1_NAME"),
 			Template: infrav1.CloudStackResourceIdentifier{
 				Name: GetYamlVal("CLOUDSTACK_TEMPLATE_NAME"),
@@ -447,7 +447,7 @@ func SetDummyCAPIMachineVars() {
 		},
 		Spec: clusterv1.MachineSpec{
 			ClusterName:   ClusterName,
-			FailureDomain: pointer.String("fd1"),
+			FailureDomain: pointer.To("fd1"),
 			InfrastructureRef: corev1.ObjectReference{
 				APIVersion: infrav1.GroupVersion.String(),
 				Kind:       "CloudStackMachine",

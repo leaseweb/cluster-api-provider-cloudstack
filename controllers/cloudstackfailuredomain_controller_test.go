@@ -21,7 +21,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/utils/pointer"
+	pointer "k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
@@ -117,17 +117,17 @@ var _ = Describe("CloudStackFailureDomainReconciler", func() {
 
 			},
 			// should delete - simulate owner is kubeadmcontrolplane
-			Entry("Should delete machine if spec.replicas > 1", true, pointer.Int32(2), pointer.Int32(2), pointer.Int32(2), pointer.Bool(true), true),
+			Entry("Should delete machine if spec.replicas > 1", true, pointer.To(int32(2)), pointer.To(int32(2)), pointer.To(int32(2)), pointer.To(true), true),
 			// should delete - simulate owner is etcdadmcluster
-			Entry("Should delete machine if status.readyReplica does not exist", true, pointer.Int32(2), pointer.Int32(2), nil, pointer.Bool(true), true),
+			Entry("Should delete machine if status.readyReplica does not exist", true, pointer.To(int32(2)), pointer.To(int32(2)), nil, pointer.To(true), true),
 			// should delete - simulate owner is machineset
-			Entry("Should delete machine if status.ready does not exist", true, pointer.Int32(2), pointer.Int32(2), pointer.Int32(2), nil, true),
+			Entry("Should delete machine if status.ready does not exist", true, pointer.To(int32(2)), pointer.To(int32(2)), pointer.To(int32(2)), nil, true),
 			// should not delete if condition not met
-			Entry("Should not delete machine if cluster control plane not ready", false, pointer.Int32(2), pointer.Int32(2), pointer.Int32(2), pointer.Bool(true), false),
-			Entry("Should not delete machine if status.replicas < spec.replicas", false, pointer.Int32(2), pointer.Int32(1), pointer.Int32(1), pointer.Bool(true), true),
-			Entry("Should not delete machine if spec.replicas < 2", false, pointer.Int32(1), pointer.Int32(1), pointer.Int32(1), pointer.Bool(true), true),
-			Entry("Should not delete machine if status.ready is false", false, pointer.Int32(2), pointer.Int32(2), pointer.Int32(2), pointer.Bool(false), true),
-			Entry("Should not delete machine if status.readyReplicas <> status.replicas", false, pointer.Int32(2), pointer.Int32(2), pointer.Int32(1), pointer.Bool(true), true),
+			Entry("Should not delete machine if cluster control plane not ready", false, pointer.To(int32(2)), pointer.To(int32(2)), pointer.To(int32(2)), pointer.To(true), false),
+			Entry("Should not delete machine if status.replicas < spec.replicas", false, pointer.To(int32(2)), pointer.To(int32(1)), pointer.To(int32(1)), pointer.To(true), true),
+			Entry("Should not delete machine if spec.replicas < 2", false, pointer.To(int32(1)), pointer.To(int32(1)), pointer.To(int32(1)), pointer.To(true), true),
+			Entry("Should not delete machine if status.ready is false", false, pointer.To(int32(2)), pointer.To(int32(2)), pointer.To(int32(2)), pointer.To(false), true),
+			Entry("Should not delete machine if status.readyReplicas <> status.replicas", false, pointer.To(int32(2)), pointer.To(int32(2)), pointer.To(int32(1)), pointer.To(true), true),
 		)
 	})
 })
