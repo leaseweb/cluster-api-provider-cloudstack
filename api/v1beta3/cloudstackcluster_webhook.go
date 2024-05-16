@@ -79,6 +79,12 @@ func (r *CloudStackCluster) ValidateCreate() (admission.Warnings, error) {
 					field.NewPath("spec", "failureDomains", "ACSEndpoint"),
 					"Name and Namespace are required"))
 			}
+			if fdSpec.Zone.Network.Domain != "" {
+				for _, errMsg := range validation.IsDNS1123Subdomain(fdSpec.Zone.Network.Domain) {
+					errorList = append(errorList, field.Invalid(
+						field.NewPath("spec", "failureDomains", "Zone", "Network"), fdSpec.Zone.Network.Domain, errMsg))
+				}
+			}
 		}
 	}
 
@@ -155,7 +161,8 @@ func FailureDomainsEqual(fd1, fd2 CloudStackFailureDomainSpec) bool {
 		fd1.Zone.ID == fd2.Zone.ID &&
 		fd1.Zone.Network.Name == fd2.Zone.Network.Name &&
 		fd1.Zone.Network.ID == fd2.Zone.Network.ID &&
-		fd1.Zone.Network.Type == fd2.Zone.Network.Type
+		fd1.Zone.Network.Type == fd2.Zone.Network.Type &&
+		fd1.Zone.Network.Domain == fd2.Zone.Network.Domain
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
