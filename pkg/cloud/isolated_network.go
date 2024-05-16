@@ -108,6 +108,9 @@ func (c *client) CreateIsolatedNetwork(fd *infrav1.CloudStackFailureDomain, isoN
 	// Do isolated network creation.
 	p := c.cs.Network.NewCreateNetworkParams(isoNet.Spec.Name, offeringID, fd.Spec.Zone.ID)
 	p.SetDisplaytext(isoNet.Spec.Name)
+	if isoNet.Spec.Domain != "" {
+		p.SetNetworkdomain(isoNet.Spec.Domain)
+	}
 	resp, err := c.cs.Network.CreateNetwork(p)
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)

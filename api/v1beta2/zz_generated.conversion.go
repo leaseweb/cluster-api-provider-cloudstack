@@ -183,11 +183,6 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*v1beta3.CloudStackIsolatedNetworkSpec)(nil), (*CloudStackIsolatedNetworkSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1beta3_CloudStackIsolatedNetworkSpec_To_v1beta2_CloudStackIsolatedNetworkSpec(a.(*v1beta3.CloudStackIsolatedNetworkSpec), b.(*CloudStackIsolatedNetworkSpec), scope)
-	}); err != nil {
-		return err
-	}
 	if err := s.AddGeneratedConversionFunc((*CloudStackIsolatedNetworkStatus)(nil), (*v1beta3.CloudStackIsolatedNetworkStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1beta2_CloudStackIsolatedNetworkStatus_To_v1beta3_CloudStackIsolatedNetworkStatus(a.(*CloudStackIsolatedNetworkStatus), b.(*v1beta3.CloudStackIsolatedNetworkStatus), scope)
 	}); err != nil {
@@ -333,11 +328,6 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*v1beta3.Network)(nil), (*Network)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1beta3_Network_To_v1beta2_Network(a.(*v1beta3.Network), b.(*Network), scope)
-	}); err != nil {
-		return err
-	}
 	if err := s.AddConversionFunc((*v1.ObjectMeta)(nil), (*v1beta1.ObjectMeta)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1_ObjectMeta_To_v1beta1_ObjectMeta(a.(*v1.ObjectMeta), b.(*v1beta1.ObjectMeta), scope)
 	}); err != nil {
@@ -348,8 +338,18 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
+	if err := s.AddConversionFunc((*CloudStackMachineSpec)(nil), (*v1beta3.CloudStackMachineSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1beta2_CloudStackMachineSpec_To_v1beta3_CloudStackMachineSpec(a.(*CloudStackMachineSpec), b.(*v1beta3.CloudStackMachineSpec), scope)
+	}); err != nil {
+		return err
+	}
 	if err := s.AddConversionFunc((*CloudStackMachineTemplateSpec)(nil), (*v1beta3.CloudStackMachineTemplateSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1beta2_CloudStackMachineTemplateSpec_To_v1beta3_CloudStackMachineTemplateSpec(a.(*CloudStackMachineTemplateSpec), b.(*v1beta3.CloudStackMachineTemplateSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddConversionFunc((*v1beta3.CloudStackIsolatedNetworkSpec)(nil), (*CloudStackIsolatedNetworkSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1beta3_CloudStackIsolatedNetworkSpec_To_v1beta2_CloudStackIsolatedNetworkSpec(a.(*v1beta3.CloudStackIsolatedNetworkSpec), b.(*CloudStackIsolatedNetworkSpec), scope)
 	}); err != nil {
 		return err
 	}
@@ -360,6 +360,11 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}
 	if err := s.AddConversionFunc((*v1beta3.CloudStackMachineTemplateSpec)(nil), (*CloudStackMachineTemplateSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1beta3_CloudStackMachineTemplateSpec_To_v1beta2_CloudStackMachineTemplateSpec(a.(*v1beta3.CloudStackMachineTemplateSpec), b.(*CloudStackMachineTemplateSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddConversionFunc((*v1beta3.Network)(nil), (*Network)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1beta3_Network_To_v1beta2_Network(a.(*v1beta3.Network), b.(*Network), scope)
 	}); err != nil {
 		return err
 	}
@@ -500,7 +505,17 @@ func Convert_v1beta3_CloudStackCluster_To_v1beta2_CloudStackCluster(in *v1beta3.
 
 func autoConvert_v1beta2_CloudStackClusterList_To_v1beta3_CloudStackClusterList(in *CloudStackClusterList, out *v1beta3.CloudStackClusterList, s conversion.Scope) error {
 	out.ListMeta = in.ListMeta
-	out.Items = *(*[]v1beta3.CloudStackCluster)(unsafe.Pointer(&in.Items))
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
+		*out = make([]v1beta3.CloudStackCluster, len(*in))
+		for i := range *in {
+			if err := Convert_v1beta2_CloudStackCluster_To_v1beta3_CloudStackCluster(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Items = nil
+	}
 	return nil
 }
 
@@ -511,7 +526,17 @@ func Convert_v1beta2_CloudStackClusterList_To_v1beta3_CloudStackClusterList(in *
 
 func autoConvert_v1beta3_CloudStackClusterList_To_v1beta2_CloudStackClusterList(in *v1beta3.CloudStackClusterList, out *CloudStackClusterList, s conversion.Scope) error {
 	out.ListMeta = in.ListMeta
-	out.Items = *(*[]CloudStackCluster)(unsafe.Pointer(&in.Items))
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
+		*out = make([]CloudStackCluster, len(*in))
+		for i := range *in {
+			if err := Convert_v1beta3_CloudStackCluster_To_v1beta2_CloudStackCluster(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Items = nil
+	}
 	return nil
 }
 
@@ -521,7 +546,17 @@ func Convert_v1beta3_CloudStackClusterList_To_v1beta2_CloudStackClusterList(in *
 }
 
 func autoConvert_v1beta2_CloudStackClusterSpec_To_v1beta3_CloudStackClusterSpec(in *CloudStackClusterSpec, out *v1beta3.CloudStackClusterSpec, s conversion.Scope) error {
-	out.FailureDomains = *(*[]v1beta3.CloudStackFailureDomainSpec)(unsafe.Pointer(&in.FailureDomains))
+	if in.FailureDomains != nil {
+		in, out := &in.FailureDomains, &out.FailureDomains
+		*out = make([]v1beta3.CloudStackFailureDomainSpec, len(*in))
+		for i := range *in {
+			if err := Convert_v1beta2_CloudStackFailureDomainSpec_To_v1beta3_CloudStackFailureDomainSpec(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.FailureDomains = nil
+	}
 	out.ControlPlaneEndpoint = in.ControlPlaneEndpoint
 	return nil
 }
@@ -532,7 +567,17 @@ func Convert_v1beta2_CloudStackClusterSpec_To_v1beta3_CloudStackClusterSpec(in *
 }
 
 func autoConvert_v1beta3_CloudStackClusterSpec_To_v1beta2_CloudStackClusterSpec(in *v1beta3.CloudStackClusterSpec, out *CloudStackClusterSpec, s conversion.Scope) error {
-	out.FailureDomains = *(*[]CloudStackFailureDomainSpec)(unsafe.Pointer(&in.FailureDomains))
+	if in.FailureDomains != nil {
+		in, out := &in.FailureDomains, &out.FailureDomains
+		*out = make([]CloudStackFailureDomainSpec, len(*in))
+		for i := range *in {
+			if err := Convert_v1beta3_CloudStackFailureDomainSpec_To_v1beta2_CloudStackFailureDomainSpec(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.FailureDomains = nil
+	}
 	out.ControlPlaneEndpoint = in.ControlPlaneEndpoint
 	return nil
 }
@@ -598,7 +643,17 @@ func Convert_v1beta3_CloudStackFailureDomain_To_v1beta2_CloudStackFailureDomain(
 
 func autoConvert_v1beta2_CloudStackFailureDomainList_To_v1beta3_CloudStackFailureDomainList(in *CloudStackFailureDomainList, out *v1beta3.CloudStackFailureDomainList, s conversion.Scope) error {
 	out.ListMeta = in.ListMeta
-	out.Items = *(*[]v1beta3.CloudStackFailureDomain)(unsafe.Pointer(&in.Items))
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
+		*out = make([]v1beta3.CloudStackFailureDomain, len(*in))
+		for i := range *in {
+			if err := Convert_v1beta2_CloudStackFailureDomain_To_v1beta3_CloudStackFailureDomain(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Items = nil
+	}
 	return nil
 }
 
@@ -609,7 +664,17 @@ func Convert_v1beta2_CloudStackFailureDomainList_To_v1beta3_CloudStackFailureDom
 
 func autoConvert_v1beta3_CloudStackFailureDomainList_To_v1beta2_CloudStackFailureDomainList(in *v1beta3.CloudStackFailureDomainList, out *CloudStackFailureDomainList, s conversion.Scope) error {
 	out.ListMeta = in.ListMeta
-	out.Items = *(*[]CloudStackFailureDomain)(unsafe.Pointer(&in.Items))
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
+		*out = make([]CloudStackFailureDomain, len(*in))
+		for i := range *in {
+			if err := Convert_v1beta3_CloudStackFailureDomain_To_v1beta2_CloudStackFailureDomain(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Items = nil
+	}
 	return nil
 }
 
@@ -704,7 +769,17 @@ func Convert_v1beta3_CloudStackIsolatedNetwork_To_v1beta2_CloudStackIsolatedNetw
 
 func autoConvert_v1beta2_CloudStackIsolatedNetworkList_To_v1beta3_CloudStackIsolatedNetworkList(in *CloudStackIsolatedNetworkList, out *v1beta3.CloudStackIsolatedNetworkList, s conversion.Scope) error {
 	out.ListMeta = in.ListMeta
-	out.Items = *(*[]v1beta3.CloudStackIsolatedNetwork)(unsafe.Pointer(&in.Items))
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
+		*out = make([]v1beta3.CloudStackIsolatedNetwork, len(*in))
+		for i := range *in {
+			if err := Convert_v1beta2_CloudStackIsolatedNetwork_To_v1beta3_CloudStackIsolatedNetwork(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Items = nil
+	}
 	return nil
 }
 
@@ -715,7 +790,17 @@ func Convert_v1beta2_CloudStackIsolatedNetworkList_To_v1beta3_CloudStackIsolated
 
 func autoConvert_v1beta3_CloudStackIsolatedNetworkList_To_v1beta2_CloudStackIsolatedNetworkList(in *v1beta3.CloudStackIsolatedNetworkList, out *CloudStackIsolatedNetworkList, s conversion.Scope) error {
 	out.ListMeta = in.ListMeta
-	out.Items = *(*[]CloudStackIsolatedNetwork)(unsafe.Pointer(&in.Items))
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
+		*out = make([]CloudStackIsolatedNetwork, len(*in))
+		for i := range *in {
+			if err := Convert_v1beta3_CloudStackIsolatedNetwork_To_v1beta2_CloudStackIsolatedNetwork(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Items = nil
+	}
 	return nil
 }
 
@@ -742,12 +827,8 @@ func autoConvert_v1beta3_CloudStackIsolatedNetworkSpec_To_v1beta2_CloudStackIsol
 	out.ID = in.ID
 	out.ControlPlaneEndpoint = in.ControlPlaneEndpoint
 	out.FailureDomainName = in.FailureDomainName
+	// WARNING: in.Domain requires manual conversion: does not exist in peer-type
 	return nil
-}
-
-// Convert_v1beta3_CloudStackIsolatedNetworkSpec_To_v1beta2_CloudStackIsolatedNetworkSpec is an autogenerated conversion function.
-func Convert_v1beta3_CloudStackIsolatedNetworkSpec_To_v1beta2_CloudStackIsolatedNetworkSpec(in *v1beta3.CloudStackIsolatedNetworkSpec, out *CloudStackIsolatedNetworkSpec, s conversion.Scope) error {
-	return autoConvert_v1beta3_CloudStackIsolatedNetworkSpec_To_v1beta2_CloudStackIsolatedNetworkSpec(in, out, s)
 }
 
 func autoConvert_v1beta2_CloudStackIsolatedNetworkStatus_To_v1beta3_CloudStackIsolatedNetworkStatus(in *CloudStackIsolatedNetworkStatus, out *v1beta3.CloudStackIsolatedNetworkStatus, s conversion.Scope) error {
@@ -1224,10 +1305,6 @@ func autoConvert_v1beta3_Network_To_v1beta2_Network(in *v1beta3.Network, out *Ne
 	out.ID = in.ID
 	out.Type = in.Type
 	out.Name = in.Name
+	// WARNING: in.Domain requires manual conversion: does not exist in peer-type
 	return nil
-}
-
-// Convert_v1beta3_Network_To_v1beta2_Network is an autogenerated conversion function.
-func Convert_v1beta3_Network_To_v1beta2_Network(in *v1beta3.Network, out *Network, s conversion.Scope) error {
-	return autoConvert_v1beta3_Network_To_v1beta2_Network(in, out, s)
 }

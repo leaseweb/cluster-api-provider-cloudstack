@@ -39,6 +39,10 @@ type CloudStackIsolatedNetworkSpec struct {
 
 	// FailureDomainName -- the FailureDomain the network is placed in.
 	FailureDomainName string `json:"failureDomainName"`
+
+	// Domain is the DNS domain name used for all instances in the isolated network.
+	//+optional
+	Domain string `json:"domain,omitempty"`
 }
 
 // CloudStackIsolatedNetworkStatus defines the observed state of CloudStackIsolatedNetwork

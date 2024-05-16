@@ -165,6 +165,10 @@ spec:
                   network:
                     description: The network within the Zone to use.
                     properties:
+                      domain:
+                        description: Domain is the DNS domain name used for all instances
+                          in the network.
+                        type: string
                       id:
                         description: Cloudstack Network ID the cluster is built in.
                         type: string

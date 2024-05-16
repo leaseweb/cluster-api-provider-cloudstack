@@ -53,6 +53,10 @@ type Network struct {
 
 	// Cloudstack Network Name the cluster is built in.
 	Name string `json:"name"`
+
+	// Domain is the DNS domain name used for all instances in the network.
+	//+optional
+	Domain string `json:"domain,omitempty"`
 }
 
 // CloudStackZoneSpec specifies a Zone's details.

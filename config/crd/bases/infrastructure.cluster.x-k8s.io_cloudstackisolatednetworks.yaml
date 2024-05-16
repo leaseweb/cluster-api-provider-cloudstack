@@ -187,6 +187,10 @@ spec:
                 - host
                 - port
                 type: object
+              domain:
+                description: Domain is the DNS domain name used for all instances
+                  in the isolated network.
+                type: string
               failureDomainName:
                 description: FailureDomainName -- the FailureDomain the network is
                   placed in.
