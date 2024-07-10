@@ -32,18 +32,16 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/test/fakes"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog/v2"
-	"k8s.io/klog/v2/klogr"
-
 	"github.com/apache/cloudstack-go/v2/cloudstack"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -154,7 +152,7 @@ var _ = BeforeSuite(func() {
 	Ω(flag.Lookup("v").Value.Set("1")).Should(Succeed())
 	flag.Parse()
 
-	logger = klogr.New()
+	logger = klog.Background()
 })
 
 // A mock fo the CloudClient interface used in controller utils.
