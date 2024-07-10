@@ -19,10 +19,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-
 	"k8s.io/klog/v2"
-	"k8s.io/klog/v2/klogr"
+	"os"
 
 	flag "github.com/spf13/pflag"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -67,8 +65,6 @@ var (
 )
 
 func init() {
-	klog.InitFlags(nil)
-
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(clusterv1.AddToScheme(scheme))
 	utilruntime.Must(infrav1b1.AddToScheme(scheme))
@@ -188,7 +184,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	ctrl.SetLogger(klogr.New())
+	ctrl.SetLogger(klog.Background())
 
 	tlsOptionOverrides, err := flags.GetTLSOptionOverrideFuncs(tlsOptions)
 	if err != nil {
