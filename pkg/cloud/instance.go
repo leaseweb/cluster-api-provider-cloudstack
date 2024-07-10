@@ -427,12 +427,15 @@ func findVirtualMachine(
 func (c *client) DestroyVMInstance(csMachine *infrav1.CloudStackMachine) error {
 	// Attempt deletion regardless of machine state.
 	p := c.csAsync.VirtualMachine.NewDestroyVirtualMachineParams(*csMachine.Spec.InstanceID)
-	volIDs, err := c.listVMInstanceDatadiskVolumeIDs(*csMachine.Spec.InstanceID)
-	if err != nil {
-		return err
+	// If an additional data disk was requested on creation of this machine, find it and expunge it as well.
+	if csMachine.Spec.DiskOffering != nil {
+		volIDs, err := c.listVMInstanceDatadiskVolumeIDs(*csMachine.Spec.InstanceID)
+		if err != nil {
+			return err
+		}
+		setArrayIfNotEmpty(volIDs, p.SetVolumeids)
 	}
 	p.SetExpunge(true)
-	setArrayIfNotEmpty(volIDs, p.SetVolumeids)
 	if _, err := c.csAsync.VirtualMachine.DestroyVirtualMachine(p); err != nil &&
 		strings.Contains(strings.ToLower(err.Error()), "unable to find uuid for id") {
 		// VM doesn't exist. Success...
@@ -462,6 +465,17 @@ func (c *client) listVMInstanceDatadiskVolumeIDs(instanceID string) ([]string, e
 	p.SetVirtualmachineid(instanceID)
 	// VM root volumes are destroyed automatically, no need to explicitly include
 	p.SetType("DATADISK")
+	// This makes extra sure that data disks created/attached by something other than CloudStack itself
+	// are not expunged. Right now this is the only way to sort of distinguish a data volume automatically
+	// created on deployVirtualMachine (by passing diskoffering ID or name) from a volume attached at a later
+	// stage (assuming those aren't called 'DATA-<something>').
+	//
+	// This f.e. prevents data volumes backing PVC's from the CloudStack CSI driver from being expunged.
+	//
+	// See:
+	// - https://github.com/apache/cloudstack/blob/b69cc0272d48f0aea7353627d760c27c284dad84/engine/orchestration/src/main/java/com/cloud/vm/VirtualMachineManagerImpl.java#L524
+	// - https://github.com/kubernetes-sigs/cluster-api-provider-cloudstack/issues/389
+	p.SetKeyword("DATA-")
 
 	listVOLResp, err := c.csAsync.Volume.ListVolumes(p)
 	if err != nil {
