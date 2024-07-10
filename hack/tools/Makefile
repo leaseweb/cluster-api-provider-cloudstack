@@ -44,11 +44,6 @@ ifeq ($(OS), windows)
 	MDBOOK_EXTRACT_COMMAND := unzip -d /tmp
 endif
 
-GOLANGCI_LINT_VERSION := v1.58.1
-GOLANGCI_LINT_BIN := golangci-lint
-GOLANGCI_LINT := $(abspath $(BIN_DIR)/$(GOLANGCI_LINT_BIN))
-GOLANGCI_LINT_PKG := github.com/golangci/golangci-lint/cmd/golangci-lint
-
 ## --------------------------------------
 ## Tooling Binaries
 ## --------------------------------------
@@ -63,34 +58,6 @@ $(SHARE_DIR):
 $(GTAR):
 	@$(GTAR) --version > /dev/null || (echo Install GNU Tar with brew install gnu-tar && exit -1)
 
-
-CONTROLLER_GEN := $(BIN_DIR)/controller-gen
-$(CONTROLLER_GEN): $(BIN_DIR) go.mod go.sum # Build controller-gen from tools folder.
-	go build -tags=tools -o $@ sigs.k8s.io/controller-tools/cmd/controller-gen
-
-CONVERSION_GEN := $(BIN_DIR)/conversion-gen
-$(CONVERSION_GEN): $(BIN_DIR) go.mod go.sum
-	go build -tags=tools -o $@ k8s.io/code-generator/cmd/conversion-gen
-
-# A target for compatibility with the root Makefile.
-$(BIN_DIR)/$(GOLANGCI_LINT_BIN): $(GOLANGCI_LINT) 
-
-$(GOLANGCI_LINT_BIN): $(GOLANGCI_LINT)
-$(GOLANGCI_LINT): $(BIN_DIR) # Install golangci-lint in tools folder.
-	GOBIN=$(abspath $(BIN_DIR)) go install $(GOLANGCI_LINT_PKG)@$(GOLANGCI_LINT_VERSION)
-
-STATIC_CHECK := $(BIN_DIR)/staticcheck
-$(STATIC_CHECK): $(BIN_DIR) go.mod go.sum # Build staticcheck from tools folder.
-	go build -tags=tools -o $@ honnef.co/go/tools/cmd/staticcheck
-
-GINKGO := $(BIN_DIR)/ginkgo
-$(GINKGO): $(BIN_DIR) go.mod go.sum # Build staticcheck from tools folder.
-	go build -tags=tools -o $@ github.com/onsi/ginkgo/v2/ginkgo
-
-ENVSUBST := $(BIN_DIR)/envsubst
-$(ENVSUBST): $(BIN_DIR) go.mod go.sum # Build envsubst from tools folder.
-	go build -tags=tools -o $@ github.com/a8m/envsubst/cmd/envsubst
-
 GH_SHARE := $(SHARE_DIR)/gh
 
 $(GH_SHARE): $(SHARE_DIR)
@@ -104,14 +71,6 @@ GH: $(GTAR) $(GH_SHARE)/gh.tar.gz
 	$(GTAR) -xvf share/gh/gh.tar.gz gh_$(GH_VERSION)_$(GH_ARCH_SUFFIX)/bin/gh --strip-components 1 --directory $(BIN_DIR)
 	chmod +x $@
 	touch -m $@
-
-KIND := $(BIN_DIR)/kind
-$(KIND): $(BIN_DIR) go.mod go.sum
-	go build -tags tools -o $@ sigs.k8s.io/kind
-
-KUSTOMIZE := $(BIN_DIR)/kustomize
-$(KUSTOMIZE): $(BIN_DIR) go.mod go.sum # Build kustomize from tools folder.
-	CGO_ENABLED=0 go build -tags=tools -o $@ sigs.k8s.io/kustomize/kustomize/v4
 
 MDBOOK_SHARE := $(SHARE_DIR)/mdbook$(MDBOOK_ARCHIVE_EXT)
 $(MDBOOK_SHARE): ../../versions.mk $(SHARE_DIR)
@@ -134,10 +93,6 @@ $(MDBOOK_RELEASELINK): $(BIN_DIR) go.mod go.sum
 MDBOOK_TABULATE := $(BIN_DIR)/mdbook-tabulate
 $(MDBOOK_TABULATE): $(BIN_DIR) go.mod go.sum
 	go build -tags=tools -o $(BIN_DIR)/mdbook-tabulate sigs.k8s.io/cluster-api/hack/tools/mdbook/tabulate
-
-MOCKGEN := $(BIN_DIR)/mockgen
-$(MOCKGEN): $(BIN_DIR) go.mod go.sum # Build mockgen from tools folder.
-	go build -tags=tools -o $@ github.com/golang/mock/mockgen
 
 RELEASE_NOTES := $(BIN_DIR)/release-notes
 $(RELEASE_NOTES): $(BIN_DIR) go.mod go.sum
