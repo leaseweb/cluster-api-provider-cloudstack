@@ -16,26 +16,88 @@ export REPO_ROOT := $(shell git rev-parse --show-toplevel)
 
 include $(REPO_ROOT)/common.mk
 
+#
+# Kubebuilder.
+#
+export KUBEBUILDER_ENVTEST_KUBERNETES_VERSION ?= 1.27.1
+export KUBEBUILDER_CONTROLPLANE_START_TIMEOUT ?= 60s
+export KUBEBUILDER_CONTROLPLANE_STOP_TIMEOUT ?=
+
 # Directories
 TOOLS_DIR := $(REPO_ROOT)/hack/tools
-TOOLS_DIR_DEPS := $(TOOLS_DIR)/go.sum $(TOOLS_DIR)/go.mod $(TOOLS_DIR)/Makefile
 TOOLS_BIN_DIR := $(TOOLS_DIR)/bin
 BIN_DIR ?= bin
 RELEASE_DIR ?= out
+GO_INSTALL := ./hack/go_install.sh
 
 GH_REPO ?= kubernetes-sigs/cluster-api-provider-cloudstack
 
+# Helper function to get dependency version from go.mod
+get_go_version = $(shell go list -m $1 | awk '{print $$2}')
+
 # Binaries
-CONTROLLER_GEN := $(TOOLS_BIN_DIR)/controller-gen
-CONVERSION_GEN := $(TOOLS_BIN_DIR)/conversion-gen
-GINKGO := $(TOOLS_BIN_DIR)/ginkgo
-GOLANGCI_LINT := $(TOOLS_BIN_DIR)/golangci-lint
-KUSTOMIZE := $(TOOLS_BIN_DIR)/kustomize
-MOCKGEN := $(TOOLS_BIN_DIR)/mockgen
-STATIC_CHECK := $(TOOLS_BIN_DIR)/staticcheck
+KUSTOMIZE_VER := v4.5.7
+KUSTOMIZE_BIN := kustomize
+KUSTOMIZE := $(abspath $(TOOLS_BIN_DIR)/$(KUSTOMIZE_BIN)-$(KUSTOMIZE_VER))
+KUSTOMIZE_PKG := sigs.k8s.io/kustomize/kustomize/v4
+
+# This is a commit from CR main (22.05.2024).
+# Intentionally using a commit from main to use a setup-envtest version
+# that uses binaries from controller-tools, not GCS.
+# CR PR: https://github.com/kubernetes-sigs/controller-runtime/pull/2811
+SETUP_ENVTEST_VER := v0.0.0-20240522175850-2e9781e9fc60
+SETUP_ENVTEST_BIN := setup-envtest
+SETUP_ENVTEST := $(abspath $(TOOLS_BIN_DIR)/$(SETUP_ENVTEST_BIN)-$(SETUP_ENVTEST_VER))
+SETUP_ENVTEST_PKG := sigs.k8s.io/controller-runtime/tools/setup-envtest
+
+CONTROLLER_GEN_VER := v0.14.0
+CONTROLLER_GEN_BIN := controller-gen
+CONTROLLER_GEN := $(abspath $(TOOLS_BIN_DIR)/$(CONTROLLER_GEN_BIN)-$(CONTROLLER_GEN_VER))
+CONTROLLER_GEN_PKG := sigs.k8s.io/controller-tools/cmd/controller-gen
+
+GOTESTSUM_VER := v1.6.4
+GOTESTSUM_BIN := gotestsum
+GOTESTSUM := $(abspath $(TOOLS_BIN_DIR)/$(GOTESTSUM_BIN)-$(GOTESTSUM_VER))
+GOTESTSUM_PKG := gotest.tools/gotestsum
+
+CONVERSION_GEN_VER := v0.27.1
+CONVERSION_GEN_BIN := conversion-gen
+# We are intentionally using the binary without version suffix, to avoid the version
+# in generated files.
+CONVERSION_GEN := $(abspath $(TOOLS_BIN_DIR)/$(CONVERSION_GEN_BIN))
+CONVERSION_GEN_PKG := k8s.io/code-generator/cmd/conversion-gen
+
+ENVSUBST_BIN := envsubst
+ENVSUBST_VER := $(call get_go_version,github.com/drone/envsubst/v2)
+ENVSUBST := $(abspath $(TOOLS_BIN_DIR)/$(ENVSUBST_BIN)-$(ENVSUBST_VER))
+ENVSUBST_PKG := github.com/drone/envsubst/v2/cmd/envsubst
+
+GO_APIDIFF_VER := v0.6.0
+GO_APIDIFF_BIN := go-apidiff
+GO_APIDIFF := $(abspath $(TOOLS_BIN_DIR)/$(GO_APIDIFF_BIN)-$(GO_APIDIFF_VER))
+GO_APIDIFF_PKG := github.com/joelanford/go-apidiff
+
+GINKGO_BIN := ginkgo
+GINGKO_VER := $(call get_go_version,github.com/onsi/ginkgo/v2)
+GINKGO := $(abspath $(TOOLS_BIN_DIR)/$(GINKGO_BIN)-$(GINGKO_VER))
+GINKGO_PKG := github.com/onsi/ginkgo/v2/ginkgo
+
+GOLANGCI_LINT_BIN := golangci-lint
+GOLANGCI_LINT_VER := v1.58.1
+GOLANGCI_LINT := $(abspath $(TOOLS_BIN_DIR)/$(GOLANGCI_LINT_BIN)-$(GOLANGCI_LINT_VER))
+GOLANGCI_LINT_PKG := github.com/golangci/golangci-lint/cmd/golangci-lint
+
+MOCKGEN_BIN := mockgen
+MOCKGEN_VER := v1.6.0
+MOCKGEN := $(abspath $(TOOLS_BIN_DIR)/$(MOCKGEN_BIN)-$(MOCKGEN_VER))
+MOCKGEN_PKG := github.com/golang/mock/mockgen
+
+STATIC_CHECK_BIN := staticcheck
+STATIC_CHECK_VER := v0.4.7
+STATIC_CHECK := $(abspath $(TOOLS_BIN_DIR)/staticcheck)
+STATIC_CHECK_PKG := honnef.co/go/tools/cmd/staticcheck
+
 KUBECTL := $(TOOLS_BIN_DIR)/kubectl
-API_SERVER := $(TOOLS_BIN_DIR)/kube-apiserver
-ETCD := $(TOOLS_BIN_DIR)/etcd
 
 # Release
 STAGING_REGISTRY := gcr.io/k8s-staging-capi-cloudstack
@@ -81,7 +143,7 @@ all: build
 ## --------------------------------------
 
 .PHONY: binaries
-binaries: $(CONTROLLER_GEN) $(CONVERSION_GEN) $(GOLANGCI_LINT) $(STATIC_CHECK) $(GINKGO) $(MOCKGEN) $(KUSTOMIZE) managers # Builds and installs all binaries
+binaries: $(CONTROLLER_GEN) $(CONVERSION_GEN) $(GOLANGCI_LINT) $(STATIC_CHECK) $(GINKGO) $(MOCKGEN) $(KUSTOMIZE) $(SETUP_ENVTEST) managers # Builds and installs all binaries
 
 .PHONY: managers
 managers:
@@ -90,11 +152,6 @@ managers:
 .PHONY: manager-cloudstack-infrastructure
 manager-cloudstack-infrastructure: ## Build manager binary.
 	CGO_ENABLED=0 go build -ldflags "${LDFLAGS} -extldflags '-static'" -o $(BIN_DIR)/manager .
-
-export K8S_VERSION=1.27.1
-$(KUBECTL) $(API_SERVER) $(ETCD) &:
-	cd $(TOOLS_DIR) && curl --silent -L "https://go.kubebuilder.io/test-tools/${K8S_VERSION}/$(shell go env GOOS)/$(shell go env GOARCH)" --output - | \
-		tar -C ./ --strip-components=1 -zvxf -
 
 ##@ Linting
 ## --------------------------------------
@@ -244,7 +301,7 @@ delete-kind-cluster:
 	kind delete cluster --name $(KIND_CLUSTER_NAME)
 
 cluster-api: ## Clone cluster-api repository for tilt use.
-	git clone --branch v1.5.7 --depth 1 https://github.com/kubernetes-sigs/cluster-api.git
+	git clone --branch v1.5.8 --depth 1 https://github.com/kubernetes-sigs/cluster-api.git
 
 cluster-api/tilt-settings.json: hack/tilt-settings.json cluster-api
 	cp ./hack/tilt-settings.json cluster-api
@@ -254,7 +311,8 @@ cluster-api/tilt-settings.json: hack/tilt-settings.json cluster-api
 ## Tests
 ## --------------------------------------
 
-export KUBEBUILDER_ASSETS=$(TOOLS_BIN_DIR)
+KUBEBUILDER_ASSETS ?= $(shell $(SETUP_ENVTEST) use --use-env -p path $(KUBEBUILDER_ENVTEST_KUBERNETES_VERSION))
+
 DEEPCOPY_GEN_TARGETS_TEST=$(shell find test/fakes -type d -name "fakes" -exec echo {}\/zz_generated.deepcopy.go \;)
 DEEPCOPY_GEN_INPUTS_TEST=$(shell find test/fakes/* -name "*zz_generated*" -prune -o -type f -print)
 .PHONY: generate-deepcopy-test
@@ -269,13 +327,21 @@ config/.flag-test.mk: $(CONTROLLER_GEN) $(MANIFEST_GEN_INPUTS_TEST)
 	$(CONTROLLER_GEN) crd:crdVersions=v1 rbac:roleName=manager-role webhook paths="./test/fakes" output:crd:artifacts:config=test/fakes
 	@touch config/.flag-test.mk
 
+.PHONY: setup-envtest
+setup-envtest: $(SETUP_ENVTEST) ## Set up envtest (download kubebuilder assets)
+	@echo KUBEBUILDER_ASSETS=$(KUBEBUILDER_ASSETS)
+
 .PHONY: test
 test: ## Run tests.
-test: generate-deepcopy-test generate-manifest-test generate-mocks lint $(GINKGO) $(KUBECTL) $(API_SERVER) $(ETCD)
+test: generate-deepcopy-test generate-manifest-test generate-mocks lint setup-envtest $(GINKGO)
 	@./hack/testing_ginkgo_recover_statements.sh --add # Add ginkgo.GinkgoRecover() statements to controllers.
 	@# The following is a slightly funky way to make sure the ginkgo statements are removed regardless the test results.
-	@$(GINKGO) --label-filter="!integ" --cover -coverprofile cover.out --covermode=atomic -v ./api/... ./controllers/... ./pkg/...; EXIT_STATUS=$$?;\
+	KUBEBUILDER_ASSETS="$(KUBEBUILDER_ASSETS)" $(GINKGO) --label-filter="!integ" --cover -coverprofile cover.out --covermode=atomic -v ./api/... ./controllers/... ./pkg/...; EXIT_STATUS=$$?;\
 		./hack/testing_ginkgo_recover_statements.sh --remove; exit $$EXIT_STATUS
+
+.PHONY: test-pkg
+test-pkg: $(GINKGO)  ## Run pkg tests.
+	@$(GINKGO) --label-filter="!integ" --cover -coverprofile cover.out --covermode=atomic -v ./pkg/...
 
 CLUSTER_TEMPLATES_INPUT_FILES=$(shell find test/e2e/data/infrastructure-cloudstack/v1beta*/cluster-template* test/e2e/data/infrastructure-cloudstack/*/bases/* -type f)
 CLUSTER_TEMPLATES_OUTPUT_FILES=$(shell find test/e2e/data/infrastructure-cloudstack -type d -name "cluster-template*" -exec echo {}.yaml \;)
@@ -284,7 +350,7 @@ e2e-cluster-templates: $(CLUSTER_TEMPLATES_OUTPUT_FILES) ## Generate cluster tem
 cluster-template%yaml: $(KUSTOMIZE) $(CLUSTER_TEMPLATES_INPUT_FILES)
 	$(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone $(basename $@) > $@
 
-e2e-essentials: $(GINKGO) $(KUBECTL) e2e-cluster-templates create-kind-cluster ## Fulfill essential tasks for e2e testing.
+e2e-essentials: $(GINKGO) setup-envtest e2e-cluster-templates create-kind-cluster ## Fulfill essential tasks for e2e testing.
 	IMG=$(IMG_LOCAL) make generate-manifests docker-build docker-push
 
 JOB ?= .*
@@ -359,3 +425,62 @@ release-templates: ## Generate release templates
 .PHONY: upload-staging-artifacts
 upload-staging-artifacts: ## Upload release artifacts to the staging bucket
 	gsutil cp $(RELEASE_DIR)/* gs://$(STAGING_BUCKET)/components/$(RELEASE_ALIAS_TAG)/
+
+##@ hack/tools:
+
+.PHONY: $(CONTROLLER_GEN_BIN)
+$(CONTROLLER_GEN_BIN): $(CONTROLLER_GEN) ## Build a local copy of controller-gen.
+
+.PHONY: $(CONVERSION_GEN_BIN)
+$(CONVERSION_GEN_BIN): $(CONVERSION_GEN) ## Build a local copy of conversion-gen.
+
+.PHONY: $(ENVSUBST_BIN)
+$(ENVSUBST_BIN): $(ENVSUBST) ## Build a local copy of envsubst.
+
+.PHONY: $(KUSTOMIZE_BIN)
+$(KUSTOMIZE_BIN): $(KUSTOMIZE) ## Build a local copy of kustomize.
+
+.PHONY: $(SETUP_ENVTEST_BIN)
+$(SETUP_ENVTEST_BIN): $(SETUP_ENVTEST) ## Build a local copy of setup-envtest.
+
+.PHONY: $(GINKGO_BIN)
+$(GINKGO_BIN): $(GINKGO) ## Build a local copy of ginkgo.
+
+.PHONY: $(GOLANGCI_LINT_BIN)
+$(GOLANGCI_LINT_BIN): $(GOLANGCI_LINT) ## Build a local copy of golangci-lint.
+
+.PHONY: $(MOCKGEN_BIN)
+$(MOCKGEN_BIN): $(MOCKGEN) ## Build a local copy of mockgen.
+
+.PHONY: $(STATIC_CHECK_BIN)
+$(STATIC_CHECK_BIN): $(STATIC_CHECK) ## Build a local copy of staticcheck.
+
+$(CONTROLLER_GEN): # Build controller-gen from tools folder.
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(CONTROLLER_GEN_PKG) $(CONTROLLER_GEN_BIN) $(CONTROLLER_GEN_VER)
+
+## We are forcing a rebuilt of conversion-gen via PHONY so that we're always using an up-to-date version.
+## We can't use a versioned name for the binary, because that would be reflected in generated files.
+.PHONY: $(CONVERSION_GEN)
+$(CONVERSION_GEN): # Build conversion-gen from tools folder.
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(CONVERSION_GEN_PKG) $(CONVERSION_GEN_BIN) $(CONVERSION_GEN_VER)
+
+$(ENVSUBST): # Build gotestsum from tools folder.
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(ENVSUBST_PKG) $(ENVSUBST_BIN) $(ENVSUBST_VER)
+
+$(KUSTOMIZE): # Build kustomize from tools folder.
+	CGO_ENABLED=0 GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(KUSTOMIZE_PKG) $(KUSTOMIZE_BIN) $(KUSTOMIZE_VER)
+
+$(SETUP_ENVTEST): # Build setup-envtest from tools folder.
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(SETUP_ENVTEST_PKG) $(SETUP_ENVTEST_BIN) $(SETUP_ENVTEST_VER)
+
+$(GINKGO): # Build ginkgo from tools folder.
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(GINKGO_PKG) $(GINKGO_BIN) $(GINGKO_VER)
+
+$(GOLANGCI_LINT): # Build golangci-lint from tools folder.
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(GOLANGCI_LINT_PKG) $(GOLANGCI_LINT_BIN) $(GOLANGCI_LINT_VER)
+
+$(MOCKGEN): # Build mockgen from tools folder.
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(MOCKGEN_PKG) $(MOCKGEN_BIN) $(MOCKGEN_VER)
+
+$(STATIC_CHECK): # Build golangci-lint from tools folder.
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(STATIC_CHECK_PKG) $(STATIC_CHECK_BIN) $(STATIC_CHECK_VER)

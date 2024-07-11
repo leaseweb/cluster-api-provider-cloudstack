@@ -29,6 +29,7 @@ linters-settings:
           allowedPackages:
             - "github.com/onsi/ginkgo/v2"
             - "github.com/onsi/gomega"
+
 linters:
   enable:
     - gosec
