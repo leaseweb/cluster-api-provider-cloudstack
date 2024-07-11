@@ -54,6 +54,7 @@ type CloudStackIsolatedNetworkStatus struct {
 	LBRuleID string `json:"loadBalancerRuleID,omitempty"`
 
 	// Ready indicates the readiness of this provider resource.
+	//+optional
 	Ready bool `json:"ready"`
 }
 

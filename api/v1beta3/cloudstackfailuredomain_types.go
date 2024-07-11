@@ -44,11 +44,11 @@ const (
 
 type Network struct {
 	// Cloudstack Network ID the cluster is built in.
-	// +optional
+	//+optional
 	ID string `json:"id,omitempty"`
 
 	// Cloudstack Network Type the cluster is built in.
-	// +optional
+	//+optional
 	Type string `json:"type,omitempty"`
 
 	// Cloudstack Network Name the cluster is built in.
@@ -82,11 +82,11 @@ type CloudStackFailureDomainSpec struct {
 	Zone CloudStackZoneSpec `json:"zone"`
 
 	// CloudStack account.
-	// +optional
+	//+optional
 	Account string `json:"account,omitempty"`
 
 	// CloudStack domain.
-	// +optional
+	//+optional
 	Domain string `json:"domain,omitempty"`
 
 	// Apache CloudStack Endpoint secret reference.
@@ -96,6 +96,7 @@ type CloudStackFailureDomainSpec struct {
 // CloudStackFailureDomainStatus defines the observed state of CloudStackFailureDomain
 type CloudStackFailureDomainStatus struct {
 	// Reflects the readiness of the CloudStack Failure Domain.
+	//+optional
 	Ready bool `json:"ready"`
 }
 
