@@ -30,7 +30,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/metrics"
 
 	"github.com/apache/cloudstack-go/v2/cloudstack"
-	ttlcache "github.com/jellydator/ttlcache/v3"
+	"github.com/jellydator/ttlcache/v3"
 	"github.com/pkg/errors"
 )
 
@@ -160,8 +160,7 @@ func NewClientFromConf(conf Config, clientConfig *corev1.ConfigMap) (Client, err
 
 	clientCacheKey := generateClientCacheKey(conf)
 	if item := clientCache.Get(clientCacheKey); item != nil {
-		var client interface{} = item.Value()
-		return client.(Client), nil
+		return item.Value(), nil
 	}
 
 	verifySSL := true
