@@ -24,20 +24,21 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
+	"sigs.k8s.io/cluster-api/util/annotations"
 )
 
 type IsoNetworkIface interface {
 	GetOrCreateIsolatedNetwork(*infrav1.CloudStackFailureDomain, *infrav1.CloudStackIsolatedNetwork, *infrav1.CloudStackCluster) error
 
 	AssociatePublicIPAddress(*infrav1.CloudStackFailureDomain, *infrav1.CloudStackIsolatedNetwork, *infrav1.CloudStackCluster) error
-	GetOrCreateLoadBalancerRule(*infrav1.CloudStackFailureDomain, *infrav1.CloudStackIsolatedNetwork, *infrav1.CloudStackCluster) error
+	GetOrCreateLoadBalancerRule(*infrav1.CloudStackIsolatedNetwork, *infrav1.CloudStackCluster) error
 	OpenFirewallRules(*infrav1.CloudStackIsolatedNetwork) error
-	GetPublicIP(*infrav1.CloudStackFailureDomain, *infrav1.CloudStackIsolatedNetwork, *infrav1.CloudStackCluster) (*cloudstack.PublicIpAddress, error)
-	ResolveLoadBalancerRuleDetails(*infrav1.CloudStackFailureDomain, *infrav1.CloudStackIsolatedNetwork, *infrav1.CloudStackCluster) error
+	GetPublicIP(*infrav1.CloudStackFailureDomain, *infrav1.CloudStackCluster) (*cloudstack.PublicIpAddress, error)
+	ResolveLoadBalancerRuleDetails(*infrav1.CloudStackIsolatedNetwork) error
 
 	AssignVMToLoadBalancerRule(isoNet *infrav1.CloudStackIsolatedNetwork, instanceID string) error
 	DeleteNetwork(infrav1.Network) error
-	DisposeIsoNetResources(*infrav1.CloudStackFailureDomain, *infrav1.CloudStackIsolatedNetwork, *infrav1.CloudStackCluster) error
+	DisposeIsoNetResources(*infrav1.CloudStackIsolatedNetwork, *infrav1.CloudStackCluster) error
 }
 
 // getOfferingID fetches an offering id.
@@ -59,12 +60,17 @@ func (c *client) AssociatePublicIPAddress(
 	csCluster *infrav1.CloudStackCluster,
 ) (retErr error) {
 	// Check specified IP address is available or get an unused one if not specified.
-	publicAddress, err := c.GetPublicIP(fd, isoNet, csCluster)
+	publicAddress, err := c.GetPublicIP(fd, csCluster)
 	if err != nil {
 		return errors.Wrapf(err, "fetching a public IP address")
 	}
 	isoNet.Spec.ControlPlaneEndpoint.Host = publicAddress.Ipaddress
-	csCluster.Spec.ControlPlaneEndpoint.Host = publicAddress.Ipaddress
+	if !annotations.IsExternallyManaged(csCluster) {
+		// Do not update the infracluster's controlPlaneEndpoint when the controlplane
+		// is externally managed, it is the responsibility of the externally managed
+		// control plane to update this.
+		csCluster.Spec.ControlPlaneEndpoint.Host = publicAddress.Ipaddress
+	}
 	isoNet.Status.PublicIPID = publicAddress.Id
 
 	// Check if the address is already associated with the network.
@@ -102,6 +108,9 @@ func (c *client) CreateIsolatedNetwork(fd *infrav1.CloudStackFailureDomain, isoN
 	// Do isolated network creation.
 	p := c.cs.Network.NewCreateNetworkParams(isoNet.Spec.Name, offeringID, fd.Spec.Zone.ID)
 	p.SetDisplaytext(isoNet.Spec.Name)
+	if isoNet.Spec.Domain != "" {
+		p.SetNetworkdomain(isoNet.Spec.Domain)
+	}
 	resp, err := c.cs.Network.CreateNetwork(p)
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
@@ -139,7 +148,6 @@ func (c *client) OpenFirewallRules(isoNet *infrav1.CloudStackIsolatedNetwork) (r
 // GetPublicIP gets a public IP with ID for cluster endpoint.
 func (c *client) GetPublicIP(
 	fd *infrav1.CloudStackFailureDomain,
-	isoNet *infrav1.CloudStackIsolatedNetwork,
 	csCluster *infrav1.CloudStackCluster,
 ) (*cloudstack.PublicIpAddress, error) {
 	ip := csCluster.Spec.ControlPlaneEndpoint.Host
@@ -152,11 +160,13 @@ func (c *client) GetPublicIP(
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 		return nil, err
-	} else if ip != "" && publicAddresses.Count == 1 { // Endpoint specified and IP found.
+	} else if ip != "" && publicAddresses.Count == 1 {
+		// Endpoint specified and IP found.
 		// Ignore already allocated here since the IP was specified.
 		return publicAddresses.PublicIpAddresses[0], nil
-	} else if publicAddresses.Count > 0 { // Endpoint not specified.
-		for _, v := range publicAddresses.PublicIpAddresses { // Pick first available address.
+	} else if publicAddresses.Count > 0 {
+		// Endpoint not specified. Pick first available address.
+		for _, v := range publicAddresses.PublicIpAddresses {
 			if v.Allocated == "" { // Found un-allocated Public IP.
 				return v, nil
 			}
@@ -193,9 +203,7 @@ func (c *client) GetIsolatedNetwork(isoNet *infrav1.CloudStackIsolatedNetwork) (
 
 // ResolveLoadBalancerRuleDetails resolves the details of a load balancer rule by PublicIPID and Port.
 func (c *client) ResolveLoadBalancerRuleDetails(
-	fd *infrav1.CloudStackFailureDomain,
 	isoNet *infrav1.CloudStackIsolatedNetwork,
-	csCluster *infrav1.CloudStackCluster,
 ) error {
 	p := c.cs.LoadBalancer.NewListLoadBalancerRulesParams()
 	p.SetPublicipid(isoNet.Status.PublicIPID)
@@ -216,23 +224,11 @@ func (c *client) ResolveLoadBalancerRuleDetails(
 
 // GetOrCreateLoadBalancerRule Create a load balancer rule that can be assigned to instances.
 func (c *client) GetOrCreateLoadBalancerRule(
-	fd *infrav1.CloudStackFailureDomain,
 	isoNet *infrav1.CloudStackIsolatedNetwork,
 	csCluster *infrav1.CloudStackCluster,
 ) (retErr error) {
-	// Check/set ports.
-	// Prefer control plane endpoint. Take iso net port if CP missing. Set to default if both missing.
-	if csCluster.Spec.ControlPlaneEndpoint.Port != 0 {
-		isoNet.Spec.ControlPlaneEndpoint.Port = csCluster.Spec.ControlPlaneEndpoint.Port
-	} else if isoNet.Spec.ControlPlaneEndpoint.Port != 0 { // Override default public port if endpoint port specified.
-		csCluster.Spec.ControlPlaneEndpoint.Port = isoNet.Spec.ControlPlaneEndpoint.Port
-	} else {
-		csCluster.Spec.ControlPlaneEndpoint.Port = 6443
-		isoNet.Spec.ControlPlaneEndpoint.Port = 6443
-	}
-
 	// Check if rule exists.
-	if err := c.ResolveLoadBalancerRuleDetails(fd, isoNet, csCluster); err == nil ||
+	if err := c.ResolveLoadBalancerRuleDetails(isoNet); err == nil ||
 		!strings.Contains(strings.ToLower(err.Error()), "no load balancer rule found") {
 		return errors.Wrap(err, "resolving load balancer rule details")
 	}
@@ -275,14 +271,27 @@ func (c *client) GetOrCreateIsolatedNetwork(
 		return errors.Wrapf(err, "tagging network with id %s", networkID)
 	}
 
-	// Associate Public IP with CloudStackIsolatedNetwork
-	if err := c.AssociatePublicIPAddress(fd, isoNet, csCluster); err != nil {
-		return errors.Wrapf(err, "associating public IP address to csCluster")
-	}
+	if !annotations.IsExternallyManaged(csCluster) {
+		// Associate Public IP with CloudStackIsolatedNetwork
+		if err := c.AssociatePublicIPAddress(fd, isoNet, csCluster); err != nil {
+			return errors.Wrapf(err, "associating public IP address to csCluster")
+		}
 
-	// Setup a load balancing rule to map VMs to Public IP.
-	if err := c.GetOrCreateLoadBalancerRule(fd, isoNet, csCluster); err != nil {
-		return errors.Wrap(err, "getting or creating load balancing rule")
+		// Check/set ControlPlaneEndpoint port.
+		// Prefer csCluster ControlPlaneEndpoint port. Use isonet port if CP missing. Set to default if both missing.
+		if csCluster.Spec.ControlPlaneEndpoint.Port != 0 {
+			isoNet.Spec.ControlPlaneEndpoint.Port = csCluster.Spec.ControlPlaneEndpoint.Port
+		} else if isoNet.Spec.ControlPlaneEndpoint.Port != 0 { // Override default public port if endpoint port specified.
+			csCluster.Spec.ControlPlaneEndpoint.Port = isoNet.Spec.ControlPlaneEndpoint.Port
+		} else {
+			csCluster.Spec.ControlPlaneEndpoint.Port = 6443
+			isoNet.Spec.ControlPlaneEndpoint.Port = 6443
+		}
+
+		// Setup a load balancing rule to map VMs to Public IP.
+		if err := c.GetOrCreateLoadBalancerRule(isoNet, csCluster); err != nil {
+			return errors.Wrap(err, "getting or creating load balancing rule")
+		}
 	}
 
 	//  Open the Isolated Network on endopint port.
@@ -322,7 +331,6 @@ func (c *client) DeleteNetwork(net infrav1.Network) error {
 
 // DisposeIsoNetResources cleans up isolated network resources.
 func (c *client) DisposeIsoNetResources(
-	zone *infrav1.CloudStackFailureDomain,
 	isoNet *infrav1.CloudStackIsolatedNetwork,
 	csCluster *infrav1.CloudStackCluster,
 ) (retError error) {
@@ -337,15 +345,12 @@ func (c *client) DisposeIsoNetResources(
 	if err := c.RemoveClusterTagFromNetwork(csCluster, *isoNet.Network()); err != nil {
 		return err
 	}
-	if err := c.DeleteNetworkIfNotInUse(csCluster, *isoNet.Network()); err != nil {
-		return err
-	}
 
-	return nil
+	return c.DeleteNetworkIfNotInUse(*isoNet.Network())
 }
 
 // DeleteNetworkIfNotInUse deletes an isolated network if the network is no longer in use (indicated by in use tags).
-func (c *client) DeleteNetworkIfNotInUse(csCluster *infrav1.CloudStackCluster, net infrav1.Network) (retError error) {
+func (c *client) DeleteNetworkIfNotInUse(net infrav1.Network) (retError error) {
 	tags, err := c.GetTags(ResourceTypeNetwork, net.ID)
 	if err != nil {
 		return err

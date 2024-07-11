@@ -23,7 +23,6 @@ SHELL:=bash
 MAKEFLAGS += --no-builtin-rules
 
 TOOLS_DIR := $(REPO_ROOT)/hack/tools
-TOOLS_DIR_DEPS := $(TOOLS_DIR)/go.sum $(TOOLS_DIR)/go.mod $(TOOLS_DIR)/Makefile
 TOOLS_BIN_DIR := $(TOOLS_DIR)/bin
 UID := $(shell id -u)
 GID := $(shell id -g)
@@ -45,9 +44,6 @@ ifeq ($(GOPROXY),)
 GOPROXY := https://proxy.golang.org
 endif
 export GOPROXY
-
-$(TOOLS_BIN_DIR)/%: $(TOOLS_DIR_DEPS)
-	make -C $(TOOLS_DIR) $(subst $(TOOLS_DIR)/,,$@)
 
 ##@ Help
 ## --------------------------------------

@@ -22,7 +22,7 @@ import (
 	"os"
 	"path/filepath"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/pointer"
@@ -71,6 +71,14 @@ func AffinityGroupSpec(ctx context.Context, inputGetter func() CommonSpecInput) 
 
 	It("Should have host affinity group when affinity is anti", func() {
 		affinityIds = executeTest(ctx, input, namespace, specName, clusterResources, "anti")
+	})
+
+	It("Should have host affinity group when affinity is soft-pro", func() {
+		affinityIds = executeTest(ctx, input, namespace, specName, clusterResources, "soft-pro")
+	})
+
+	It("Should have host affinity group when affinity is soft-anti", func() {
+		affinityIds = executeTest(ctx, input, namespace, specName, clusterResources, "soft-anti")
 	})
 
 	AfterEach(func() {

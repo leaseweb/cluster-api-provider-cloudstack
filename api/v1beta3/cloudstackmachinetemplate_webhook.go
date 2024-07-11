@@ -28,6 +28,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // log is for logging in this package.
@@ -39,9 +40,13 @@ func (r *CloudStackMachineTemplate) SetupWebhookWithManager(mgr ctrl.Manager) er
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/mutate-infrastructure-cluster-x-k8s-io-v1beta3-cloudstackmachinetemplate,mutating=true,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=cloudstackmachinetemplates,verbs=create;update,versions=v1beta3,name=mcloudstackmachinetemplate.kb.io,admissionReviewVersions=v1;v1beta1
+// +kubebuilder:webhook:verbs=create;update,path=/validate-infrastructure-cluster-x-k8s-io-v1beta3-cloudstackmachinetemplate,mutating=false,failurePolicy=fail,matchPolicy=Equivalent,groups=infrastructure.cluster.x-k8s.io,resources=cloudstackmachinetemplates,versions=v1beta3,name=validation.cloudstackmachinetemplate.infrastructure.cluster.x-k8s.io,sideEffects=None,admissionReviewVersions=v1;v1beta1
+// +kubebuilder:webhook:verbs=create;update,path=/mutate-infrastructure-cluster-x-k8s-io-v1beta3-cloudstackmachinetemplate,mutating=true,failurePolicy=fail,matchPolicy=Equivalent,groups=infrastructure.cluster.x-k8s.io,resources=cloudstackmachinetemplates,versions=v1beta3,name=default.cloudstackmachinetemplate.infrastructure.cluster.x-k8s.io,sideEffects=None,admissionReviewVersions=v1;v1beta1
 
-var _ webhook.Defaulter = &CloudStackMachineTemplate{}
+var (
+	_ webhook.Defaulter = &CloudStackMachineTemplate{}
+	_ webhook.Validator = &CloudStackMachineTemplate{}
+)
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (r *CloudStackMachineTemplate) Default() {
@@ -49,12 +54,8 @@ func (r *CloudStackMachineTemplate) Default() {
 	// No defaulted values supported yet.
 }
 
-// +kubebuilder:webhook:path=/validate-infrastructure-cluster-x-k8s-io-v1beta3-cloudstackmachinetemplate,mutating=false,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=cloudstackmachinetemplates,verbs=create;update,versions=v1beta3,name=vcloudstackmachinetemplate.kb.io,admissionReviewVersions=v1;v1beta1
-
-var _ webhook.Validator = &CloudStackMachineTemplate{}
-
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *CloudStackMachineTemplate) ValidateCreate() error {
+func (r *CloudStackMachineTemplate) ValidateCreate() (admission.Warnings, error) {
 	cloudstackmachinetemplatelog.V(1).Info("entered validate create webhook", "api resource name", r.Name)
 
 	var errorList field.ErrorList
@@ -63,9 +64,9 @@ func (r *CloudStackMachineTemplate) ValidateCreate() error {
 	spec := r.Spec.Template.Spec
 
 	affinity := strings.ToLower(spec.Affinity)
-	if !(affinity == "" || affinity == "no" || affinity == "pro" || affinity == "anti") {
+	if !(affinity == "" || affinity == "no" || affinity == "pro" || affinity == "anti" || affinity == "soft-pro" || affinity == "soft-anti") {
 		errorList = append(errorList, field.Invalid(field.NewPath("spec", "Affinity"), spec.Affinity,
-			`Affinity must be "no", "pro", "anti", or unspecified.`))
+			`Affinity must be "no", "pro", "anti", "soft-pro", "soft-anti", or unspecified.`))
 	}
 	if affinity != "no" && affinity != "" && len(spec.AffinityGroupIDs) > 0 {
 		errorList = append(errorList, field.Forbidden(field.NewPath("spec", "AffinityGroupIDs"),
@@ -75,16 +76,16 @@ func (r *CloudStackMachineTemplate) ValidateCreate() error {
 	errorList = webhookutil.EnsureAtLeastOneFieldExists(spec.Offering.ID, spec.Offering.Name, "Offering", errorList)
 	errorList = webhookutil.EnsureAtLeastOneFieldExists(spec.Template.ID, spec.Template.Name, "Template", errorList)
 
-	return webhookutil.AggregateObjErrors(r.GroupVersionKind().GroupKind(), r.Name, errorList)
+	return nil, webhookutil.AggregateObjErrors(r.GroupVersionKind().GroupKind(), r.Name, errorList)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *CloudStackMachineTemplate) ValidateUpdate(old runtime.Object) error {
+func (r *CloudStackMachineTemplate) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	cloudstackmachinetemplatelog.V(1).Info("entered validate update webhook", "api resource name", r.Name)
 
 	oldMachineTemplate, ok := old.(*CloudStackMachineTemplate)
 	if !ok {
-		return errors.NewBadRequest(fmt.Sprintf("expected a CloudStackMachineTemplate but got a %T", old))
+		return nil, errors.NewBadRequest(fmt.Sprintf("expected a CloudStackMachineTemplate but got a %T", old))
 	}
 
 	// CloudStackMachineTemplateSpec.CloudStackMachineTemplateResource.CloudStackMachineSpec
@@ -94,8 +95,10 @@ func (r *CloudStackMachineTemplate) ValidateUpdate(old runtime.Object) error {
 	errorList := field.ErrorList(nil)
 	errorList = webhookutil.EnsureEqualStrings(spec.Offering.ID, oldSpec.Offering.ID, "offering", errorList)
 	errorList = webhookutil.EnsureEqualStrings(spec.Offering.Name, oldSpec.Offering.Name, "offering", errorList)
-	errorList = webhookutil.EnsureEqualStrings(spec.DiskOffering.ID, oldSpec.DiskOffering.ID, "diskOffering", errorList)
-	errorList = webhookutil.EnsureEqualStrings(spec.DiskOffering.Name, oldSpec.DiskOffering.Name, "diskOffering", errorList)
+	if spec.DiskOffering != nil {
+		errorList = webhookutil.EnsureEqualStrings(spec.DiskOffering.ID, oldSpec.DiskOffering.ID, "diskOffering", errorList)
+		errorList = webhookutil.EnsureEqualStrings(spec.DiskOffering.Name, oldSpec.DiskOffering.Name, "diskOffering", errorList)
+	}
 	errorList = webhookutil.EnsureEqualStrings(spec.SSHKey, oldSpec.SSHKey, "sshkey", errorList)
 	errorList = webhookutil.EnsureEqualStrings(spec.Template.ID, oldSpec.Template.ID, "template", errorList)
 	errorList = webhookutil.EnsureEqualStrings(spec.Template.Name, oldSpec.Template.Name, "template", errorList)
@@ -106,12 +109,12 @@ func (r *CloudStackMachineTemplate) ValidateUpdate(old runtime.Object) error {
 		errorList = append(errorList, field.Forbidden(field.NewPath("spec", "AffinityGroupIDs"), "AffinityGroupIDs"))
 	}
 
-	return webhookutil.AggregateObjErrors(r.GroupVersionKind().GroupKind(), r.Name, errorList)
+	return nil, webhookutil.AggregateObjErrors(r.GroupVersionKind().GroupKind(), r.Name, errorList)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *CloudStackMachineTemplate) ValidateDelete() error {
+func (r *CloudStackMachineTemplate) ValidateDelete() (admission.Warnings, error) {
 	cloudstackmachinetemplatelog.V(1).Info("entered validate delete webhook", "api resource name", r.Name)
 	// No deletion validations.  Deletion webhook not enabled.
-	return nil
+	return nil, nil
 }

@@ -48,7 +48,7 @@ type Network struct {
 	ID string `json:"id,omitempty"`
 
 	// Cloudstack Network Type the cluster is built in.
-	// + optional
+	// +optional
 	Type string `json:"type,omitempty"`
 
 	// Cloudstack Network Name the cluster is built in.

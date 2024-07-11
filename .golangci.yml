@@ -21,6 +21,14 @@ linters-settings:
       limitations under the License.
   gocyclo:
     min-complexity: 15
+  revive:
+    rules:
+      - name: dot-imports
+        arguments:
+          # dot import should be ONLY allowed for ginkgo testing packages
+          allowedPackages:
+            - "github.com/onsi/ginkgo/v2"
+            - "github.com/onsi/gomega"
 
 linters:
   enable:
@@ -32,12 +40,12 @@ linters:
 
 run:
   issues-exit-code: 1
-  skip-dirs:
-    - pkg/mocks
-    - test
 
 issues:
   # Excluding configuration per-path, per-linter, per-text and per-source
+  exclude-dirs:
+    - pkg/mocks
+    - test
   exclude-rules:
     # Exclude some linters from running on tests files.
     - path: _test\.go

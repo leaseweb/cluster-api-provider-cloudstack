@@ -35,7 +35,7 @@ import (
 )
 
 type VMIface interface {
-	GetOrCreateVMInstance(*infrav1.CloudStackMachine, *clusterv1.Machine, *infrav1.CloudStackCluster, *infrav1.CloudStackFailureDomain, *infrav1.CloudStackAffinityGroup, string) error
+	GetOrCreateVMInstance(*infrav1.CloudStackMachine, *clusterv1.Machine, *infrav1.CloudStackFailureDomain, *infrav1.CloudStackAffinityGroup, string) error
 	ResolveVMInstanceDetails(*infrav1.CloudStackMachine) error
 	DestroyVMInstance(*infrav1.CloudStackMachine) error
 }
@@ -117,7 +117,6 @@ func (c *client) ResolveServiceOffering(csMachine *infrav1.CloudStackMachine, zo
 }
 
 func (c *client) ResolveTemplate(
-	csCluster *infrav1.CloudStackCluster,
 	csMachine *infrav1.CloudStackMachine,
 	zoneID string,
 ) (templateID string, retErr error) {
@@ -138,7 +137,15 @@ func (c *client) ResolveTemplate(
 		}
 		return csMachine.Spec.Template.ID, nil
 	}
-	templateID, count, err := c.cs.Template.GetTemplateID(csMachine.Spec.Template.Name, "executable", zoneID)
+	templateID, count, err := c.cs.Template.GetTemplateID(csMachine.Spec.Template.Name, "executable", zoneID, func(cs *cloudstack.CloudStackClient, i interface{}) error {
+		v, ok := i.(*cloudstack.ListTemplatesParams)
+		if !ok {
+			return fmt.Errorf("expected a cloudstack.ListTemplatesParams but got a %T", i)
+		}
+		v.SetShowunique(true)
+
+		return nil
+	})
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 		return "", multierror.Append(retErr, errors.Wrapf(
@@ -154,6 +161,9 @@ func (c *client) ResolveTemplate(
 // disk offering name matches name provided in spec.
 // If disk offering ID is not provided, the disk offering name is used to retrieve disk offering ID.
 func (c *client) ResolveDiskOffering(csMachine *infrav1.CloudStackMachine, zoneID string) (diskOfferingID string, retErr error) {
+	if csMachine.Spec.DiskOffering == nil {
+		return "", nil
+	}
 	diskOfferingID = csMachine.Spec.DiskOffering.ID
 	if len(csMachine.Spec.DiskOffering.Name) > 0 {
 		diskID, count, err := c.cs.DiskOffering.GetDiskOfferingID(csMachine.Spec.DiskOffering.Name, cloudstack.WithZone(zoneID))
@@ -208,7 +218,7 @@ func verifyDiskoffering(csMachine *infrav1.CloudStackMachine, c *client, diskOff
 }
 
 // CheckAccountLimits Checks the account's limit of VM, CPU & Memory
-func (c *client) CheckAccountLimits(fd *infrav1.CloudStackFailureDomain, offering *cloudstack.ServiceOffering) error {
+func (c *client) CheckAccountLimits(offering *cloudstack.ServiceOffering) error {
 	if c.user.Account.CPUAvailable != "Unlimited" {
 		cpuAvailable, err := strconv.ParseInt(c.user.Account.CPUAvailable, 10, 0)
 		if err == nil && int64(offering.Cpunumber) > cpuAvailable {
@@ -233,7 +243,7 @@ func (c *client) CheckAccountLimits(fd *infrav1.CloudStackFailureDomain, offerin
 }
 
 // CheckDomainLimits Checks the domain's limit of VM, CPU & Memory
-func (c *client) CheckDomainLimits(fd *infrav1.CloudStackFailureDomain, offering *cloudstack.ServiceOffering) error {
+func (c *client) CheckDomainLimits(offering *cloudstack.ServiceOffering) error {
 	if c.user.Account.Domain.CPUAvailable != "Unlimited" {
 		cpuAvailable, err := strconv.ParseInt(c.user.Account.Domain.CPUAvailable, 10, 0)
 		if err == nil && int64(offering.Cpunumber) > cpuAvailable {
@@ -259,15 +269,14 @@ func (c *client) CheckDomainLimits(fd *infrav1.CloudStackFailureDomain, offering
 
 // CheckLimits will check the account & domain limits
 func (c *client) CheckLimits(
-	fd *infrav1.CloudStackFailureDomain,
 	offering *cloudstack.ServiceOffering,
 ) error {
-	err := c.CheckAccountLimits(fd, offering)
+	err := c.CheckAccountLimits(offering)
 	if err != nil {
 		return err
 	}
 
-	err = c.CheckDomainLimits(fd, offering)
+	err = c.CheckDomainLimits(offering)
 	if err != nil {
 		return err
 	}
@@ -280,13 +289,12 @@ func (c *client) CheckLimits(
 func (c *client) DeployVM(
 	csMachine *infrav1.CloudStackMachine,
 	capiMachine *clusterv1.Machine,
-	csCluster *infrav1.CloudStackCluster,
 	fd *infrav1.CloudStackFailureDomain,
 	affinity *infrav1.CloudStackAffinityGroup,
 	offering *cloudstack.ServiceOffering,
 	userData string,
 ) error {
-	templateID, err := c.ResolveTemplate(csCluster, csMachine, fd.Spec.Zone.ID)
+	templateID, err := c.ResolveTemplate(csMachine, fd.Spec.Zone.ID)
 	if err != nil {
 		return err
 	}
@@ -300,7 +308,9 @@ func (c *client) DeployVM(
 	setIfNotEmpty(csMachine.Name, p.SetName)
 	setIfNotEmpty(capiMachine.Name, p.SetDisplayname)
 	setIfNotEmpty(diskOfferingID, p.SetDiskofferingid)
-	setIntIfPositive(csMachine.Spec.DiskOffering.CustomSize, p.SetSize)
+	if csMachine.Spec.DiskOffering != nil {
+		setIntIfPositive(csMachine.Spec.DiskOffering.CustomSize, p.SetSize)
+	}
 
 	setIfNotEmpty(csMachine.Spec.SSHKey, p.SetKeypair)
 
@@ -358,7 +368,6 @@ func (c *client) DeployVM(
 func (c *client) GetOrCreateVMInstance(
 	csMachine *infrav1.CloudStackMachine,
 	capiMachine *clusterv1.Machine,
-	csCluster *infrav1.CloudStackCluster,
 	fd *infrav1.CloudStackFailureDomain,
 	affinity *infrav1.CloudStackAffinityGroup,
 	userData string,
@@ -374,12 +383,12 @@ func (c *client) GetOrCreateVMInstance(
 		return err
 	}
 
-	err = c.CheckLimits(fd, &offering)
+	err = c.CheckLimits(&offering)
 	if err != nil {
 		return err
 	}
 
-	if err := c.DeployVM(csMachine, capiMachine, csCluster, fd, affinity, &offering, userData); err != nil {
+	if err := c.DeployVM(csMachine, capiMachine, fd, affinity, &offering, userData); err != nil {
 		return err
 	}
 

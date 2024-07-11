@@ -17,17 +17,24 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - command:
         - /manager
         args:
-        - --leader-elect
-        - --cloudstackcluster-concurrency=${CAPC_CLOUDSTACKCLUSTER_CONCURRENCY:=10}
-        - --cloudstackmachine-concurrency=${CAPC_CLOUDSTACKMACHINE_CONCURRENCY:=10}
+        - "--leader-elect"
+        - "--metrics-bind-addr=localhost:8080"
         image: controller:latest
         name: manager
         securityContext:
           allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          runAsUser: 65532
+          runAsGroup: 65532
         livenessProbe:
           httpGet:
             path: /healthz

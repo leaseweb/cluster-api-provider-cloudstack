@@ -18,14 +18,17 @@ package controllers
 
 import (
 	"context"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sort"
+
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util/predicates"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sort"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	csCtrlrUtils "sigs.k8s.io/cluster-api-provider-cloudstack/controllers/utils"
@@ -105,7 +108,7 @@ func (r *CloudStackFailureDomainReconciliationRunner) Reconcile() (retRes ctrl.R
 		r.ReconciliationSubject.Spec.Zone.Network.Type == infrav1.NetworkTypeIsolated {
 		netName := r.ReconciliationSubject.Spec.Zone.Network.Name
 		if res, err := r.GenerateIsolatedNetwork(
-			netName, func() string { return r.ReconciliationSubject.Spec.Name })(); r.ShouldReturn(res, err) {
+			netName, r.ReconciliationSubject.Spec.Name, r.ReconciliationSubject.Spec.Zone.Network.Domain)(); r.ShouldReturn(res, err) {
 			return res, err
 		} else if res, err := r.GetObjectByName(r.IsoNetMetaName(netName), r.IsoNet)(); r.ShouldReturn(res, err) {
 			return res, err
@@ -263,7 +266,10 @@ func (r *CloudStackFailureDomainReconciliationRunner) RemoveFinalizer() (ctrl.Re
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (reconciler *CloudStackFailureDomainReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	_, err := ctrl.NewControllerManagedBy(mgr).For(&infrav1.CloudStackFailureDomain{}).Build(reconciler)
-	return err
+func (reconciler *CloudStackFailureDomainReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, opts controller.Options) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		WithOptions(opts).
+		For(&infrav1.CloudStackFailureDomain{}).
+		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(ctrl.LoggerFrom(ctx), reconciler.WatchFilterValue)).
+		Complete(reconciler)
 }

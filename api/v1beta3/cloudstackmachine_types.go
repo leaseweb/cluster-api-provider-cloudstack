@@ -27,9 +27,11 @@ import (
 const MachineFinalizer = "cloudstackmachine.infrastructure.cluster.x-k8s.io"
 
 const (
-	ProAffinity  = "pro"
-	AntiAffinity = "anti"
-	NoAffinity   = "no"
+	ProAffinity      = "pro"
+	AntiAffinity     = "anti"
+	SoftProAffinity  = "soft-pro"
+	SoftAntiAffinity = "soft-anti"
+	NoAffinity       = "no"
 )
 
 // CloudStackMachineSpec defines the desired state of CloudStackMachine
@@ -53,7 +55,7 @@ type CloudStackMachineSpec struct {
 
 	// CloudStack disk offering to use.
 	// +optional
-	DiskOffering CloudStackResourceDiskOffering `json:"diskOffering,omitempty"`
+	DiskOffering *CloudStackResourceDiskOffering `json:"diskOffering,omitempty"`
 
 	// CloudStack ssh key to use.
 	// +optional

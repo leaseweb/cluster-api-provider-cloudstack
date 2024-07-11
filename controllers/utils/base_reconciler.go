@@ -44,11 +44,11 @@ import (
 // ReconcilerBase is the base set of components we use in k8s reconcilers.
 // These are items that are not copied for each reconciliation request, and must be written to with caution.
 type ReconcilerBase struct {
-	BaseLogger logr.Logger
-	Scheme     *runtime.Scheme
-	K8sClient  client.Client
-	CSClient   cloud.Client
-	Recorder   record.EventRecorder
+	Scheme           *runtime.Scheme
+	K8sClient        client.Client
+	CSClient         cloud.Client
+	Recorder         record.EventRecorder
+	WatchFilterValue string
 	CloudClientExtension
 }
 
@@ -129,7 +129,8 @@ func (r *ReconciliationRunner) WithAdditionalCommonStages(fns ...CloudStackRecon
 
 // SetupLogger sets up the reconciler's logger to log with name and namespace values.
 func (r *ReconciliationRunner) SetupLogger() (res ctrl.Result, retErr error) {
-	r.Log = r.BaseLogger.WithName(r.ControllerKind).WithValues("name", r.Request.Name, "namespace", r.Request.Namespace)
+	log := ctrl.LoggerFrom(r.RequestCtx).WithName("controllers")
+	r.Log = log.WithName(r.ControllerKind)
 	r.Log.V(1).Info("Logger setup complete.")
 	return ctrl.Result{}, nil
 }
@@ -163,7 +164,7 @@ func (r *ReconciliationRunner) Else(fn CloudStackReconcilerMethod) CloudStackRec
 // GetCAPICluster gets the CAPI cluster the reconciliation subject belongs to.
 func (r *ReconciliationRunner) GetCAPICluster() (ctrl.Result, error) {
 	r.Log.V(1).Info("Getting CAPI cluster.")
-	name := r.ReconciliationSubject.GetLabels()[clusterv1.ClusterLabelName]
+	name := r.ReconciliationSubject.GetLabels()[clusterv1.ClusterNameLabel]
 	if name == "" {
 		r.Log.V(1).Info("Reconciliation Subject is missing cluster label or cluster does not exist. Skipping CAPI Cluster fetch.",
 			"SubjectKind", r.ReconciliationSubject.GetObjectKind().GroupVersionKind().Kind)
@@ -185,7 +186,7 @@ func (r *ReconciliationRunner) GetCAPICluster() (ctrl.Result, error) {
 // GetCSCluster gets the CAPI cluster the reconciliation subject belongs to.
 func (r *ReconciliationRunner) GetCSCluster() (ctrl.Result, error) {
 	r.Log.V(1).Info("Getting CloudStackCluster cluster.")
-	name := r.ReconciliationSubject.GetLabels()[clusterv1.ClusterLabelName]
+	name := r.ReconciliationSubject.GetLabels()[clusterv1.ClusterNameLabel]
 	if name == "" {
 		r.Log.V(1).Info("Reconciliation Subject is missing cluster label or cluster does not exist. Skipping CloudStackCluster fetch.",
 			"SubjectKind", r.ReconciliationSubject.GetObjectKind().GroupVersionKind().Kind)
@@ -451,15 +452,6 @@ func (r *ReconciliationRunner) SetReconciliationSubjectToConcreteSubject(subject
 	}
 }
 
-// InitFromMgr just initiates a ReconcilerBase using given manager's fields/methods.
-func (r *ReconcilerBase) InitFromMgr(mgr ctrl.Manager, client cloud.Client) {
-	r.K8sClient = mgr.GetClient()
-	r.BaseLogger = ctrl.Log.WithName("controllers")
-	r.Scheme = mgr.GetScheme()
-	r.Recorder = mgr.GetEventRecorderFor("capc-controller-manager")
-	r.CSClient = client
-}
-
 // GetParent returns the object owning the current resource of passed kind.
 func (r *ReconciliationRunner) GetParent(child client.Object, parent client.Object) CloudStackReconcilerMethod {
 	return func() (ctrl.Result, error) {
@@ -482,7 +474,7 @@ func (r *ReconciliationRunner) NewChildObjectMeta(name string) metav1.ObjectMeta
 	return metav1.ObjectMeta{
 		Name:      strings.ToLower(name),
 		Namespace: r.Request.Namespace,
-		Labels:    map[string]string{clusterv1.ClusterLabelName: r.CAPICluster.Name},
+		Labels:    map[string]string{clusterv1.ClusterNameLabel: r.CAPICluster.Name},
 		OwnerReferences: []metav1.OwnerReference{
 			*metav1.NewControllerRef(r.ReconciliationSubject, ownerGVK),
 		},

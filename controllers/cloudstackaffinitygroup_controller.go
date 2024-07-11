@@ -19,7 +19,9 @@ package controllers
 import (
 	"context"
 
+	"sigs.k8s.io/cluster-api/util/predicates"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
@@ -76,9 +78,14 @@ func (r *CloudStackAGReconciliationRunner) Reconcile() (ctrl.Result, error) {
 }
 
 func (r *CloudStackAGReconciliationRunner) ReconcileDelete() (ctrl.Result, error) {
-	group := &cloud.AffinityGroup{Name: r.ReconciliationSubject.Name}
+	group := &cloud.AffinityGroup{Name: r.ReconciliationSubject.Spec.Name}
 	_ = r.CSUser.FetchAffinityGroup(group)
-	if group.ID == "" { // Affinity group not found, must have been deleted.
+	// Affinity group not found, must have been deleted.
+	if group.ID == "" {
+		// Deleting affinity groups on Cloudstack can return error but succeed in
+		// deleting the affinity group. Removing finalizer if affinity group is not
+		// present on Cloudstack ensures affinity group object deletion is not blocked.
+		controllerutil.RemoveFinalizer(r.ReconciliationSubject, infrav1.AffinityGroupFinalizer)
 		return ctrl.Result{}, nil
 	}
 	if err := r.CSUser.DeleteAffinityGroup(group); err != nil {
@@ -89,8 +96,10 @@ func (r *CloudStackAGReconciliationRunner) ReconcileDelete() (ctrl.Result, error
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (reconciler *CloudStackAffinityGroupReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (reconciler *CloudStackAffinityGroupReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, opts controller.Options) error {
 	return ctrl.NewControllerManagedBy(mgr).
+		WithOptions(opts).
 		For(&infrav1.CloudStackAffinityGroup{}).
+		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(ctrl.LoggerFrom(ctx), reconciler.WatchFilterValue)).
 		Complete(reconciler)
 }
