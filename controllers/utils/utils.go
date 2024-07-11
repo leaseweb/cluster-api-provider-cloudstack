@@ -30,7 +30,6 @@ import (
 	"k8s.io/klog/v2"
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	capiControlPlanev1 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -41,88 +40,6 @@ import (
 )
 
 // getMachineSetFromCAPIMachine attempts to fetch a MachineSet from CAPI machine owner reference.
-func getMachineSetFromCAPIMachine(
-	ctx context.Context,
-	c client.Client,
-	capiMachine *clusterv1.Machine,
-) (*clusterv1.MachineSet, error) {
-
-	ref := GetManagementOwnerRef(capiMachine)
-	if ref == nil {
-		return nil, errors.New("management owner not found")
-	}
-	gv, err := schema.ParseGroupVersion(ref.APIVersion)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	if gv.Group == clusterv1.GroupVersion.Group {
-		key := client.ObjectKey{
-			Namespace: capiMachine.Namespace,
-			Name:      ref.Name,
-		}
-
-		machineSet := &clusterv1.MachineSet{}
-		if err := c.Get(ctx, key, machineSet); err != nil {
-			return nil, err
-		}
-
-		return machineSet, nil
-	}
-	return nil, nil
-}
-
-// getKubeadmControlPlaneFromCAPIMachine attempts to fetch a KubeadmControlPlane from a CAPI machine owner reference.
-func getKubeadmControlPlaneFromCAPIMachine(
-	ctx context.Context,
-	c client.Client,
-	capiMachine *clusterv1.Machine,
-) (*capiControlPlanev1.KubeadmControlPlane, error) {
-
-	ref := GetManagementOwnerRef(capiMachine)
-	if ref == nil {
-		return nil, errors.New("management owner not found")
-	}
-	gv, err := schema.ParseGroupVersion(ref.APIVersion)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	if gv.Group == capiControlPlanev1.GroupVersion.Group {
-		key := client.ObjectKey{
-			Namespace: capiMachine.Namespace,
-			Name:      ref.Name,
-		}
-
-		controlPlane := &capiControlPlanev1.KubeadmControlPlane{}
-		if err := c.Get(ctx, key, controlPlane); err != nil {
-			return nil, err
-		}
-
-		return controlPlane, nil
-	}
-	return nil, nil
-}
-
-// IsOwnerDeleted returns a boolean if the owner of the CAPI machine has been deleted.
-func IsOwnerDeleted(ctx context.Context, client client.Client, capiMachine *clusterv1.Machine) (bool, error) {
-	if util.IsControlPlaneMachine(capiMachine) {
-		// The controlplane sticks around after deletion pending the deletion of its machines.
-		// As such, need to check the deletion timestamp thereof.
-		if cp, err := getKubeadmControlPlaneFromCAPIMachine(ctx, client, capiMachine); cp != nil && cp.DeletionTimestamp == nil {
-			return false, nil
-		} else if err != nil && !strings.Contains(strings.ToLower(err.Error()), "not found") {
-			return false, err
-		}
-	} else {
-		// The machineset is deleted immediately, regardless of machine ownership.
-		// It is sufficient to check for its existence.
-		if ms, err := getMachineSetFromCAPIMachine(ctx, client, capiMachine); ms != nil {
-			return false, nil
-		} else if err != nil && !strings.Contains(strings.ToLower(err.Error()), "not found") {
-			return false, err
-		}
-	}
-	return true, nil
-}
 
 // fetchOwnerRef simply searches a list of OwnerReference objects for a given kind.
 func fetchOwnerRef(refList []metav1.OwnerReference, kind string) *metav1.OwnerReference {
@@ -175,15 +92,6 @@ func ContainsNoMatchSubstring(err error) bool {
 
 func ContainsAlreadyExistsSubstring(err error) bool {
 	return strings.Contains(strings.ToLower(err.Error()), "already exists")
-}
-
-// WithClusterSuffix appends a hyphen and the cluster name to a name if not already present.
-func WithClusterSuffix(name string, clusterName string) string {
-	newName := name
-	if !strings.HasSuffix(name, "-"+clusterName) { // Add cluster name suffix if missing.
-		newName = name + "-" + clusterName
-	}
-	return newName
 }
 
 // GetOwnerClusterName returns the Cluster name of the cluster owning the current resource.
