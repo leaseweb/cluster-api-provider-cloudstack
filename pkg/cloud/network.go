@@ -37,15 +37,6 @@ const (
 	NetworkProtocolICMP = "icmp"
 )
 
-// NetworkExists checks that the network already exists based on the presence of all fields.
-// Assumes that the a fetch has been done on network statuses prior.
-func NetworkExists(net infrav1.Network) bool {
-	if net.Name != "" && net.Type != "" && net.ID != "" {
-		return true
-	}
-	return false
-}
-
 // ResolveNetwork fetches networks' ID, Name, and Type.
 func (c *client) ResolveNetwork(net *infrav1.Network) (retErr error) {
 	// TODO rebuild this to consider cases with networks in many zones.

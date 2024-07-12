@@ -30,7 +30,7 @@ import (
 const DefaultEndpointCredential = "global"
 
 //nolint:golint,revive,stylecheck
-func Convert_v1beta1_CloudStackCluster_To_v1beta3_CloudStackCluster(in *CloudStackCluster, out *infrav1.CloudStackCluster, s machineryconversion.Scope) error {
+func Convert_v1beta1_CloudStackCluster_To_v1beta3_CloudStackCluster(in *CloudStackCluster, out *infrav1.CloudStackCluster, _ machineryconversion.Scope) error {
 	out.ObjectMeta = in.ObjectMeta
 	failureDomains, err := GetFailureDomains(in)
 	if err != nil {
@@ -49,7 +49,7 @@ func Convert_v1beta1_CloudStackCluster_To_v1beta3_CloudStackCluster(in *CloudSta
 }
 
 //nolint:golint,revive,stylecheck
-func Convert_v1beta3_CloudStackCluster_To_v1beta1_CloudStackCluster(in *infrav1.CloudStackCluster, out *CloudStackCluster, s machineryconversion.Scope) error {
+func Convert_v1beta3_CloudStackCluster_To_v1beta1_CloudStackCluster(in *infrav1.CloudStackCluster, out *CloudStackCluster, _ machineryconversion.Scope) error {
 	if len(in.Spec.FailureDomains) < 1 {
 		return fmt.Errorf("infrav1 to v1beta1 conversion not supported when < 1 failure domain is provided. Input CloudStackCluster spec %s", in.Spec)
 	}

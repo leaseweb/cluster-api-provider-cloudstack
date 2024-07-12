@@ -46,8 +46,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	controlplanev1 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1beta1"
-
 	infrav1b1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta1"
 	infrav1b2 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta2"
 	infrav1b3 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
@@ -70,7 +68,6 @@ func init() {
 	utilruntime.Must(infrav1b1.AddToScheme(scheme))
 	utilruntime.Must(infrav1b2.AddToScheme(scheme))
 	utilruntime.Must(infrav1b3.AddToScheme(scheme))
-	utilruntime.Must(controlplanev1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 

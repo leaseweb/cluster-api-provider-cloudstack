@@ -389,7 +389,6 @@ func CreateCloudStackClient(ctx context.Context, kubeConfigPath string) *cloudst
 	if apiURL == "" || apiKey == "" || secretKey == "" {
 		Fail(fmt.Sprintf("Invalid secret: %+v, %s, %s, %s", secret.Data, apiURL, apiKey, secretKey))
 	}
-	fmt.Sprintf("from secret: %s, %s, %s", apiURL, apiKey, secretKey)
 
 	return cloudstack.NewClient(apiURL, apiKey, secretKey, strings.ToLower(verifySSL) == "true")
 }

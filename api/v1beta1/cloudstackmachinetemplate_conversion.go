@@ -64,7 +64,7 @@ func Convert_v1beta3_CloudStackMachineTemplateSpec_To_v1beta1_CloudStackMachineT
 	return Convert_v1beta3_CloudStackMachineTemplateResource_To_v1beta1_CloudStackMachineTemplateResource(&in.Template, &out.Spec, s)
 }
 
-func Convert_v1beta1_ObjectMeta_To_v1_ObjectMeta(in *clusterv1.ObjectMeta, out *metav1.ObjectMeta, s machineryconversion.Scope) error { // nolint
+func Convert_v1beta1_ObjectMeta_To_v1_ObjectMeta(in *clusterv1.ObjectMeta, out *metav1.ObjectMeta, _ machineryconversion.Scope) error { // nolint
 	if in.Annotations != nil {
 		out.Annotations = in.Annotations
 	}
@@ -74,7 +74,7 @@ func Convert_v1beta1_ObjectMeta_To_v1_ObjectMeta(in *clusterv1.ObjectMeta, out *
 	return nil
 }
 
-func Convert_v1_ObjectMeta_To_v1beta1_ObjectMeta(in *metav1.ObjectMeta, out *clusterv1.ObjectMeta, s machineryconversion.Scope) error { // nolint
+func Convert_v1_ObjectMeta_To_v1beta1_ObjectMeta(in *metav1.ObjectMeta, out *clusterv1.ObjectMeta, _ machineryconversion.Scope) error { // nolint
 	if in.Annotations != nil {
 		out.Annotations = in.Annotations
 	}

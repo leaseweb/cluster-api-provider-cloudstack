@@ -31,12 +31,6 @@ import (
 	"sigs.k8s.io/cluster-api-provider-cloudstack/test/helpers"
 )
 
-// Example cloud-config ini structure.
-type Global struct {
-	APIURL    string `ini:"api-url"`
-	VerifySSL bool   `ini:"verify-ssl"`
-}
-
 var _ = Describe("Client", func() {
 
 	var (
