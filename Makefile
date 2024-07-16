@@ -50,7 +50,7 @@ SETUP_ENVTEST_BIN := setup-envtest
 SETUP_ENVTEST := $(abspath $(TOOLS_BIN_DIR)/$(SETUP_ENVTEST_BIN)-$(SETUP_ENVTEST_VER))
 SETUP_ENVTEST_PKG := sigs.k8s.io/controller-runtime/tools/setup-envtest
 
-CONTROLLER_GEN_VER := v0.12.0
+CONTROLLER_GEN_VER := v0.14.0
 CONTROLLER_GEN_BIN := controller-gen
 CONTROLLER_GEN := $(abspath $(TOOLS_BIN_DIR)/$(CONTROLLER_GEN_BIN)-$(CONTROLLER_GEN_VER))
 CONTROLLER_GEN_PKG := sigs.k8s.io/controller-tools/cmd/controller-gen
@@ -301,7 +301,7 @@ delete-kind-cluster:
 	kind delete cluster --name $(KIND_CLUSTER_NAME)
 
 cluster-api: ## Clone cluster-api repository for tilt use.
-	git clone --branch v1.5.7 --depth 1 https://github.com/kubernetes-sigs/cluster-api.git
+	git clone --branch v1.5.8 --depth 1 https://github.com/kubernetes-sigs/cluster-api.git
 
 cluster-api/tilt-settings.json: hack/tilt-settings.json cluster-api
 	cp ./hack/tilt-settings.json cluster-api

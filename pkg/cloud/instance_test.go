@@ -19,11 +19,9 @@ package cloud_test
 import (
 	"encoding/base64"
 	"fmt"
-
 	"github.com/apache/cloudstack-go/v2/cloudstack"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
-
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
@@ -750,6 +748,7 @@ var _ = Describe("Instance", func() {
 		It("calls destroy and finds VM doesn't exist, then returns nil", func() {
 			listVolumesParams.SetVirtualmachineid(*dummies.CSMachine1.Spec.InstanceID)
 			listVolumesParams.SetType("DATADISK")
+			listVolumesParams.SetKeyword("DATA-")
 			vms.EXPECT().NewDestroyVirtualMachineParams(*dummies.CSMachine1.Spec.InstanceID).
 				Return(expungeDestroyParams)
 			vms.EXPECT().DestroyVirtualMachine(expungeDestroyParams).Return(nil, fmt.Errorf("unable to find uuid for id"))
@@ -762,6 +761,7 @@ var _ = Describe("Instance", func() {
 		It("calls destroy and returns unexpected error", func() {
 			listVolumesParams.SetVirtualmachineid(*dummies.CSMachine1.Spec.InstanceID)
 			listVolumesParams.SetType("DATADISK")
+			listVolumesParams.SetKeyword("DATA-")
 			vms.EXPECT().NewDestroyVirtualMachineParams(*dummies.CSMachine1.Spec.InstanceID).
 				Return(expungeDestroyParams)
 			vms.EXPECT().DestroyVirtualMachine(expungeDestroyParams).Return(nil, fmt.Errorf("new error"))
@@ -773,6 +773,7 @@ var _ = Describe("Instance", func() {
 		It("calls destroy without error but cannot resolve VM after", func() {
 			listVolumesParams.SetVirtualmachineid(*dummies.CSMachine1.Spec.InstanceID)
 			listVolumesParams.SetType("DATADISK")
+			listVolumesParams.SetKeyword("DATA-")
 			vms.EXPECT().NewDestroyVirtualMachineParams(*dummies.CSMachine1.Spec.InstanceID).
 				Return(expungeDestroyParams)
 			vms.EXPECT().DestroyVirtualMachine(expungeDestroyParams).Return(nil, nil)
@@ -787,6 +788,7 @@ var _ = Describe("Instance", func() {
 		It("calls destroy without error and identifies it as expunging", func() {
 			listVolumesParams.SetVirtualmachineid(*dummies.CSMachine1.Spec.InstanceID)
 			listVolumesParams.SetType("DATADISK")
+			listVolumesParams.SetKeyword("DATA-")
 			vms.EXPECT().NewDestroyVirtualMachineParams(*dummies.CSMachine1.Spec.InstanceID).
 				Return(expungeDestroyParams)
 			vms.EXPECT().DestroyVirtualMachine(expungeDestroyParams).Return(nil, nil)
@@ -803,6 +805,7 @@ var _ = Describe("Instance", func() {
 		It("calls destroy without error and identifies it as expunged", func() {
 			listVolumesParams.SetVirtualmachineid(*dummies.CSMachine1.Spec.InstanceID)
 			listVolumesParams.SetType("DATADISK")
+			listVolumesParams.SetKeyword("DATA-")
 			vms.EXPECT().NewDestroyVirtualMachineParams(*dummies.CSMachine1.Spec.InstanceID).
 				Return(expungeDestroyParams)
 			vms.EXPECT().DestroyVirtualMachine(expungeDestroyParams).Return(nil, nil)
@@ -819,6 +822,7 @@ var _ = Describe("Instance", func() {
 		It("calls destroy without error and identifies it as stopping", func() {
 			listVolumesParams.SetVirtualmachineid(*dummies.CSMachine1.Spec.InstanceID)
 			listVolumesParams.SetType("DATADISK")
+			listVolumesParams.SetKeyword("DATA-")
 			vms.EXPECT().NewDestroyVirtualMachineParams(*dummies.CSMachine1.Spec.InstanceID).
 				Return(expungeDestroyParams)
 			vms.EXPECT().DestroyVirtualMachine(expungeDestroyParams).Return(nil, nil)
@@ -829,6 +833,36 @@ var _ = Describe("Instance", func() {
 					State: "Stopping",
 				}, 1, nil)
 			Ω(client.DestroyVMInstance(dummies.CSMachine1)).Should(MatchError("VM deletion in progress"))
+		})
+
+		It("calls destroy without error on a VM without additional diskoffering and does not search for data disks", func() {
+			dummies.CSMachine1.Spec.DiskOffering = nil
+			expungeDestroyParams := &cloudstack.DestroyVirtualMachineParams{}
+			expungeDestroyParams.SetExpunge(true)
+
+			vms.EXPECT().NewDestroyVirtualMachineParams(*dummies.CSMachine1.Spec.InstanceID).
+				Return(expungeDestroyParams)
+			vms.EXPECT().DestroyVirtualMachine(gomock.Any()).DoAndReturn(
+				func(p *cloudstack.DestroyVirtualMachineParams) (*cloudstack.DestroyVirtualMachineResponse, error) {
+					value, ok := p.GetExpunge()
+					Ω(value).To(BeTrue())
+					Ω(ok).To(BeTrue())
+
+					ids, ok := p.GetVolumeids()
+					Ω(len(ids)).To(Equal(0))
+					Ω(ok).To(BeFalse())
+
+					return nil, nil
+				})
+			vs.EXPECT().NewListVolumesParams().Times(0)
+			vs.EXPECT().ListVolumes(gomock.Any()).Times(0)
+			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID).
+				Return(&cloudstack.VirtualMachinesMetric{
+					State: "Expunged",
+				}, 1, nil)
+			Ω(dummies.CSMachine1.Spec.DiskOffering).Should(BeNil())
+			Ω(client.DestroyVMInstance(dummies.CSMachine1)).
+				Should(Succeed())
 		})
 	})
 })
