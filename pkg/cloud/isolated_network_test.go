@@ -135,8 +135,8 @@ var _ = Describe("Network", func() {
 		})
 	})
 
-	Context("for a closed firewall", func() {
-		It("OpenFirewallRule asks CloudStack to open the firewall", func() {
+	Context("for a closed egress firewall", func() {
+		It("CreateEgressFirewallRules asks CloudStack to open the egress firewall", func() {
 			dummies.Zone1.Network = dummies.ISONet1
 			fs.EXPECT().NewCreateEgressFirewallRuleParams(dummies.ISONet1.ID, gomock.Any()).
 				DoAndReturn(func(networkid string, protocol string) *csapi.CreateEgressFirewallRuleParams {
@@ -157,12 +157,12 @@ var _ = Describe("Network", func() {
 				fs.EXPECT().CreateEgressFirewallRule(ruleParamsICMP).
 					Return(&csapi.CreateEgressFirewallRuleResponse{}, nil))
 
-			Ω(client.OpenFirewallRules(dummies.CSISONet1)).Should(Succeed())
+			Ω(client.CreateEgressFirewallRules(dummies.CSISONet1)).Should(Succeed())
 		})
 	})
 
-	Context("for an open firewall", func() {
-		It("OpenFirewallRule asks CloudStack to open the firewall anyway, but doesn't fail", func() {
+	Context("for an open egress firewall", func() {
+		It("CreateEgressFirewallRules asks CloudStack to open the firewall anyway, but doesn't fail", func() {
 			dummies.Zone1.Network = dummies.ISONet1
 
 			fs.EXPECT().NewCreateEgressFirewallRuleParams(dummies.ISONet1.ID, gomock.Any()).
@@ -184,7 +184,7 @@ var _ = Describe("Network", func() {
 				fs.EXPECT().CreateEgressFirewallRule(ruleParamsICMP).
 					Return(&csapi.CreateEgressFirewallRuleResponse{}, nil))
 
-			Ω(client.OpenFirewallRules(dummies.CSISONet1)).Should(Succeed())
+			Ω(client.CreateEgressFirewallRules(dummies.CSISONet1)).Should(Succeed())
 		})
 	})
 

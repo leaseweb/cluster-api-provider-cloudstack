@@ -32,7 +32,7 @@ type IsoNetworkIface interface {
 
 	AssociatePublicIPAddress(*infrav1.CloudStackFailureDomain, *infrav1.CloudStackIsolatedNetwork, *infrav1.CloudStackCluster) error
 	GetOrCreateLoadBalancerRule(*infrav1.CloudStackIsolatedNetwork, *infrav1.CloudStackCluster) error
-	OpenFirewallRules(*infrav1.CloudStackIsolatedNetwork) error
+	CreateEgressFirewallRules(*infrav1.CloudStackIsolatedNetwork) error
 	GetPublicIP(*infrav1.CloudStackFailureDomain, *infrav1.CloudStackCluster) (*cloudstack.PublicIpAddress, error)
 	ResolveLoadBalancerRuleDetails(*infrav1.CloudStackIsolatedNetwork) error
 
@@ -120,8 +120,8 @@ func (c *client) CreateIsolatedNetwork(fd *infrav1.CloudStackFailureDomain, isoN
 	return c.AddCreatedByCAPCTag(ResourceTypeNetwork, isoNet.Spec.ID)
 }
 
-// OpenFirewallRules opens a CloudStack egress firewall for an isolated network.
-func (c *client) OpenFirewallRules(isoNet *infrav1.CloudStackIsolatedNetwork) (retErr error) {
+// CreateEgressFirewallRules sets the egress firewall rules for an isolated network.
+func (c *client) CreateEgressFirewallRules(isoNet *infrav1.CloudStackIsolatedNetwork) (retErr error) {
 	protocols := []string{NetworkProtocolTCP, NetworkProtocolUDP, NetworkProtocolICMP}
 	for _, proto := range protocols {
 		p := c.cs.Firewall.NewCreateEgressFirewallRuleParams(isoNet.Spec.ID, proto)
@@ -294,8 +294,8 @@ func (c *client) GetOrCreateIsolatedNetwork(
 		}
 	}
 
-	//  Open the Isolated Network on endopint port.
-	return errors.Wrap(c.OpenFirewallRules(isoNet), "opening the isolated network's firewall")
+	// Open the Isolated Network egress firewall.
+	return errors.Wrap(c.CreateEgressFirewallRules(isoNet), "opening the isolated network's egress firewall")
 }
 
 // AssignVMToLoadBalancerRule assigns a VM instance to a load balancing rule (specifying lb membership).
