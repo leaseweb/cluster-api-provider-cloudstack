@@ -41,8 +41,8 @@ type IsoNetworkIface interface {
 	DisposeIsoNetResources(*infrav1.CloudStackIsolatedNetwork, *infrav1.CloudStackCluster) error
 }
 
-// getOfferingID fetches an offering id.
-func (c *client) getOfferingID() (string, error) {
+// getNetworkOfferingID fetches the id of a network offering.
+func (c *client) getNetworkOfferingID() (string, error) {
 	offeringID, count, retErr := c.cs.NetworkOffering.GetNetworkOfferingID(NetOffering)
 	if retErr != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(retErr)
@@ -50,6 +50,7 @@ func (c *client) getOfferingID() (string, error) {
 	} else if count != 1 {
 		return "", errors.New("found more than one network offering")
 	}
+
 	return offeringID, nil
 }
 
@@ -99,8 +100,7 @@ func (c *client) AssociatePublicIPAddress(
 
 // CreateIsolatedNetwork creates an isolated network in the relevant FailureDomain per passed network specification.
 func (c *client) CreateIsolatedNetwork(fd *infrav1.CloudStackFailureDomain, isoNet *infrav1.CloudStackIsolatedNetwork) (retErr error) {
-	// Get network offering ID.
-	offeringID, err := c.getOfferingID()
+	offeringID, err := c.getNetworkOfferingID()
 	if err != nil {
 		return err
 	}
@@ -117,6 +117,7 @@ func (c *client) CreateIsolatedNetwork(fd *infrav1.CloudStackFailureDomain, isoN
 		return errors.Wrapf(err, "creating network with name %s", isoNet.Spec.Name)
 	}
 	isoNet.Spec.ID = resp.Id
+
 	return c.AddCreatedByCAPCTag(ResourceTypeNetwork, isoNet.Spec.ID)
 }
 
