@@ -35,6 +35,9 @@ GH_REPO ?= kubernetes-sigs/cluster-api-provider-cloudstack
 # Helper function to get dependency version from go.mod
 get_go_version = $(shell go list -m $1 | awk '{print $$2}')
 
+# Set build time variables including version details
+LDFLAGS := $(shell source ./hack/version.sh; version::ldflags)
+
 # Binaries
 KUSTOMIZE_VER := v4.5.7
 KUSTOMIZE_BIN := kustomize
