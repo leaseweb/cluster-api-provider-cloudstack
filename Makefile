@@ -100,7 +100,7 @@ STATIC_CHECK_PKG := honnef.co/go/tools/cmd/staticcheck
 KUBECTL := $(TOOLS_BIN_DIR)/kubectl
 
 # Release
-STAGING_REGISTRY := gcr.io/k8s-staging-capi-cloudstack
+STAGING_REGISTRY := ghcr.io/leaseweb
 STAGING_BUCKET ?= artifacts.k8s-staging-capi-cloudstack.appspot.com
 BUCKET ?= $(STAGING_BUCKET)
 PROD_REGISTRY ?= registry.k8s.io/capi-cloudstack
@@ -112,7 +112,7 @@ RELEASE_ALIAS_TAG ?= $(PULL_BASE_REF)
 # Image URL to use all building/pushing image targets
 REGISTRY ?= $(STAGING_REGISTRY)
 IMAGE_NAME ?= capi-cloudstack-controller
-TAG ?= dev
+TAG ?= develop
 CONTROLLER_IMG ?= $(REGISTRY)/$(IMAGE_NAME)
 IMG ?= $(CONTROLLER_IMG):$(TAG)
 IMG_LOCAL ?= localhost:5000/$(IMAGE_NAME):$(TAG)
