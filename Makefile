@@ -95,11 +95,6 @@ MOCKGEN_VER := v1.6.0
 MOCKGEN := $(abspath $(TOOLS_BIN_DIR)/$(MOCKGEN_BIN)-$(MOCKGEN_VER))
 MOCKGEN_PKG := github.com/golang/mock/mockgen
 
-STATIC_CHECK_BIN := staticcheck
-STATIC_CHECK_VER := v0.4.7
-STATIC_CHECK := $(abspath $(TOOLS_BIN_DIR)/staticcheck)
-STATIC_CHECK_PKG := honnef.co/go/tools/cmd/staticcheck
-
 KUBECTL := $(TOOLS_BIN_DIR)/kubectl
 
 # Release
@@ -146,7 +141,7 @@ all: build
 ## --------------------------------------
 
 .PHONY: binaries
-binaries: $(CONTROLLER_GEN) $(CONVERSION_GEN) $(GOLANGCI_LINT) $(STATIC_CHECK) $(GINKGO) $(MOCKGEN) $(KUSTOMIZE) $(SETUP_ENVTEST) managers # Builds and installs all binaries
+binaries: $(CONTROLLER_GEN) $(CONVERSION_GEN) $(GOLANGCI_LINT) $(GINKGO) $(MOCKGEN) $(KUSTOMIZE) $(SETUP_ENVTEST) managers # Builds and installs all binaries
 
 .PHONY: managers
 managers:
@@ -170,11 +165,10 @@ vet: ## Run go vet on the whole project.
 	go vet ./...
 
 .PHONY: lint
-lint: $(GOLANGCI_LINT) $(STATIC_CHECK) generate-mocks ## Run linting for the project.
+lint: $(GOLANGCI_LINT) generate-mocks ## Run linting for the project.
 	$(MAKE) fmt
 	$(MAKE) vet
 	$(GOLANGCI_LINT) run -v --timeout 360s ./...
-	$(STATIC_CHECK) ./...
 	@ # The below string of commands checks that ginkgo isn't present in the controllers.
 	@(grep ginkgo ${REPO_ROOT}/controllers/cloudstack*_controller.go | grep -v import && \
 		echo "Remove ginkgo from controllers. This is probably an artifact of testing." \
@@ -455,9 +449,6 @@ $(GOLANGCI_LINT_BIN): $(GOLANGCI_LINT) ## Build a local copy of golangci-lint.
 .PHONY: $(MOCKGEN_BIN)
 $(MOCKGEN_BIN): $(MOCKGEN) ## Build a local copy of mockgen.
 
-.PHONY: $(STATIC_CHECK_BIN)
-$(STATIC_CHECK_BIN): $(STATIC_CHECK) ## Build a local copy of staticcheck.
-
 $(CONTROLLER_GEN): # Build controller-gen from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(CONTROLLER_GEN_PKG) $(CONTROLLER_GEN_BIN) $(CONTROLLER_GEN_VER)
 
@@ -484,6 +475,3 @@ $(GOLANGCI_LINT): # Build golangci-lint from tools folder.
 
 $(MOCKGEN): # Build mockgen from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(MOCKGEN_PKG) $(MOCKGEN_BIN) $(MOCKGEN_VER)
-
-$(STATIC_CHECK): # Build golangci-lint from tools folder.
-	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(STATIC_CHECK_PKG) $(STATIC_CHECK_BIN) $(STATIC_CHECK_VER)

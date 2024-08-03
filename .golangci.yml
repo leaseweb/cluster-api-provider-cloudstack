@@ -32,11 +32,12 @@ linters-settings:
 
 linters:
   enable:
-    - gosec
-    - goheader
-    - revive
     - gocyclo
+    - goheader
+    - gosec
     - misspell
+    - revive
+    - staticcheck
 
 run:
   issues-exit-code: 1
