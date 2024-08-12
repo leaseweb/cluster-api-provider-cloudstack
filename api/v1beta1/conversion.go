@@ -18,8 +18,7 @@ package v1beta1
 
 import (
 	"context"
-	"fmt"
-
+	"errors"
 	corev1 "k8s.io/api/core/v1"
 	machineryconversion "k8s.io/apimachinery/pkg/conversion"
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
@@ -51,7 +50,7 @@ func Convert_v1beta1_CloudStackCluster_To_v1beta3_CloudStackCluster(in *CloudSta
 //nolint:golint,revive,stylecheck
 func Convert_v1beta3_CloudStackCluster_To_v1beta1_CloudStackCluster(in *infrav1.CloudStackCluster, out *CloudStackCluster, _ machineryconversion.Scope) error {
 	if len(in.Spec.FailureDomains) < 1 {
-		return fmt.Errorf("infrav1 to v1beta1 conversion not supported when < 1 failure domain is provided. Input CloudStackCluster spec %s", in.Spec)
+		return errors.New("infrav1 to v1beta1 conversion not supported when < 1 failure domain is provided")
 	}
 	out.ObjectMeta = in.ObjectMeta
 	out.Spec = CloudStackClusterSpec{

@@ -47,11 +47,22 @@ type CloudStackIsolatedNetworkSpec struct {
 
 // CloudStackIsolatedNetworkStatus defines the observed state of CloudStackIsolatedNetwork
 type CloudStackIsolatedNetworkStatus struct {
+	// The CIDR of the assigned subnet.
+	CIDR string `json:"cidr,omitempty"`
+
 	// The CS public IP ID to use for the k8s endpoint.
 	PublicIPID string `json:"publicIPID,omitempty"`
 
-	// The ID of the lb rule used to assign VMs to the lb.
+	// Deprecated: The ID of the lb rule used to assign VMs to the lb.
+	// No longer used, see LoadBalancerRuleIDs. Will be removed in next API version.
 	LBRuleID string `json:"loadBalancerRuleID,omitempty"`
+
+	// The IDs of the lb rule used to assign VMs to the lb.
+	LoadBalancerRuleIDs []string `json:"loadBalancerRuleIDs,omitempty"`
+
+	// APIServerLoadBalancer describes the api server load balancer if one exists
+	//+optional
+	APIServerLoadBalancer *LoadBalancer `json:"apiServerLoadBalancer,omitempty"`
 
 	// Ready indicates the readiness of this provider resource.
 	//+optional

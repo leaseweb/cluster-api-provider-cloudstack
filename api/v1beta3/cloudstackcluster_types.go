@@ -34,6 +34,11 @@ type CloudStackClusterSpec struct {
 
 	// The kubernetes control plane endpoint.
 	ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint"`
+
+	// APIServerLoadBalancer configures the optional LoadBalancer for the APIServer.
+	// If not specified, no load balancer will be created for the API server.
+	//+optional
+	APIServerLoadBalancer *APIServerLoadBalancer `json:"apiServerLoadBalancer,omitempty"`
 }
 
 // The status of the CloudStackCluster object.

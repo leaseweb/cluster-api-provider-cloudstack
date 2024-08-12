@@ -224,9 +224,32 @@ spec:
             description: CloudStackIsolatedNetworkStatus defines the observed state
               of CloudStackIsolatedNetwork
             properties:
-              loadBalancerRuleID:
-                description: The ID of the lb rule used to assign VMs to the lb.
+              apiServerLoadBalancer:
+                description: APIServerLoadBalancer describes the api server load balancer
+                  if one exists
+                properties:
+                  allowedCIDRs:
+                    items:
+                      type: string
+                    type: array
+                  ip:
+                    type: string
+                required:
+                - ip
+                type: object
+              cidr:
+                description: The CIDR of the assigned subnet.
                 type: string
+              loadBalancerRuleID:
+                description: |-
+                  Deprecated: The ID of the lb rule used to assign VMs to the lb.
+                  No longer used, see LoadBalancerRuleIDs. Will be removed in next API version.
+                type: string
+              loadBalancerRuleIDs:
+                description: The IDs of the lb rule used to assign VMs to the lb.
+                items:
+                  type: string
+                type: array
               publicIPID:
                 description: The CS public IP ID to use for the k8s endpoint.
                 type: string

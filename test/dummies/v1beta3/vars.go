@@ -39,6 +39,7 @@ var ( // Declare exported dummy vars.
 	Zone2                   infrav1.CloudStackZoneSpec
 	CSFailureDomain1        *infrav1.CloudStackFailureDomain
 	CSFailureDomain2        *infrav1.CloudStackFailureDomain
+	APIServerLoadBalancer   *infrav1.APIServerLoadBalancer
 	Net1                    infrav1.Network
 	Net2                    infrav1.Network
 	ISONet1                 infrav1.Network
@@ -77,7 +78,9 @@ var ( // Declare exported dummy vars.
 	CSClusterTag            map[string]string
 	CreatedByCapcKey        string
 	CreatedByCapcVal        string
+	FWRuleID                string
 	LBRuleID                string
+	LoadBalancerRuleIDs     []string
 	PublicIPID              string
 	EndPointHost            string
 	EndPointPort            int32
@@ -114,7 +117,9 @@ func SetDummyVars() {
 	SetDummyBootstrapSecretVar()
 	SetCSMachineOwner()
 	SetDummyOwnerReferences()
+	FWRuleID = "FakeFWRuleID"
 	LBRuleID = "FakeLBRuleID"
+	LoadBalancerRuleIDs = []string{"FakeLBRuleID"}
 }
 
 func SetDiskOfferingVars() {
@@ -284,6 +289,11 @@ func SetDummyCAPCClusterVars() {
 	Net1 = infrav1.Network{Name: GetYamlVal("CLOUDSTACK_NETWORK_NAME"), Type: cloud.NetworkTypeShared}
 	Net2 = infrav1.Network{Name: "SharedGuestNet2", Type: cloud.NetworkTypeShared, ID: "FakeSharedNetID2"}
 	ISONet1 = infrav1.Network{Name: "isoguestnet1", Type: cloud.NetworkTypeIsolated, ID: "FakeIsolatedNetID1"}
+	APIServerLoadBalancer = &infrav1.APIServerLoadBalancer{
+		Enabled:         pointer.Bool(true),
+		AdditionalPorts: []int{},
+		AllowedCIDRs:    []string{},
+	}
 	CSFailureDomain1 = &infrav1.CloudStackFailureDomain{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: CSApiVersion,
@@ -335,8 +345,9 @@ func SetDummyCAPCClusterVars() {
 			Labels:    ClusterLabel,
 		},
 		Spec: infrav1.CloudStackClusterSpec{
-			ControlPlaneEndpoint: clusterv1.APIEndpoint{Host: EndPointHost, Port: EndPointPort},
-			FailureDomains:       []infrav1.CloudStackFailureDomainSpec{CSFailureDomain1.Spec, CSFailureDomain2.Spec},
+			ControlPlaneEndpoint:  clusterv1.APIEndpoint{Host: EndPointHost, Port: EndPointPort},
+			FailureDomains:        []infrav1.CloudStackFailureDomainSpec{CSFailureDomain1.Spec, CSFailureDomain2.Spec},
+			APIServerLoadBalancer: APIServerLoadBalancer,
 		},
 		Status: infrav1.CloudStackClusterStatus{},
 	}
@@ -352,7 +363,12 @@ func SetDummyCAPCClusterVars() {
 			Labels:    ClusterLabel,
 		},
 		Spec: infrav1.CloudStackIsolatedNetworkSpec{
-			ControlPlaneEndpoint: CSCluster.Spec.ControlPlaneEndpoint}}
+			ControlPlaneEndpoint: CSCluster.Spec.ControlPlaneEndpoint,
+		},
+		Status: infrav1.CloudStackIsolatedNetworkStatus{
+			APIServerLoadBalancer: &infrav1.LoadBalancer{},
+		},
+	}
 	CSISONet1.Spec.Name = ISONet1.Name
 	CSISONet1.Spec.ID = ISONet1.ID
 }
