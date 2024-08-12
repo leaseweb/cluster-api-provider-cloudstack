@@ -187,7 +187,7 @@ modules: ## Runs go mod to ensure proper vendoring.
 	cd $(TOOLS_DIR); go mod tidy -compat=1.21
 
 .PHONY: generate-all
-generate-all: generate-mocks generate-deepcopy generate-manifests
+generate-all: generate-mocks generate-conversion generate-deepcopy generate-manifests
 
 .PHONY: generate-mocks
 generate-mocks: $(MOCKGEN) generate-deepcopy pkg/mocks/mock_client.go $(shell find ./pkg/mocks -type f -name "mock*.go") ## Generate mocks needed for testing. Primarily mocks of the cloud package.
