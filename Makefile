@@ -183,8 +183,8 @@ lint: $(GOLANGCI_LINT) generate-mocks ## Run linting for the project.
 
 .PHONY: modules
 modules: ## Runs go mod to ensure proper vendoring.
-	go mod tidy -compat=1.21
-	cd $(TOOLS_DIR); go mod tidy -compat=1.21
+	go mod tidy -compat=1.22
+	cd $(TOOLS_DIR); go mod tidy -compat=1.22
 
 .PHONY: generate-all
 generate-all: generate-mocks generate-conversion generate-deepcopy generate-manifests
