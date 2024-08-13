@@ -71,7 +71,6 @@ func init() {
 }
 
 var (
-	cloudConfigFile             string
 	enableLeaderElection        bool
 	leaderElectionLeaseDuration time.Duration
 	leaderElectionRenewDeadline time.Duration
@@ -98,11 +97,6 @@ var (
 
 func initFlags(fs *pflag.FlagSet) {
 	fs.StringVar(
-		&cloudConfigFile,
-		"cloud-config-file",
-		"/config/cloud-config",
-		"Overrides the default path to the cloud-config file that contains the CloudStack credentials.")
-	fs.StringVar(
 		&metricsAddr,
 		"metrics-bind-addr",
 		"localhost:8080",
@@ -118,6 +112,14 @@ func initFlags(fs *pflag.FlagSet) {
 		false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	fs.DurationVar(&leaderElectionLeaseDuration, "leader-elect-lease-duration", 15*time.Second,
+		"Interval at which non-leader candidates will wait to force acquire leadership (duration string)")
+
+	fs.DurationVar(&leaderElectionRenewDeadline, "leader-elect-renew-deadline", 10*time.Second,
+		"Duration that the leading controller manager will retry refreshing leadership before giving up (duration string)")
+
+	fs.DurationVar(&leaderElectionRetryPeriod, "leader-elect-retry-period", 2*time.Second,
+		"Duration the LeaderElector clients should wait between tries of actions (duration string)")
 	fs.StringVar(
 		&watchNamespace,
 		"namespace",
@@ -241,7 +243,6 @@ func main() {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                  scheme,
 		MetricsBindAddress:      metricsAddr,
-		Port:                    9443,
 		HealthProbeBindAddress:  probeAddr,
 		LeaderElection:          enableLeaderElection,
 		LeaderElectionID:        "capc-leader-election-controller",
