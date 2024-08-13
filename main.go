@@ -203,7 +203,7 @@ func main() {
 
 	if err := logsv1.ValidateAndApply(logOptions, nil); err != nil {
 		setupLog.Error(err, "unable to start manager")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 
 	ctrl.SetLogger(klog.Background())
@@ -218,7 +218,7 @@ func main() {
 	tlsOptionOverrides, err := flags.GetTLSOptionOverrideFuncs(tlsOptions)
 	if err != nil {
 		setupLog.Error(err, "unable to add TLS settings to the webhook server")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 
 	var watchNamespaces []string
@@ -271,7 +271,7 @@ func main() {
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 
 	// Register reconcilers with the controller manager.
@@ -291,53 +291,53 @@ func main() {
 	// Add health and ready checks.
 	if err = mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 	if err = mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 
 	// Start the controller manager.
 	if err = (&infrav1b3.CloudStackCluster{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "CloudStackCluster")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 	if err = (&infrav1b3.CloudStackMachine{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "CloudStackMachine")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 	if err = (&infrav1b3.CloudStackMachineTemplate{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "CloudStackMachineTemplate")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 
 	setupLog.Info("starting manager", "version", version.Get().String())
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 }
 
 func setupReconcilers(ctx context.Context, base utils.ReconcilerBase, mgr manager.Manager) {
 	if err := (&controllers.CloudStackClusterReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackClusterConcurrency}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CloudStackCluster")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 	if err := (&controllers.CloudStackMachineReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackMachineConcurrency}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CloudStackMachine")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 	if err := (&controllers.CloudStackIsoNetReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CloudStackIsoNetReconciler")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 	if err := (&controllers.CloudStackAffinityGroupReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackAffinityGroupConcurrency}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CloudStackAffinityGroup")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 	if err := (&controllers.CloudStackFailureDomainReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackFailureDomainConcurrency}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CloudStackFailureDomain")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 }
