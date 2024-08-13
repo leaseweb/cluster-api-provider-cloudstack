@@ -232,13 +232,13 @@ MANAGER_BIN_INPUTS=$(shell find ./controllers ./api ./pkg -name "*mock*" -prune 
 .PHONY: build
 build: binaries generate-deepcopy lint generate-manifests release-manifests ## Build manager binary.
 $(BIN_DIR)/manager: $(MANAGER_BIN_INPUTS)
-	go build -o $(BIN_DIR)/manager main.go
+	go build -ldflags "${LDFLAGS}" -o $(BIN_DIR)/manager main.go
 
 .PHONY: build-for-docker
 build-for-docker: $(BIN_DIR)/manager-linux-amd64 ## Build manager binary for docker image building.
 $(BIN_DIR)/manager-linux-amd64: $(MANAGER_BIN_INPUTS)
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    	go build -a -ldflags "${ldflags} -extldflags '-static'" \
+    	go build -a -ldflags "${LDFLAGS} -extldflags '-static'" \
     	-o $(BIN_DIR)/manager-linux-amd64 main.go
 
 .PHONY: run
