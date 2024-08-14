@@ -368,6 +368,9 @@ func (r *ReconciliationRunner) RunReconciliationStages(fns ...CloudStackReconcil
 			return rslt, nil
 		}
 	}
+
+	r.Log.V(1).Info("Finished reconciliation")
+
 	return ctrl.Result{}, nil
 }
 
