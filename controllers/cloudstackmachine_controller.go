@@ -367,7 +367,7 @@ func (reconciler *CloudStackMachineReconciler) SetupWithManager(ctx context.Cont
 	//requeueCloudStackMachinesForUnpausedCluster := reconciler.requeueCloudStackMachinesForUnpausedCluster(ctx)
 	csMachineMapper, err := util.ClusterToTypedObjectsMapper(reconciler.K8sClient, &infrav1.CloudStackMachineList{}, reconciler.Scheme)
 	if err != nil {
-		return errors.Wrap(err, "failed to create mapper for Cluster to AzureMachines")
+		return errors.Wrap(err, "failed to create mapper for Cluster to CloudStackMachines")
 	}
 
 	err = ctrl.NewControllerManagedBy(mgr).

@@ -18,6 +18,11 @@ package controllers
 
 import (
 	"context"
+	"reflect"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"strings"
 
 	"sigs.k8s.io/cluster-api/util/patch"
@@ -40,7 +45,7 @@ type CloudStackIsoNetReconciler struct {
 	csCtrlrUtils.ReconcilerBase
 }
 
-// CloudStackZoneReconciliationRunner is a ReconciliationRunner with extensions specific to CloudStack isolated network reconciliation.
+// CloudStackIsoNetReconciliationRunner is a ReconciliationRunner with extensions specific to CloudStack isolated network reconciliation.
 type CloudStackIsoNetReconciliationRunner struct {
 	*csCtrlrUtils.ReconciliationRunner
 	FailureDomain         *infrav1.CloudStackFailureDomain
@@ -107,8 +112,41 @@ func (r *CloudStackIsoNetReconciliationRunner) ReconcileDelete() (retRes ctrl.Re
 
 // SetupWithManager sets up the controller with the Manager.
 func (reconciler *CloudStackIsoNetReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	CloudStackClusterToCloudStackIsolatedNetworks, err := csCtrlrUtils.CloudStackClusterToCloudStackIsolatedNetworks(reconciler.K8sClient, &infrav1.CloudStackIsolatedNetworkList{}, reconciler.Scheme, ctrl.LoggerFrom(ctx))
+	if err != nil {
+		return errors.Wrap(err, "failed to create CloudStackClusterToCloudStackIsolatedNetworks mapper")
+	}
+
+	err = ctrl.NewControllerManagedBy(mgr).
 		For(&infrav1.CloudStackIsolatedNetwork{}).
+		Watches(
+			&infrav1.CloudStackCluster{},
+			handler.EnqueueRequestsFromMapFunc(CloudStackClusterToCloudStackIsolatedNetworks),
+			builder.WithPredicates(
+				predicate.Funcs{
+					UpdateFunc: func(e event.UpdateEvent) bool {
+						oldCSCluster := e.ObjectOld.(*infrav1.CloudStackCluster)
+						newCSCluster := e.ObjectNew.(*infrav1.CloudStackCluster)
+
+						// APIServerLoadBalancer disabled in both new and old
+						if oldCSCluster.Spec.APIServerLoadBalancer == nil && newCSCluster.Spec.APIServerLoadBalancer == nil {
+							return false
+						}
+						// APIServerLoadBalancer toggled
+						if oldCSCluster.Spec.APIServerLoadBalancer == nil || newCSCluster.Spec.APIServerLoadBalancer == nil {
+							return true
+						}
+
+						return !reflect.DeepEqual(oldCSCluster.Spec.APIServerLoadBalancer, newCSCluster.Spec.APIServerLoadBalancer)
+					},
+				},
+			),
+		).
 		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(ctrl.LoggerFrom(ctx), reconciler.WatchFilterValue)).
 		Complete(reconciler)
+	if err != nil {
+		return errors.Wrap(err, "failed setting up with a controller manager")
+	}
+
+	return nil
 }

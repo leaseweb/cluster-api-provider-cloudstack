@@ -19,6 +19,8 @@ package utils
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -111,18 +113,19 @@ func GetOwnerClusterName(obj metav1.ObjectMeta) (string, error) {
 	return "", errors.New("failed to get owner Cluster name")
 }
 
-// CloudStackClusterToCloudStackMachines is a handler.ToRequestsFunc to be used to enqeue requests for reconciliation
+// CloudStackClusterToCloudStackMachines is a handler.ToRequestsFunc to be used to enqueue requests for reconciliation
 // of CloudStackMachines.
-func CloudStackClusterToCloudStackMachines(c client.Client, obj runtime.Object, scheme *runtime.Scheme, log logr.Logger) (handler.MapFunc, error) {
+func CloudStackClusterToCloudStackMachines(c client.Client, obj client.ObjectList, scheme *runtime.Scheme, log logr.Logger) (handler.MapFunc, error) {
 	gvk, err := apiutil.GVKForObject(obj, scheme)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to find GVK for CloudStackMachine")
 	}
 
-	return func(ctx context.Context, o client.Object) []ctrl.Request {
+	return func(ctx context.Context, o client.Object) []reconcile.Request {
 		csCluster, ok := o.(*infrav1.CloudStackCluster)
 		if !ok {
 			log.Error(fmt.Errorf("expected a CloudStackCluster but got a %T", o), "Error in CloudStackClusterToCloudStackMachines")
+			return nil
 		}
 
 		log = log.WithValues("objectMapper", "cloudstackClusterToCloudStackMachine", "cluster", klog.KRef(csCluster.Namespace, csCluster.Name))
@@ -141,7 +144,7 @@ func CloudStackClusterToCloudStackMachines(c client.Client, obj runtime.Object, 
 
 		machineList := &clusterv1.MachineList{}
 		machineList.SetGroupVersionKind(gvk)
-		// list all of the requested objects within the cluster namespace with the cluster name label
+		// list all the requested objects within the cluster namespace with the cluster name label
 		if err := c.List(ctx, machineList, client.InNamespace(csCluster.Namespace), client.MatchingLabels{clusterv1.ClusterNameLabel: clusterName}); err != nil {
 			return nil
 		}
@@ -152,6 +155,58 @@ func CloudStackClusterToCloudStackMachines(c client.Client, obj runtime.Object, 
 			m := machine
 			csMachines := mapFunc(ctx, &m)
 			results = append(results, csMachines...)
+		}
+
+		return results
+	}, nil
+}
+
+// CloudStackClusterToCloudStackIsolatedNetworks is a handler.ToRequestsFunc to be used to enqueue requests for reconciliation
+// of CloudStackIsolatedNetworks.
+func CloudStackClusterToCloudStackIsolatedNetworks(c client.Client, obj client.ObjectList, scheme *runtime.Scheme, log logr.Logger) (handler.MapFunc, error) {
+	gvk, err := apiutil.GVKForObject(obj, scheme)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to find GVK for CloudStackIsolatedNetwork")
+	}
+
+	return func(ctx context.Context, o client.Object) []reconcile.Request {
+		csCluster, ok := o.(*infrav1.CloudStackCluster)
+		if !ok {
+			log.Error(fmt.Errorf("expected a CloudStackCluster but got a %T", o), "Error in CloudStackClusterToCloudStackIsolatedNetworks")
+			return nil
+		}
+
+		log = log.WithValues("objectMapper", "cloudstackClusterToCloudStackIsolatedNetworks", "cluster", klog.KRef(csCluster.Namespace, csCluster.Name))
+
+		// Don't handle deleted CloudStackClusters
+		if !csCluster.ObjectMeta.DeletionTimestamp.IsZero() {
+			log.V(4).Info("CloudStackCluster has a deletion timestamp, skipping mapping.")
+			return nil
+		}
+
+		clusterName, err := GetOwnerClusterName(csCluster.ObjectMeta)
+		if err != nil {
+			log.Error(err, "Failed to get owning cluster, skipping mapping.")
+			return nil
+		}
+
+		isonetList := &infrav1.CloudStackIsolatedNetworkList{}
+		isonetList.SetGroupVersionKind(gvk)
+
+		// list all the requested objects within the cluster namespace with the cluster name label
+		if err := c.List(ctx, isonetList, client.InNamespace(csCluster.Namespace), client.MatchingLabels{clusterv1.ClusterNameLabel: clusterName}); err != nil {
+			return nil
+		}
+
+		var results []reconcile.Request
+		for _, isonet := range isonetList.Items {
+			req := reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Namespace: isonet.GetNamespace(),
+					Name:      isonet.GetName(),
+				},
+			}
+			results = append(results, req)
 		}
 
 		return results
