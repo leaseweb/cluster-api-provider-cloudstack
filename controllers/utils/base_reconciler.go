@@ -251,7 +251,7 @@ func (r *ReconciliationRunner) CheckOwnedCRDsForReadiness(gvks ...schema.GroupVe
 	}
 }
 
-// CheckOwnedObjectsDeleted queries for the presence of owned objects and requeues if any are still present. Primarily
+// DeleteOwnedObjects queries for the presence of owned objects and requeues if any are still present. Primarily
 // used to prevent deletions of owners before dependents.
 func (r *ReconciliationRunner) DeleteOwnedObjects(gvks ...schema.GroupVersionKind) CloudStackReconcilerMethod {
 	return func() (ctrl.Result, error) {
