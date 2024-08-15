@@ -268,6 +268,7 @@ func (c *client) ReconcileLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNe
 		}
 	}
 
+	// Delete any existing rules with a port that is no longer part of ports.
 	for port, ruleID := range portsAndIDs {
 		intport, err := strconv.Atoi(port)
 		if err != nil {
@@ -277,7 +278,7 @@ func (c *client) ReconcileLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNe
 		if !slices.Contains(ports, intport) {
 			success, err := c.DeleteLoadBalancerRule(ruleID)
 			if err != nil || !success {
-				return errors.Wrap(err, "deleting firewall rule")
+				return errors.Wrap(err, "deleting load balancer rule")
 			}
 		}
 	}
@@ -351,6 +352,14 @@ func (c *client) ReconcileFirewallRules(isoNet *infrav1.CloudStackIsolatedNetwor
 		return errors.Wrap(err, "retrieving load balancer rules")
 	}
 
+	// Create a map for easy lookup of existing rules
+	portsAndIDs := make(map[int]string)
+	for _, rule := range fwr {
+		if rule.Startport == rule.Endport {
+			portsAndIDs[rule.Startport] = rule.Id
+		}
+	}
+
 	ports := []int{int(csCluster.Spec.ControlPlaneEndpoint.Port)}
 	if len(csCluster.Spec.APIServerLoadBalancer.AdditionalPorts) > 0 {
 		ports = append(ports, csCluster.Spec.APIServerLoadBalancer.AdditionalPorts...)
@@ -387,6 +396,17 @@ func (c *client) ReconcileFirewallRules(isoNet *infrav1.CloudStackIsolatedNetwor
 			}
 		}
 	}
+
+	// Delete any existing rules with a port that is no longer part of ports.
+	for port, ruleID := range portsAndIDs {
+		if !slices.Contains(ports, port) {
+			success, err := c.DeleteFirewallRule(ruleID)
+			if err != nil || !success {
+				return errors.Wrap(err, "deleting firewall rule")
+			}
+		}
+	}
+
 	// Update the list of allowed CIDRs in the status
 	isoNet.Status.APIServerLoadBalancer.AllowedCIDRs = allowedCIDRS
 

@@ -508,6 +508,37 @@ var _ = Describe("Network", func() {
 
 			Ω(client.ReconcileFirewallRules(dummies.CSISONet1, dummies.CSCluster)).Should(Succeed())
 		})
+
+		It("calls delete firewall rule when a port is removed from additionalPorts", func() {
+			// We pretend that port 6565 was removed from additionalPorts
+			fs.EXPECT().NewListFirewallRulesParams().Return(&csapi.ListFirewallRulesParams{})
+			fs.EXPECT().ListFirewallRules(gomock.Any()).Return(
+				&csapi.ListFirewallRulesResponse{FirewallRules: []*csapi.FirewallRule{
+					{
+						Cidrlist:  "0.0.0.0/0",
+						Startport: int(dummies.EndPointPort),
+						Endport:   int(dummies.EndPointPort),
+						Id:        dummies.FWRuleID,
+					},
+					{
+						Cidrlist:  "0.0.0.0/0",
+						Startport: 6565,
+						Endport:   6565,
+						Id:        "FakeFWRuleID2",
+					},
+				}}, nil)
+
+			fs.EXPECT().NewDeleteFirewallRuleParams("FakeFWRuleID2").DoAndReturn(func(ruleid string) *csapi.DeleteFirewallRuleParams {
+				p := &csapi.DeleteFirewallRuleParams{}
+				p.SetId(ruleid)
+				return p
+			})
+			fs.EXPECT().DeleteFirewallRule(gomock.Any()).Return(&csapi.DeleteFirewallRuleResponse{Success: true}, nil).Times(1)
+			fs.EXPECT().NewCreateFirewallRuleParams(gomock.Any(), gomock.Any()).Times(0)
+			fs.EXPECT().CreateFirewallRule(gomock.Any()).Times(0)
+
+			Ω(client.ReconcileFirewallRules(dummies.CSISONet1, dummies.CSCluster)).Should(Succeed())
+		})
 	})
 
 	Context("The specific firewall rule does not exist", func() {
