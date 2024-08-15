@@ -277,8 +277,11 @@ func (c *client) ReconcileLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNe
 
 		if !slices.Contains(ports, intport) {
 			success, err := c.DeleteLoadBalancerRule(ruleID)
-			if err != nil || !success {
+			if err != nil {
 				return errors.Wrap(err, "deleting load balancer rule")
+			}
+			if !success {
+				return errors.New("delete load balancer rule returned unsuccessful")
 			}
 		}
 	}
@@ -320,8 +323,8 @@ func (c *client) CreateLoadBalancerRule(isoNet *infrav1.CloudStackIsolatedNetwor
 
 // DeleteLoadBalancerRule deletes an existing load balancer rule.
 func (c *client) DeleteLoadBalancerRule(id string) (bool, error) {
-	p := c.cs.LoadBalancer.NewDeleteLoadBalancerRuleParams(id)
-	resp, err := c.cs.LoadBalancer.DeleteLoadBalancerRule(p)
+	p := c.csAsync.LoadBalancer.NewDeleteLoadBalancerRuleParams(id)
+	resp, err := c.csAsync.LoadBalancer.DeleteLoadBalancerRule(p)
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
@@ -401,8 +404,11 @@ func (c *client) ReconcileFirewallRules(isoNet *infrav1.CloudStackIsolatedNetwor
 	for port, ruleID := range portsAndIDs {
 		if !slices.Contains(ports, port) {
 			success, err := c.DeleteFirewallRule(ruleID)
-			if err != nil || !success {
+			if err != nil {
 				return errors.Wrap(err, "deleting firewall rule")
+			}
+			if !success {
+				return errors.New("delete firewall rule returned unsuccessful")
 			}
 		}
 	}
@@ -432,8 +438,8 @@ func (c *client) CreateFirewallRule(isoNet *infrav1.CloudStackIsolatedNetwork, p
 
 // DeleteFirewallRule deletes a firewall rule.
 func (c *client) DeleteFirewallRule(id string) (bool, error) {
-	p := c.cs.Firewall.NewDeleteFirewallRuleParams(id)
-	resp, err := c.cs.Firewall.DeleteFirewallRule(p)
+	p := c.csAsync.Firewall.NewDeleteFirewallRuleParams(id)
+	resp, err := c.csAsync.Firewall.DeleteFirewallRule(p)
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
