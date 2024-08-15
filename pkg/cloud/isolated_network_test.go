@@ -383,14 +383,16 @@ var _ = Describe("Network", func() {
 			lbs.EXPECT().NewListLoadBalancerRulesParams().Return(&csapi.ListLoadBalancerRulesParams{})
 			lbs.EXPECT().ListLoadBalancerRules(gomock.Any()).
 				Return(&csapi.ListLoadBalancerRulesResponse{
-					LoadBalancerRules: []*csapi.LoadBalancerRule{{Publicport: "7443", Id: dummies.LBRuleID}}}, nil)
+					LoadBalancerRules: []*csapi.LoadBalancerRule{}}, nil)
 			lbs.EXPECT().NewCreateLoadBalancerRuleParams(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(&csapi.CreateLoadBalancerRuleParams{})
 			lbs.EXPECT().CreateLoadBalancerRule(gomock.Any()).
-				Return(&csapi.CreateLoadBalancerRuleResponse{Id: "2ndLBRuleID"}, nil)
+				Return(&csapi.CreateLoadBalancerRuleResponse{Id: dummies.LBRuleID}, nil)
+			lbs.EXPECT().NewDeleteLoadBalancerRuleParams(gomock.Any()).Times(0)
+			lbs.EXPECT().DeleteLoadBalancerRule(gomock.Any()).Times(0)
 
 			Ω(client.ReconcileLoadBalancerRules(dummies.CSISONet1, dummies.CSCluster)).Should(Succeed())
-			loadBalancerRuleIDs := []string{"2ndLBRuleID"}
+			loadBalancerRuleIDs := []string{dummies.LBRuleID}
 			Ω(dummies.CSISONet1.Status.LoadBalancerRuleIDs).Should(Equal(loadBalancerRuleIDs))
 		})
 
@@ -406,10 +408,31 @@ var _ = Describe("Network", func() {
 				Return(&csapi.CreateLoadBalancerRuleParams{})
 			lbs.EXPECT().CreateLoadBalancerRule(gomock.Any()).
 				Return(&csapi.CreateLoadBalancerRuleResponse{Id: "2ndLBRuleID"}, nil)
+			lbs.EXPECT().NewDeleteLoadBalancerRuleParams(gomock.Any()).Times(0)
+			lbs.EXPECT().DeleteLoadBalancerRule(gomock.Any()).Times(0)
 
 			dummies.CSISONet1.Status.LoadBalancerRuleIDs = []string{dummies.LBRuleID}
 			Ω(client.ReconcileLoadBalancerRules(dummies.CSISONet1, dummies.CSCluster)).Should(Succeed())
 			dummies.LoadBalancerRuleIDs = []string{"2ndLBRuleID", dummies.LBRuleID}
+			Ω(dummies.CSISONet1.Status.LoadBalancerRuleIDs).Should(Equal(dummies.LoadBalancerRuleIDs))
+		})
+
+		It("when API load balancer additional ports are defined, and a port is removed, deletes related rules", func() {
+			lbs.EXPECT().NewListLoadBalancerRulesParams().Return(&csapi.ListLoadBalancerRulesParams{})
+			lbs.EXPECT().ListLoadBalancerRules(gomock.Any()).Return(
+				&csapi.ListLoadBalancerRulesResponse{LoadBalancerRules: []*csapi.LoadBalancerRule{
+					{Publicport: strconv.Itoa(int(dummies.EndPointPort)), Id: dummies.LBRuleID},
+					{Publicport: strconv.Itoa(456), Id: "2ndLBRuleID"},
+				}}, nil)
+
+			lbs.EXPECT().NewDeleteLoadBalancerRuleParams(gomock.Any()).
+				Return(&csapi.DeleteLoadBalancerRuleParams{}).Times(1)
+			lbs.EXPECT().DeleteLoadBalancerRule(gomock.Any()).
+				Return(&csapi.DeleteLoadBalancerRuleResponse{Success: true}, nil).Times(1)
+
+			dummies.CSISONet1.Status.LoadBalancerRuleIDs = []string{"2ndLBRuleID", dummies.LBRuleID}
+			Ω(client.ReconcileLoadBalancerRules(dummies.CSISONet1, dummies.CSCluster)).Should(Succeed())
+			dummies.LoadBalancerRuleIDs = []string{dummies.LBRuleID}
 			Ω(dummies.CSISONet1.Status.LoadBalancerRuleIDs).Should(Equal(dummies.LoadBalancerRuleIDs))
 		})
 

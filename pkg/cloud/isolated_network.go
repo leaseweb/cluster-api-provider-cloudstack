@@ -236,26 +236,25 @@ func (c *client) ReconcileLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNe
 		return errors.Wrap(err, "retrieving load balancer rules")
 	}
 
+	// Create a map for easy lookup of existing rules
+	portsAndIDs := make(map[string]string)
+	for _, rule := range lbr {
+		portsAndIDs[rule.Publicport] = rule.Id
+	}
+
 	ports := []int{int(csCluster.Spec.ControlPlaneEndpoint.Port)}
 	if len(csCluster.Spec.APIServerLoadBalancer.AdditionalPorts) > 0 {
 		ports = append(ports, csCluster.Spec.APIServerLoadBalancer.AdditionalPorts...)
 	}
 
 	lbRuleIDs := make([]string, 0)
-	var found bool
 	for _, port := range ports {
-		var ruleID string
-		found = false
 		// Check if lb rule for port already exists
-		for _, rule := range lbr {
-			ruleID = rule.Id
-			if rule.Publicport == strconv.Itoa(port) {
-				found = true
-				lbRuleIDs = append(lbRuleIDs, ruleID)
-			}
-		}
-		// If not found, create the lb rule for port
-		if !found {
+		ruleID, found := portsAndIDs[strconv.Itoa(port)]
+		if found {
+			lbRuleIDs = append(lbRuleIDs, ruleID)
+		} else {
+			// If not found, create the lb rule for port
 			ruleID, err = c.CreateLoadBalancerRule(isoNet, port)
 			if err != nil {
 				return errors.Wrap(err, "creating load balancer rule")
@@ -266,6 +265,20 @@ func (c *client) ReconcileLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNe
 		// For backwards compatibility.
 		if port == int(csCluster.Spec.ControlPlaneEndpoint.Port) {
 			isoNet.Status.LBRuleID = ruleID
+		}
+	}
+
+	for port, ruleID := range portsAndIDs {
+		intport, err := strconv.Atoi(port)
+		if err != nil {
+			return errors.Wrap(err, "converting port to int")
+		}
+
+		if !slices.Contains(ports, intport) {
+			success, err := c.DeleteLoadBalancerRule(ruleID)
+			if err != nil || !success {
+				return errors.Wrap(err, "deleting firewall rule")
+			}
 		}
 	}
 
@@ -302,6 +315,19 @@ func (c *client) CreateLoadBalancerRule(isoNet *infrav1.CloudStackIsolatedNetwor
 	}
 
 	return resp.Id, nil
+}
+
+// DeleteLoadBalancerRule deletes an existing load balancer rule.
+func (c *client) DeleteLoadBalancerRule(id string) (bool, error) {
+	p := c.cs.LoadBalancer.NewDeleteLoadBalancerRuleParams(id)
+	resp, err := c.cs.LoadBalancer.DeleteLoadBalancerRule(p)
+	if err != nil {
+		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
+		return false, err
+	}
+
+	return resp.Success, nil
 }
 
 // GetFirewallRules fetches the current firewall rules for the isolated network.
