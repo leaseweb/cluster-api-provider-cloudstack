@@ -123,6 +123,7 @@ func (reconciler *CloudStackIsoNetReconciler) SetupWithManager(ctx context.Conte
 			&infrav1.CloudStackCluster{},
 			handler.EnqueueRequestsFromMapFunc(CloudStackClusterToCloudStackIsolatedNetworks),
 			builder.WithPredicates(
+				predicate.GenerationChangedPredicate{},
 				predicate.Funcs{
 					UpdateFunc: func(e event.UpdateEvent) bool {
 						oldCSCluster := e.ObjectOld.(*infrav1.CloudStackCluster)
