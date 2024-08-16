@@ -363,20 +363,14 @@ func (reconciler *CloudStackMachineReconciler) SetupWithManager(ctx context.Cont
 
 	reconciler.Recorder = mgr.GetEventRecorderFor("capc-machine-controller")
 
-	cloudStackClusterToCloudStackMachines, err := utils.CloudStackClusterToCloudStackMachines(reconciler.K8sClient, &infrav1.CloudStackMachineList{}, reconciler.Scheme, ctrl.LoggerFrom(ctx))
-	if err != nil {
-		return errors.Wrap(err, "failed to create CloudStackClusterToCloudStackMachines mapper")
-	}
+	cloudStackClusterToCloudStackMachines := utils.CloudStackClusterToCloudStackMachines(reconciler.K8sClient, log)
 
 	csMachineMapper, err := util.ClusterToTypedObjectsMapper(reconciler.K8sClient, &infrav1.CloudStackMachineList{}, reconciler.Scheme)
 	if err != nil {
 		return errors.Wrap(err, "failed to create mapper for Cluster to CloudStackMachines")
 	}
 
-	cloudStackIsolatedNetworkToControlPlaneCloudStackMachines, err := utils.CloudStackIsolatedNetworkToControlPlaneCloudStackMachines(reconciler.K8sClient, &infrav1.CloudStackMachineList{}, reconciler.Scheme, ctrl.LoggerFrom(ctx))
-	if err != nil {
-		return errors.Wrap(err, "failed to create CloudStackIsolatedNetworkToControlPlaneCloudStackMachines mapper")
-	}
+	cloudStackIsolatedNetworkToControlPlaneCloudStackMachines := utils.CloudStackIsolatedNetworkToControlPlaneCloudStackMachines(reconciler.K8sClient, log)
 
 	err = ctrl.NewControllerManagedBy(mgr).
 		WithOptions(opts).
