@@ -359,16 +359,20 @@ func (r *CloudStackMachineReconciliationRunner) ReconcileDelete() (retRes ctrl.R
 
 // SetupWithManager registers the machine reconciler to the CAPI controller manager.
 func (reconciler *CloudStackMachineReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, opts controller.Options) error {
+	log := ctrl.LoggerFrom(ctx)
+
 	reconciler.Recorder = mgr.GetEventRecorderFor("capc-machine-controller")
+
 	cloudStackClusterToCloudStackMachines, err := utils.CloudStackClusterToCloudStackMachines(reconciler.K8sClient, &infrav1.CloudStackMachineList{}, reconciler.Scheme, ctrl.LoggerFrom(ctx))
 	if err != nil {
 		return errors.Wrap(err, "failed to create CloudStackClusterToCloudStackMachines mapper")
 	}
-	//requeueCloudStackMachinesForUnpausedCluster := reconciler.requeueCloudStackMachinesForUnpausedCluster(ctx)
+
 	csMachineMapper, err := util.ClusterToTypedObjectsMapper(reconciler.K8sClient, &infrav1.CloudStackMachineList{}, reconciler.Scheme)
 	if err != nil {
 		return errors.Wrap(err, "failed to create mapper for Cluster to CloudStackMachines")
 	}
+
 	cloudStackIsolatedNetworkToControlPlaneCloudStackMachines, err := utils.CloudStackIsolatedNetworkToControlPlaneCloudStackMachines(reconciler.K8sClient, &infrav1.CloudStackMachineList{}, reconciler.Scheme, ctrl.LoggerFrom(ctx))
 	if err != nil {
 		return errors.Wrap(err, "failed to create CloudStackIsolatedNetworkToControlPlaneCloudStackMachines mapper")
@@ -383,7 +387,11 @@ func (reconciler *CloudStackMachineReconciler) SetupWithManager(ctx context.Cont
 			builder.WithPredicates(
 				predicate.Funcs{
 					UpdateFunc: func(e event.UpdateEvent) bool {
-						oldMachine := e.ObjectOld.(*clusterv1.Machine)
+						oldMachine, ok := e.ObjectOld.(*clusterv1.Machine)
+						if !ok {
+							log.V(4).Info("Expected Machine", "type", fmt.Sprintf("%T", e.ObjectOld))
+							return false
+						}
 						newMachine := e.ObjectNew.(*clusterv1.Machine)
 
 						return (oldMachine.Spec.Bootstrap.DataSecretName == nil && newMachine.Spec.Bootstrap.DataSecretName != nil)
@@ -447,7 +455,12 @@ func (reconciler *CloudStackMachineReconciler) SetupWithManager(ctx context.Cont
 			builder.WithPredicates(
 				predicate.Funcs{
 					UpdateFunc: func(e event.UpdateEvent) bool {
-						oldCSIsoNet := e.ObjectOld.(*infrav1.CloudStackIsolatedNetwork)
+						oldCSIsoNet, ok := e.ObjectOld.(*infrav1.CloudStackIsolatedNetwork)
+						if !ok {
+							log.V(4).Info("Expected CloudStackIsolatedNetwork", "type", fmt.Sprintf("%T", e.ObjectOld))
+							return false
+						}
+
 						newCSIsoNet := e.ObjectNew.(*infrav1.CloudStackIsolatedNetwork)
 
 						// We're only interested in status updates, not Spec updates
