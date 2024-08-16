@@ -349,6 +349,28 @@ var _ = Describe("Network", func() {
 			Ω(client.AssignVMToLoadBalancerRules(dummies.CSISONet1, *dummies.CSMachine1.Spec.InstanceID)).Should(Succeed())
 		})
 
+		It("With additionalPorts defined, associates VM to all related LB rules", func() {
+			dummies.CSCluster.Spec.APIServerLoadBalancer.AdditionalPorts = append(dummies.CSCluster.Spec.APIServerLoadBalancer.AdditionalPorts, 456)
+			dummies.CSISONet1.Status.LoadBalancerRuleIDs = []string{dummies.LBRuleID, "FakeLBRuleID2"}
+			lbip := &csapi.ListLoadBalancerRuleInstancesParams{}
+			albp := &csapi.AssignToLoadBalancerRuleParams{}
+			gomock.InOrder(
+				lbs.EXPECT().NewListLoadBalancerRuleInstancesParams(dummies.CSISONet1.Status.LoadBalancerRuleIDs[0]).
+					Return(lbip),
+				lbs.EXPECT().ListLoadBalancerRuleInstances(lbip).Return(&csapi.ListLoadBalancerRuleInstancesResponse{}, nil),
+				lbs.EXPECT().NewAssignToLoadBalancerRuleParams(dummies.CSISONet1.Status.LoadBalancerRuleIDs[0]).Return(albp),
+				lbs.EXPECT().AssignToLoadBalancerRule(albp).Return(&csapi.AssignToLoadBalancerRuleResponse{}, nil),
+
+				lbs.EXPECT().NewListLoadBalancerRuleInstancesParams(dummies.CSISONet1.Status.LoadBalancerRuleIDs[1]).
+					Return(lbip),
+				lbs.EXPECT().ListLoadBalancerRuleInstances(lbip).Return(&csapi.ListLoadBalancerRuleInstancesResponse{}, nil),
+				lbs.EXPECT().NewAssignToLoadBalancerRuleParams(dummies.CSISONet1.Status.LoadBalancerRuleIDs[1]).Return(albp),
+				lbs.EXPECT().AssignToLoadBalancerRule(albp).Return(&csapi.AssignToLoadBalancerRuleResponse{}, nil),
+			)
+
+			Ω(client.AssignVMToLoadBalancerRules(dummies.CSISONet1, *dummies.CSMachine1.Spec.InstanceID)).Should(Succeed())
+		})
+
 		It("Associating VM to LB rule fails", func() {
 			dummies.CSISONet1.Status.LoadBalancerRuleIDs = []string{"lbruleid"}
 			lbip := &csapi.ListLoadBalancerRuleInstancesParams{}

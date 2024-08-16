@@ -360,7 +360,7 @@ func (r *CloudStackMachineReconciliationRunner) ReconcileDelete() (retRes ctrl.R
 // SetupWithManager registers the machine reconciler to the CAPI controller manager.
 func (reconciler *CloudStackMachineReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, opts controller.Options) error {
 	reconciler.Recorder = mgr.GetEventRecorderFor("capc-machine-controller")
-	CloudStackClusterToCloudStackMachines, err := utils.CloudStackClusterToCloudStackMachines(reconciler.K8sClient, &infrav1.CloudStackMachineList{}, reconciler.Scheme, ctrl.LoggerFrom(ctx))
+	cloudStackClusterToCloudStackMachines, err := utils.CloudStackClusterToCloudStackMachines(reconciler.K8sClient, &infrav1.CloudStackMachineList{}, reconciler.Scheme, ctrl.LoggerFrom(ctx))
 	if err != nil {
 		return errors.Wrap(err, "failed to create CloudStackClusterToCloudStackMachines mapper")
 	}
@@ -368,6 +368,10 @@ func (reconciler *CloudStackMachineReconciler) SetupWithManager(ctx context.Cont
 	csMachineMapper, err := util.ClusterToTypedObjectsMapper(reconciler.K8sClient, &infrav1.CloudStackMachineList{}, reconciler.Scheme)
 	if err != nil {
 		return errors.Wrap(err, "failed to create mapper for Cluster to CloudStackMachines")
+	}
+	cloudStackIsolatedNetworkToControlPlaneCloudStackMachines, err := utils.CloudStackIsolatedNetworkToControlPlaneCloudStackMachines(reconciler.K8sClient, &infrav1.CloudStackMachineList{}, reconciler.Scheme, ctrl.LoggerFrom(ctx))
+	if err != nil {
+		return errors.Wrap(err, "failed to create CloudStackIsolatedNetworkToControlPlaneCloudStackMachines mapper")
 	}
 
 	err = ctrl.NewControllerManagedBy(mgr).
@@ -389,7 +393,7 @@ func (reconciler *CloudStackMachineReconciler) SetupWithManager(ctx context.Cont
 		).
 		Watches(
 			&infrav1.CloudStackCluster{},
-			handler.EnqueueRequestsFromMapFunc(CloudStackClusterToCloudStackMachines),
+			handler.EnqueueRequestsFromMapFunc(cloudStackClusterToCloudStackMachines),
 		).
 		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(ctrl.LoggerFrom(ctx), reconciler.WatchFilterValue)).
 		WithEventFilter(
@@ -434,6 +438,27 @@ func (reconciler *CloudStackMachineReconciler) SetupWithManager(ctx context.Cont
 			handler.EnqueueRequestsFromMapFunc(csMachineMapper),
 			builder.WithPredicates(
 				predicates.ClusterUnpausedAndInfrastructureReady(ctrl.LoggerFrom(ctx)),
+			),
+		).
+		Watches(
+			// This watch is here to assign VM's to loadbalancer rules
+			&infrav1.CloudStackIsolatedNetwork{},
+			handler.EnqueueRequestsFromMapFunc(cloudStackIsolatedNetworkToControlPlaneCloudStackMachines),
+			builder.WithPredicates(
+				predicate.Funcs{
+					UpdateFunc: func(e event.UpdateEvent) bool {
+						oldCSIsoNet := e.ObjectOld.(*infrav1.CloudStackIsolatedNetwork)
+						newCSIsoNet := e.ObjectNew.(*infrav1.CloudStackIsolatedNetwork)
+
+						// We're only interested in status updates, not Spec updates
+						if oldCSIsoNet.Generation != newCSIsoNet.Generation {
+							return false
+						}
+
+						// Only trigger a CloudStackMachine reconcile if the loadbalancer rules changed.
+						return len(oldCSIsoNet.Status.LoadBalancerRuleIDs) != len(newCSIsoNet.Status.LoadBalancerRuleIDs)
+					},
+				},
 			),
 		).
 		Complete(reconciler)

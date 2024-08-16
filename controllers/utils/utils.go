@@ -213,6 +213,58 @@ func CloudStackClusterToCloudStackIsolatedNetworks(c client.Client, obj client.O
 	}, nil
 }
 
+// CloudStackIsolatedNetworkToControlPlaneCloudStackMachines is a handler.ToRequestsFunc to be used to enqueue requests for reconciliation
+// of CloudStackMachines that are part of the control plane.
+func CloudStackIsolatedNetworkToControlPlaneCloudStackMachines(c client.Client, obj client.ObjectList, scheme *runtime.Scheme, log logr.Logger) (handler.MapFunc, error) {
+	gvk, err := apiutil.GVKForObject(obj, scheme)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to find GVK for CloudStackMachine")
+	}
+
+	return func(ctx context.Context, o client.Object) []reconcile.Request {
+		csIsoNet, ok := o.(*infrav1.CloudStackIsolatedNetwork)
+		if !ok {
+			log.Error(fmt.Errorf("expected a CloudStackIsolatedNetwork but got a %T", o), "Error in CloudStackIsolatedNetworkToControlPlaneCloudStackMachines")
+			return nil
+		}
+
+		log = log.WithValues("objectMapper", "cloudStackIsolatedNetworkToControlPlaneCloudStackMachines", "isonet", klog.KRef(csIsoNet.Namespace, csIsoNet.Name))
+
+		// Don't handle deleted CloudStackIsolatedNetworks
+		if !csIsoNet.ObjectMeta.DeletionTimestamp.IsZero() {
+			log.V(4).Info("CloudStackIsolatedNetwork has a deletion timestamp, skipping mapping.")
+			return nil
+		}
+
+		clusterName, err := GetOwnerClusterName(csIsoNet.ObjectMeta)
+		if err != nil {
+			log.Error(err, "Failed to get owning cluster, skipping mapping.")
+			return nil
+		}
+
+		machineList := &clusterv1.MachineList{}
+		machineList.SetGroupVersionKind(gvk)
+		// list all the requested objects within the cluster namespace with the cluster name and control plane label.
+		err = c.List(ctx, machineList, client.InNamespace(csIsoNet.Namespace), client.MatchingLabels{
+			clusterv1.ClusterNameLabel:         clusterName,
+			clusterv1.MachineControlPlaneLabel: "",
+		})
+		if err != nil {
+			return nil
+		}
+
+		mapFunc := util.MachineToInfrastructureMapFunc(gvk)
+		var results []ctrl.Request
+		for _, machine := range machineList.Items {
+			m := machine
+			csMachines := mapFunc(ctx, &m)
+			results = append(results, csMachines...)
+		}
+
+		return results
+	}, nil
+}
+
 // DebugPredicate returns a predicate that logs the event that triggered the reconciliation
 func DebugPredicate(logger logr.Logger) predicate.Funcs {
 	return predicate.Funcs{
