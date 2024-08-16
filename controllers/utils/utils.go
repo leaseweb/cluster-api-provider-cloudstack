@@ -236,10 +236,9 @@ func CloudStackIsolatedNetworkToControlPlaneCloudStackMachines(c client.Client, 
 			return nil
 		}
 
-		clusterName, err := GetOwnerClusterName(csIsoNet.ObjectMeta)
-		if err != nil {
-			log.Error(err, "Failed to get owning cluster, skipping mapping.")
-			return nil
+		clusterName, ok := csIsoNet.GetLabels()[clusterv1.ClusterNameLabel]
+		if !ok {
+			log.Error(err, "CloudStackIsolatedNetwork is missing cluster name label or cluster does not exist, skipping mapping.")
 		}
 
 		machineList := &clusterv1.MachineList{}
