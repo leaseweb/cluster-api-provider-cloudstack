@@ -229,6 +229,7 @@ func (c *client) GetLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNetwork)
 	return loadBalancerRules.LoadBalancerRules, nil
 }
 
+// ReconcileLoadBalancerRules manages the loadbalancer rules for all ports.
 func (c *client) ReconcileLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNetwork, csCluster *infrav1.CloudStackCluster) error {
 	lbr, err := c.GetLoadBalancerRules(isoNet)
 	if err != nil {
@@ -236,54 +237,16 @@ func (c *client) ReconcileLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNe
 		return errors.Wrap(err, "retrieving load balancer rules")
 	}
 
-	// Create a map for easy lookup of existing rules
-	portsAndIDs := make(map[string]string)
-	for _, rule := range lbr {
-		portsAndIDs[rule.Publicport] = rule.Id
+	portsAndIDs := mapExistingLoadBalancerRules(lbr)
+	ports := gatherPorts(csCluster)
+
+	lbRuleIDs, err := c.ensureLoadBalancerRules(isoNet, ports, portsAndIDs, csCluster)
+	if err != nil {
+		return err
 	}
 
-	ports := []int{int(csCluster.Spec.ControlPlaneEndpoint.Port)}
-	if len(csCluster.Spec.APIServerLoadBalancer.AdditionalPorts) > 0 {
-		ports = append(ports, csCluster.Spec.APIServerLoadBalancer.AdditionalPorts...)
-	}
-
-	lbRuleIDs := make([]string, 0)
-	for _, port := range ports {
-		// Check if lb rule for port already exists
-		ruleID, found := portsAndIDs[strconv.Itoa(port)]
-		if found {
-			lbRuleIDs = append(lbRuleIDs, ruleID)
-		} else {
-			// If not found, create the lb rule for port
-			ruleID, err = c.CreateLoadBalancerRule(isoNet, port)
-			if err != nil {
-				return errors.Wrap(err, "creating load balancer rule")
-			}
-			lbRuleIDs = append(lbRuleIDs, ruleID)
-		}
-
-		// For backwards compatibility.
-		if port == int(csCluster.Spec.ControlPlaneEndpoint.Port) {
-			isoNet.Status.LBRuleID = ruleID
-		}
-	}
-
-	// Delete any existing rules with a port that is no longer part of ports.
-	for port, ruleID := range portsAndIDs {
-		intport, err := strconv.Atoi(port)
-		if err != nil {
-			return errors.Wrap(err, "converting port to int")
-		}
-
-		if !slices.Contains(ports, intport) {
-			success, err := c.DeleteLoadBalancerRule(ruleID)
-			if err != nil {
-				return errors.Wrap(err, "deleting load balancer rule")
-			}
-			if !success {
-				return errors.New("delete load balancer rule returned unsuccessful")
-			}
-		}
+	if err := c.cleanupObsoleteLoadBalancerRules(portsAndIDs, ports); err != nil {
+		return err
 	}
 
 	if len(lbRuleIDs) > 1 {
@@ -292,6 +255,77 @@ func (c *client) ReconcileLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNe
 
 	isoNet.Status.LoadBalancerRuleIDs = lbRuleIDs
 
+	return nil
+}
+
+// mapExistingLoadBalancerRules creates a lookup map for existing load balancer rules based on their public port.
+func mapExistingLoadBalancerRules(lbr []*cloudstack.LoadBalancerRule) map[string]string {
+	portsAndIDs := make(map[string]string)
+	for _, rule := range lbr {
+		portsAndIDs[rule.Publicport] = rule.Id
+	}
+
+	return portsAndIDs
+}
+
+// ensureLoadBalancerRules ensures that the necessary load balancer rules are in place.
+func (c *client) ensureLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNetwork, ports []int, portsAndIDs map[string]string, csCluster *infrav1.CloudStackCluster) ([]string, error) {
+	lbRuleIDs := make([]string, 0)
+	for _, port := range ports {
+		ruleID, err := c.getOrCreateLoadBalancerRule(isoNet, port, portsAndIDs)
+		if err != nil {
+			return nil, err
+		}
+		lbRuleIDs = append(lbRuleIDs, ruleID)
+
+		// For backwards compatibility.
+		if port == int(csCluster.Spec.ControlPlaneEndpoint.Port) {
+			isoNet.Status.LBRuleID = ruleID
+		}
+	}
+	return lbRuleIDs, nil
+}
+
+// getOrCreateLoadBalancerRule retrieves or creates a load balancer rule for a given port.
+func (c *client) getOrCreateLoadBalancerRule(isoNet *infrav1.CloudStackIsolatedNetwork, port int, portsAndIDs map[string]string) (string, error) {
+	portStr := strconv.Itoa(port)
+	ruleID, found := portsAndIDs[portStr]
+	if found {
+		return ruleID, nil
+	}
+	// If not found, create the lb rule for port
+	ruleID, err := c.CreateLoadBalancerRule(isoNet, port)
+	if err != nil {
+		return "", errors.Wrap(err, "creating load balancer rule")
+	}
+	return ruleID, nil
+}
+
+// cleanupObsoleteLoadBalancerRules deletes load balancer rules that are no longer needed.
+func (c *client) cleanupObsoleteLoadBalancerRules(portsAndIDs map[string]string, ports []int) error {
+	for port, ruleID := range portsAndIDs {
+		intPort, err := strconv.Atoi(port)
+		if err != nil {
+			return errors.Wrap(err, "converting port to int")
+		}
+		if !slices.Contains(ports, intPort) {
+			if err := c.deleteLoadBalancerRuleByID(ruleID); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// deleteLoadBalancerRuleByID wraps the deletion logic with error handling.
+func (c *client) deleteLoadBalancerRuleByID(ruleID string) error {
+	success, err := c.DeleteLoadBalancerRule(ruleID)
+	if err != nil {
+		return errors.Wrap(err, "deleting load balancer rule")
+	}
+	if !success {
+		return errors.New("delete load balancer rule returned unsuccessful")
+	}
 	return nil
 }
 
@@ -348,14 +382,48 @@ func (c *client) GetFirewallRules(isoNet *infrav1.CloudStackIsolatedNetwork) ([]
 	return fwRules.FirewallRules, nil
 }
 
+// ReconcileFirewallRules manages the firewall rules for all port <-> allowedCIDR combinations.
 func (c *client) ReconcileFirewallRules(isoNet *infrav1.CloudStackIsolatedNetwork, csCluster *infrav1.CloudStackCluster) error {
 	fwr, err := c.GetFirewallRules(isoNet)
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
-		return errors.Wrap(err, "retrieving load balancer rules")
+		return errors.Wrap(err, "retrieving firewall rules")
 	}
 
-	// Create a map for easy lookup of existing rules
+	ports := gatherPorts(csCluster)
+	allowedCIDRS := getCanonicalAllowedCIDRs(isoNet, csCluster)
+	portsAndIDs := mapExistingFirewallRules(fwr)
+
+	// A note on the implementation here:
+	// Due to the lack of a `cidrlist` parameter in UpdateFirewallRule, we have to manage
+	// firewall rules for every item in the list of allowed CIDRs.
+	// See https://github.com/apache/cloudstack/issues/8382
+	if err := c.reconcileFirewallRulesForPorts(isoNet, fwr, ports, allowedCIDRS); err != nil {
+		return err
+	}
+
+	if err := c.cleanupObsoleteFirewallRules(portsAndIDs, ports); err != nil {
+		return err
+	}
+
+	// Update the list of allowed CIDRs in the status
+	isoNet.Status.APIServerLoadBalancer.AllowedCIDRs = allowedCIDRS
+
+	return nil
+}
+
+// gatherPorts collects all the ports that need firewall or load balancer rules.
+func gatherPorts(csCluster *infrav1.CloudStackCluster) []int {
+	ports := []int{int(csCluster.Spec.ControlPlaneEndpoint.Port)}
+	if len(csCluster.Spec.APIServerLoadBalancer.AdditionalPorts) > 0 {
+		ports = append(ports, csCluster.Spec.APIServerLoadBalancer.AdditionalPorts...)
+	}
+
+	return ports
+}
+
+// mapExistingFirewallRules creates a lookup map for existing firewall rules based on their port.
+func mapExistingFirewallRules(fwr []*cloudstack.FirewallRule) map[int]string {
 	portsAndIDs := make(map[int]string)
 	for _, rule := range fwr {
 		if rule.Startport == rule.Endport {
@@ -363,58 +431,84 @@ func (c *client) ReconcileFirewallRules(isoNet *infrav1.CloudStackIsolatedNetwor
 		}
 	}
 
-	ports := []int{int(csCluster.Spec.ControlPlaneEndpoint.Port)}
-	if len(csCluster.Spec.APIServerLoadBalancer.AdditionalPorts) > 0 {
-		ports = append(ports, csCluster.Spec.APIServerLoadBalancer.AdditionalPorts...)
-	}
+	return portsAndIDs
+}
 
-	// A note on the implementation here:
-	// Due to the lack of a `cidrlist` parameter in UpdateFirewallRule, we have to manage
-	// firewall rules for every item in the list of allowed CIDRs.
-	// See https://github.com/apache/cloudstack/issues/8382
-	allowedCIDRS := getCanonicalAllowedCIDRs(isoNet, csCluster)
+// reconcileFirewallRulesForPorts ensures the correct firewall rules exist for the given ports and CIDRs.
+func (c *client) reconcileFirewallRulesForPorts(isoNet *infrav1.CloudStackIsolatedNetwork, fwr []*cloudstack.FirewallRule, ports []int, allowedCIDRS []string) error {
 	for _, port := range ports {
-		foundCIDRs := make([]string, 0)
-		// Check if fw rule for port already exists
-		for _, rule := range fwr {
-			if rule.Startport == port && rule.Endport == port {
-				// If the port matches and the rule CIDR is not in allowedCIDRs, delete
-				if !slices.Contains(allowedCIDRS, rule.Cidrlist) {
-					success, err := c.DeleteFirewallRule(rule.Id)
-					if err != nil || !success {
-						return errors.Wrap(err, "deleting firewall rule")
-					}
-
-					continue
-				}
-				foundCIDRs = append(foundCIDRs, rule.Cidrlist)
-			}
+		foundCIDRs := findExistingFirewallCIDRs(fwr, port)
+		if err := c.deleteUnwantedFirewallRules(fwr, port, allowedCIDRS); err != nil {
+			return err
 		}
 
-		_, createCIDRs := capcstrings.SliceDiff(foundCIDRs, allowedCIDRS)
-		for _, cidr := range createCIDRs {
-			// create fw rule
-			if err := c.CreateFirewallRule(isoNet, port, cidr); err != nil {
-				return errors.Wrap(err, "creating firewall rule")
+		if err := c.createMissingFirewallRules(isoNet, port, allowedCIDRS, foundCIDRs); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// findExistingFirewallCIDRs finds existing CIDRs for a specific port in the current firewall ruleset.
+func findExistingFirewallCIDRs(fwr []*cloudstack.FirewallRule, port int) []string {
+	foundCIDRs := make([]string, 0)
+	for _, rule := range fwr {
+		if rule.Startport == port && rule.Endport == port {
+			foundCIDRs = append(foundCIDRs, rule.Cidrlist)
+		}
+	}
+
+	return foundCIDRs
+}
+
+// deleteUnwantedFirewallRules deletes firewall rules that should no longer exist.
+func (c *client) deleteUnwantedFirewallRules(fwr []*cloudstack.FirewallRule, port int, allowedCIDRS []string) error {
+	for _, rule := range fwr {
+		if rule.Startport == port && rule.Endport == port && !slices.Contains(allowedCIDRS, rule.Cidrlist) {
+			if err := c.deleteFirewallRuleByID(rule.Id); err != nil {
+				return err
 			}
 		}
 	}
 
-	// Delete any existing rules with a port that is no longer part of ports.
+	return nil
+}
+
+// createMissingFirewallRules creates any firewall rules that are missing.
+func (c *client) createMissingFirewallRules(isoNet *infrav1.CloudStackIsolatedNetwork, port int, allowedCIDRS, foundCIDRs []string) error {
+	_, createCIDRs := capcstrings.SliceDiff(foundCIDRs, allowedCIDRS)
+	for _, cidr := range createCIDRs {
+		if err := c.CreateFirewallRule(isoNet, port, cidr); err != nil {
+			return errors.Wrap(err, "creating firewall rule")
+		}
+	}
+
+	return nil
+}
+
+// cleanupObsoleteFirewallRules deletes firewall rules that are no longer needed.
+func (c *client) cleanupObsoleteFirewallRules(portsAndIDs map[int]string, ports []int) error {
 	for port, ruleID := range portsAndIDs {
 		if !slices.Contains(ports, port) {
-			success, err := c.DeleteFirewallRule(ruleID)
-			if err != nil {
-				return errors.Wrap(err, "deleting firewall rule")
-			}
-			if !success {
-				return errors.New("delete firewall rule returned unsuccessful")
+			if err := c.deleteFirewallRuleByID(ruleID); err != nil {
+				return err
 			}
 		}
 	}
 
-	// Update the list of allowed CIDRs in the status
-	isoNet.Status.APIServerLoadBalancer.AllowedCIDRs = allowedCIDRS
+	return nil
+}
+
+// deleteFirewallRuleByID wraps the firewall rule deletion logic with error handling.
+func (c *client) deleteFirewallRuleByID(ruleID string) error {
+	success, err := c.DeleteFirewallRule(ruleID)
+	if err != nil {
+		return errors.Wrap(err, "deleting firewall rule")
+	}
+	if !success {
+		return errors.New("delete firewall rule returned unsuccessful")
+	}
 
 	return nil
 }
