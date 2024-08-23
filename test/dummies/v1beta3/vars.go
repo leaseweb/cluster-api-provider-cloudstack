@@ -76,8 +76,7 @@ var ( // Declare exported dummy vars.
 	CSClusterTagKey         string
 	CSClusterTagVal         string
 	CSClusterTag            map[string]string
-	CreatedByCapcKey        string
-	CreatedByCapcVal        string
+	CreatedByCAPCTag        []csapi.Tags
 	FWRuleID                string
 	LBRuleID                string
 	LoadBalancerRuleIDs     []string
@@ -144,8 +143,6 @@ func SetDummyTagVars() {
 	CSClusterTagKey = "CAPC_cluster_" + string(CSCluster.ObjectMeta.UID)
 	CSClusterTagVal = "1"
 	CSClusterTag = map[string]string{CSClusterTagVal: CSClusterTagVal}
-	CreatedByCapcKey = "create_by_CAPC"
-	CreatedByCapcVal = ""
 	Tag1Key = "test_tag1"
 	Tag1Val = "arbitrary_value1"
 	Tag2Key = "test_tag2"
@@ -153,6 +150,12 @@ func SetDummyTagVars() {
 	Tag1 = map[string]string{Tag2Key: Tag2Val}
 	Tag2 = map[string]string{Tag2Key: Tag2Val}
 	Tags = map[string]string{Tag1Key: Tag1Val, Tag2Key: Tag2Val}
+	CreatedByCAPCTag = []csapi.Tags{
+		{
+			Key:   cloud.CreatedByCAPCTagName,
+			Value: "1",
+		},
+	}
 }
 
 func SetCSMachineOwner() {

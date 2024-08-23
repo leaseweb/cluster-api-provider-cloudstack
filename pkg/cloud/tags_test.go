@@ -103,7 +103,7 @@ var _ = Describe("Tag Unit Tests", func() {
 			// Verify tags
 			tags, err := client.GetTags(cloud.ResourceTypeNetwork, dummies.CSISONet1.Spec.ID)
 			Ω(err).Should(BeNil())
-			Ω(tags[dummies.CreatedByCapcKey]).Should(Equal(""))
+			Ω(tags[cloud.CreatedByCAPCTagName]).Should(Equal(""))
 			Ω(tags[dummies.CSClusterTagKey]).Should(Equal(""))
 		})
 
