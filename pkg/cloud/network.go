@@ -52,6 +52,7 @@ func (c *client) ResolveNetwork(net *infrav1.Network) (retErr error) {
 	} else { // Got netID from the network's name.
 		net.ID = netDetails.Id
 		net.Type = netDetails.Type
+		net.CIDR = netDetails.Cidr
 		net.Domain = netDetails.Networkdomain
 		return nil
 	}
@@ -67,6 +68,7 @@ func (c *client) ResolveNetwork(net *infrav1.Network) (retErr error) {
 	net.Name = netDetails.Name
 	net.ID = netDetails.Id
 	net.Type = netDetails.Type
+	net.CIDR = netDetails.Cidr
 	net.Domain = netDetails.Networkdomain
 	return nil
 }

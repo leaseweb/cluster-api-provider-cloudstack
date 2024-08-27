@@ -40,6 +40,10 @@ type CloudStackIsolatedNetworkSpec struct {
 	// FailureDomainName -- the FailureDomain the network is placed in.
 	FailureDomainName string `json:"failureDomainName"`
 
+	// CIDR is the IP range of the isolated network.
+	//+optional
+	CIDR string `json:"cidr,omitempty"`
+
 	// Domain is the DNS domain name used for all instances in the isolated network.
 	//+optional
 	Domain string `json:"domain,omitempty"`
@@ -47,9 +51,6 @@ type CloudStackIsolatedNetworkSpec struct {
 
 // CloudStackIsolatedNetworkStatus defines the observed state of CloudStackIsolatedNetwork
 type CloudStackIsolatedNetworkStatus struct {
-	// The CIDR of the assigned subnet.
-	CIDR string `json:"cidr,omitempty"`
-
 	// The outgoing IP of the isolated network.
 	PublicIPAddress string `json:"publicIPAddress,omitempty"`
 

@@ -18,6 +18,7 @@ package cloud
 
 import (
 	"fmt"
+	"net"
 	"slices"
 	"strconv"
 	"strings"
@@ -123,13 +124,24 @@ func (c *client) CreateIsolatedNetwork(fd *infrav1.CloudStackFailureDomain, isoN
 	if isoNet.Spec.Domain != "" {
 		p.SetNetworkdomain(isoNet.Spec.Domain)
 	}
+	if isoNet.Spec.CIDR != "" {
+		m, err := parseCIDR(isoNet.Spec.CIDR)
+		if err != nil {
+			return errors.Wrap(err, "parsing CIDR")
+		}
+		// Set the needed IP subnet config
+		p.SetGateway(m["gateway"])
+		p.SetNetmask(m["netmask"])
+		p.SetStartip(m["startip"])
+		p.SetEndip(m["endip"])
+	}
 	resp, err := c.cs.Network.CreateNetwork(p)
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 		return errors.Wrapf(err, "creating network with name %s", isoNet.Spec.Name)
 	}
 	isoNet.Spec.ID = resp.Id
-	isoNet.Status.CIDR = resp.Cidr
+	isoNet.Spec.CIDR = resp.Cidr
 
 	return c.AddCreatedByCAPCTag(ResourceTypeNetwork, isoNet.Spec.ID)
 }
@@ -201,7 +213,7 @@ func (c *client) GetIsolatedNetwork(isoNet *infrav1.CloudStackIsolatedNetwork) (
 			"expected 1 Network with name %s, but got %d", isoNet.Name, count))
 	} else { // Got netID from the network's name.
 		isoNet.Spec.ID = netDetails.Id
-		isoNet.Status.CIDR = netDetails.Cidr
+		isoNet.Spec.CIDR = netDetails.Cidr
 		return nil
 	}
 
@@ -213,7 +225,7 @@ func (c *client) GetIsolatedNetwork(isoNet *infrav1.CloudStackIsolatedNetwork) (
 		return multierror.Append(retErr, errors.Errorf("expected 1 Network with UUID %s, but got %d", isoNet.Spec.ID, count))
 	}
 	isoNet.Spec.Name = netDetails.Name
-	isoNet.Status.CIDR = netDetails.Cidr
+	isoNet.Spec.CIDR = netDetails.Cidr
 	return nil
 }
 
@@ -688,13 +700,15 @@ func (c *client) GetOrCreateIsolatedNetwork(
 	csCluster *infrav1.CloudStackCluster,
 ) error {
 	// Get or create the isolated network itself and resolve details into passed custom resources.
-	net := isoNet.Network()
-	if err := c.ResolveNetwork(net); err != nil { // Doesn't exist, create isolated network.
+	network := isoNet.Network()
+	if err := c.ResolveNetwork(network); err != nil { // Doesn't exist, create isolated network.
 		if err = c.CreateIsolatedNetwork(fd, isoNet); err != nil {
 			return errors.Wrap(err, "creating a new isolated network")
 		}
-	} else { // Network existed and was resolved. Set ID on isoNet CloudStackIsolatedNetwork in case it only had name set.
-		isoNet.Spec.ID = net.ID
+	} else {
+		// Network existed and was resolved. Set ID on isoNet CloudStackIsolatedNetwork in case it only had name set.
+		isoNet.Spec.ID = network.ID
+		isoNet.Spec.CIDR = network.CIDR
 	}
 
 	// Tag the created network.
@@ -909,4 +923,25 @@ func (c *client) DisassociatePublicIPAddress(ipAddressID string) error {
 	c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
 	return err
+}
+
+// parseCIDR parses a CIDR-formatted string into the components required for CreateNetwork.
+func parseCIDR(cidr string) (map[string]string, error) {
+	m := make(map[string]string, 4)
+
+	ip, ipnet, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse cidr %s: %s", cidr, err)
+	}
+
+	msk := ipnet.Mask
+	sub := ip.Mask(msk)
+
+	m["netmask"] = fmt.Sprintf("%d.%d.%d.%d", msk[0], msk[1], msk[2], msk[3])
+	m["gateway"] = fmt.Sprintf("%d.%d.%d.%d", sub[0], sub[1], sub[2], sub[3]+1)
+	m["startip"] = fmt.Sprintf("%d.%d.%d.%d", sub[0], sub[1], sub[2], sub[3]+2)
+	m["endip"] = fmt.Sprintf("%d.%d.%d.%d",
+		sub[0]+(0xff-msk[0]), sub[1]+(0xff-msk[1]), sub[2]+(0xff-msk[2]), sub[3]+(0xff-msk[3]-1))
+
+	return m, nil
 }

@@ -54,6 +54,10 @@ type Network struct {
 	// Cloudstack Network Name the cluster is built in.
 	Name string `json:"name"`
 
+	// CIDR is the IP address range of the network.
+	//+optional
+	CIDR string `json:"cidr,omitempty"`
+
 	// Domain is the DNS domain name used for all instances in the network.
 	//+optional
 	Domain string `json:"domain,omitempty"`

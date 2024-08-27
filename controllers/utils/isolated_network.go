@@ -32,17 +32,20 @@ func (r *ReconciliationRunner) IsoNetMetaName(name string) string {
 	return strings.TrimSuffix(str, "-")
 }
 
-// GenerateIsolatedNetwork of the passed name that's owned by the ReconciliationSubject.
-func (r *ReconciliationRunner) GenerateIsolatedNetwork(name, fdName, domainName string) CloudStackReconcilerMethod {
+// GenerateIsolatedNetwork creates a CloudStackIsolatedNetwork object that is owned by the ReconciliationSubject.
+func (r *ReconciliationRunner) GenerateIsolatedNetwork(network infrav1.Network, fdName string) CloudStackReconcilerMethod {
 	return func() (ctrl.Result, error) {
-		lowerName := strings.ToLower(name)
+		lowerName := strings.ToLower(network.Name)
 		metaName := fmt.Sprintf("%s-%s", r.CSCluster.Name, lowerName)
 		csIsoNet := &infrav1.CloudStackIsolatedNetwork{}
 		csIsoNet.ObjectMeta = r.NewChildObjectMeta(metaName)
 		csIsoNet.Spec.Name = lowerName
 		csIsoNet.Spec.FailureDomainName = fdName
-		if domainName != "" {
-			csIsoNet.Spec.Domain = strings.ToLower(domainName)
+		if network.CIDR != "" {
+			csIsoNet.Spec.CIDR = network.CIDR
+		}
+		if network.Domain != "" {
+			csIsoNet.Spec.Domain = strings.ToLower(network.Domain)
 		}
 		csIsoNet.Spec.ControlPlaneEndpoint.Host = r.CSCluster.Spec.ControlPlaneEndpoint.Host
 		csIsoNet.Spec.ControlPlaneEndpoint.Port = r.CSCluster.Spec.ControlPlaneEndpoint.Port

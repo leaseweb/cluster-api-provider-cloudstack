@@ -18,6 +18,7 @@ package v1beta3
 
 import (
 	"fmt"
+	"net"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -79,6 +80,12 @@ func (r *CloudStackCluster) ValidateCreate() (admission.Warnings, error) {
 					field.NewPath("spec", "failureDomains", "ACSEndpoint"),
 					"Name and Namespace are required"))
 			}
+			if fdSpec.Zone.Network.CIDR != "" {
+				if _, errMsg := ValidateCIDR(fdSpec.Zone.Network.CIDR); errMsg != nil {
+					errorList = append(errorList, field.Invalid(
+						field.NewPath("spec", "failureDomains", "Zone", "Network"), fdSpec.Zone.Network.CIDR, fmt.Sprintf("must be valid CIDR: %s", errMsg.Error())))
+				}
+			}
 			if fdSpec.Zone.Network.Domain != "" {
 				for _, errMsg := range validation.IsDNS1123Subdomain(fdSpec.Zone.Network.Domain) {
 					errorList = append(errorList, field.Invalid(
@@ -127,6 +134,13 @@ func (r *CloudStackCluster) ValidateUpdate(old runtime.Object) (admission.Warnin
 	return nil, webhookutil.AggregateObjErrors(r.GroupVersionKind().GroupKind(), r.Name, errorList)
 }
 
+// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
+func (r *CloudStackCluster) ValidateDelete() (admission.Warnings, error) {
+	cloudstackclusterlog.V(1).Info("entered validate delete webhook", "api resource name", r.Name)
+	// No deletion validations.  Deletion webhook not enabled.
+	return nil, nil
+}
+
 // ValidateFailureDomainUpdates verifies that at least one failure domain has not been deleted, and
 // failure domains that are held over have not been modified.
 func ValidateFailureDomainUpdates(oldFDs, newFDs []CloudStackFailureDomainSpec) *field.Error {
@@ -165,9 +179,11 @@ func FailureDomainsEqual(fd1, fd2 CloudStackFailureDomainSpec) bool {
 		fd1.Zone.Network.Domain == fd2.Zone.Network.Domain
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *CloudStackCluster) ValidateDelete() (admission.Warnings, error) {
-	cloudstackclusterlog.V(1).Info("entered validate delete webhook", "api resource name", r.Name)
-	// No deletion validations.  Deletion webhook not enabled.
-	return nil, nil
+// ValidateCIDR validates whether a CIDR matches the conventions expected by net.ParseCIDR
+func ValidateCIDR(cidr string) (*net.IPNet, error) {
+	_, net, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return nil, err
+	}
+	return net, nil
 }

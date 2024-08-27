@@ -851,7 +851,6 @@ var _ = Describe("Network", func() {
 			dummies.CSISONet1.Status.PublicIPID = dummies.PublicIPID
 			dummies.CSISONet1.Status.PublicIPAddress = "10.11.12.13/32"
 			dummies.CSISONet1.Status.APIServerLoadBalancer.IPAddressID = dummies.LoadBalancerIPID
-			dummies.CSISONet1.Status.CIDR = "10.1.0.0/24"
 			fs.EXPECT().NewListFirewallRulesParams().Return(&csapi.ListFirewallRulesParams{})
 			fs.EXPECT().ListFirewallRules(gomock.Any()).Return(
 				&csapi.ListFirewallRulesResponse{FirewallRules: []*csapi.FirewallRule{}}, nil)

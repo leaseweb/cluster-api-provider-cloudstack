@@ -818,6 +818,7 @@ func autoConvert_v1beta3_CloudStackIsolatedNetworkSpec_To_v1beta2_CloudStackIsol
 	out.ID = in.ID
 	out.ControlPlaneEndpoint = in.ControlPlaneEndpoint
 	out.FailureDomainName = in.FailureDomainName
+	// WARNING: in.CIDR requires manual conversion: does not exist in peer-type
 	// WARNING: in.Domain requires manual conversion: does not exist in peer-type
 	return nil
 }
@@ -830,7 +831,6 @@ func autoConvert_v1beta2_CloudStackIsolatedNetworkStatus_To_v1beta3_CloudStackIs
 }
 
 func autoConvert_v1beta3_CloudStackIsolatedNetworkStatus_To_v1beta2_CloudStackIsolatedNetworkStatus(in *v1beta3.CloudStackIsolatedNetworkStatus, out *CloudStackIsolatedNetworkStatus, s conversion.Scope) error {
-	// WARNING: in.CIDR requires manual conversion: does not exist in peer-type
 	// WARNING: in.PublicIPAddress requires manual conversion: does not exist in peer-type
 	out.PublicIPID = in.PublicIPID
 	out.LBRuleID = in.LBRuleID
@@ -1290,6 +1290,7 @@ func autoConvert_v1beta3_Network_To_v1beta2_Network(in *v1beta3.Network, out *Ne
 	out.ID = in.ID
 	out.Type = in.Type
 	out.Name = in.Name
+	// WARNING: in.CIDR requires manual conversion: does not exist in peer-type
 	// WARNING: in.Domain requires manual conversion: does not exist in peer-type
 	return nil
 }

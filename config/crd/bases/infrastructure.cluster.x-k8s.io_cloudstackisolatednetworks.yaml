@@ -188,6 +188,9 @@ spec:
             description: CloudStackIsolatedNetworkSpec defines the desired state of
               CloudStackIsolatedNetwork
             properties:
+              cidr:
+                description: CIDR is the IP range of the isolated network.
+                type: string
               controlPlaneEndpoint:
                 description: The kubernetes control plane endpoint.
                 properties:
@@ -240,9 +243,6 @@ spec:
                 - ipAddress
                 - ipAddressID
                 type: object
-              cidr:
-                description: The CIDR of the assigned subnet.
-                type: string
               loadBalancerRuleID:
                 description: |-
                   Deprecated: The ID of the lb rule used to assign VMs to the lb.
