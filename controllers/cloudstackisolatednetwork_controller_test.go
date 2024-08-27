@@ -38,6 +38,7 @@ var _ = Describe("CloudStackIsolatedNetworkReconciler", func() {
 		It("Should set itself to ready if there are no errors in calls to CloudStack methods.", func() {
 			mockCloudClient.EXPECT().GetOrCreateIsolatedNetwork(g.Any(), g.Any(), g.Any()).AnyTimes()
 			mockCloudClient.EXPECT().AddClusterTag(g.Any(), g.Any(), g.Any()).AnyTimes()
+			mockCloudClient.EXPECT().ReconcileLoadBalancer(g.Any(), g.Any(), g.Any()).AnyTimes()
 
 			// We use CSFailureDomain2 here because CSFailureDomain1 has an empty Spec.Zone.ID
 			dummies.CSISONet1.Spec.FailureDomainName = dummies.CSFailureDomain2.Spec.Name
