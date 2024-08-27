@@ -43,7 +43,7 @@ const (
 	CreatedByCAPCTagName                      = "created_by_CAPC"
 	ResourceTypeNetwork          ResourceType = "Network"
 	ResourceTypeIPAddress        ResourceType = "PublicIpAddress"
-	ResourceTypeLoadBalancerRule ResourceType = "LoadBalancerRule"
+	ResourceTypeLoadBalancerRule ResourceType = "LoadBalancer"
 	ResourceTypeFirewallRule     ResourceType = "FirewallRule"
 )
 
