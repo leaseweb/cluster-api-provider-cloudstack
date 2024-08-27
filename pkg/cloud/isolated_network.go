@@ -418,7 +418,7 @@ func (c *client) DeleteLoadBalancerRule(id string) (bool, error) {
 	}
 
 	if !isCAPCManaged {
-		return false, errors.Errorf("firewall rule with id %s is not managed by CAPC", id)
+		return false, errors.Errorf("load balancer rule with id %s is not managed by CAPC", id)
 	}
 
 	p := c.csAsync.LoadBalancer.NewDeleteLoadBalancerRuleParams(id)
