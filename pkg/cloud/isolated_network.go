@@ -35,6 +35,7 @@ import (
 
 type IsoNetworkIface interface {
 	GetOrCreateIsolatedNetwork(*infrav1.CloudStackFailureDomain, *infrav1.CloudStackIsolatedNetwork, *infrav1.CloudStackCluster) error
+	ReconcileLoadBalancer(*infrav1.CloudStackFailureDomain, *infrav1.CloudStackIsolatedNetwork, *infrav1.CloudStackCluster) error
 
 	AssociatePublicIPAddress(*infrav1.CloudStackFailureDomain, *infrav1.CloudStackIsolatedNetwork, *infrav1.CloudStackCluster) error
 	CreateEgressFirewallRules(*infrav1.CloudStackIsolatedNetwork) error
@@ -737,54 +738,61 @@ func (c *client) GetOrCreateIsolatedNetwork(
 		isoNet.Status.PublicIPID = publicAddresses.PublicIpAddresses[0].Id
 	}
 
-	if !annotations.IsExternallyManaged(csCluster) {
-		// Check/set ControlPlaneEndpoint port.
-		// Prefer csCluster ControlPlaneEndpoint port. Use isonet port if CP missing. Set to default if both missing.
-		if csCluster.Spec.ControlPlaneEndpoint.Port != 0 {
-			isoNet.Spec.ControlPlaneEndpoint.Port = csCluster.Spec.ControlPlaneEndpoint.Port
-		} else if isoNet.Spec.ControlPlaneEndpoint.Port != 0 { // Override default public port if endpoint port specified.
-			csCluster.Spec.ControlPlaneEndpoint.Port = isoNet.Spec.ControlPlaneEndpoint.Port
-		} else {
-			csCluster.Spec.ControlPlaneEndpoint.Port = 6443
-			isoNet.Spec.ControlPlaneEndpoint.Port = 6443
-		}
+	// Open the Isolated Network egress firewall.
+	return errors.Wrap(c.CreateEgressFirewallRules(isoNet), "opening the isolated network's egress firewall")
+}
 
-		// Associate public IP with the load balancer if enabled.
-		if csCluster.Spec.APIServerLoadBalancer.IsEnabled() {
-			// Associate Public IP with CloudStackIsolatedNetwork
-			if err := c.AssociatePublicIPAddress(fd, isoNet, csCluster); err != nil {
-				return errors.Wrapf(err, "associating public IP address to csCluster")
-			}
-		}
+// ReconcileLoadBalancer configures the API server load balancer.
+func (c *client) ReconcileLoadBalancer(
+	fd *infrav1.CloudStackFailureDomain,
+	isoNet *infrav1.CloudStackIsolatedNetwork,
+	csCluster *infrav1.CloudStackCluster,
+) error {
+	// Check/set ControlPlaneEndpoint port.
+	// Prefer csCluster ControlPlaneEndpoint port. Use isonet port if CP missing. Set to default if both missing.
+	if csCluster.Spec.ControlPlaneEndpoint.Port != 0 {
+		isoNet.Spec.ControlPlaneEndpoint.Port = csCluster.Spec.ControlPlaneEndpoint.Port
+	} else if isoNet.Spec.ControlPlaneEndpoint.Port != 0 { // Override default public port if endpoint port specified.
+		csCluster.Spec.ControlPlaneEndpoint.Port = isoNet.Spec.ControlPlaneEndpoint.Port
+	} else {
+		csCluster.Spec.ControlPlaneEndpoint.Port = 6443
+		isoNet.Spec.ControlPlaneEndpoint.Port = 6443
+	}
 
-		// Set up load balancing rules to map VM ports to Public IP ports.
-		if err := c.ReconcileLoadBalancerRules(isoNet, csCluster); err != nil {
-			return errors.Wrap(err, "reconciling load balancing rules")
-		}
-
-		// Set up firewall rules to manage access to load balancer public IP ports.
-		if err := c.ReconcileFirewallRules(isoNet, csCluster); err != nil {
-			return errors.Wrap(err, "reconciling firewall rules")
-		}
-
-		if !csCluster.Spec.APIServerLoadBalancer.IsEnabled() && isoNet.Status.APIServerLoadBalancer != nil {
-			// If the APIServerLoadBalancer has been disabled, release its IP unless it's the SNAT IP.
-			released, err := c.DisassociatePublicIPAddressIfNotInUse(isoNet.Status.APIServerLoadBalancer.IPAddressID)
-			if err != nil {
-				return errors.Wrap(err, "disassociating public IP address")
-			}
-			if released {
-				isoNet.Status.APIServerLoadBalancer.IPAddress = ""
-				isoNet.Status.APIServerLoadBalancer.IPAddressID = ""
-			}
-
-			// Clear the load balancer status as it is disabled.
-			isoNet.Status.APIServerLoadBalancer = nil
+	// Associate public IP with the load balancer if enabled.
+	if csCluster.Spec.APIServerLoadBalancer.IsEnabled() {
+		// Associate Public IP with CloudStackIsolatedNetwork
+		if err := c.AssociatePublicIPAddress(fd, isoNet, csCluster); err != nil {
+			return errors.Wrapf(err, "associating public IP address to csCluster")
 		}
 	}
 
-	// Open the Isolated Network egress firewall.
-	return errors.Wrap(c.CreateEgressFirewallRules(isoNet), "opening the isolated network's egress firewall")
+	// Set up load balancing rules to map VM ports to Public IP ports.
+	if err := c.ReconcileLoadBalancerRules(isoNet, csCluster); err != nil {
+		return errors.Wrap(err, "reconciling load balancing rules")
+	}
+
+	// Set up firewall rules to manage access to load balancer public IP ports.
+	if err := c.ReconcileFirewallRules(isoNet, csCluster); err != nil {
+		return errors.Wrap(err, "reconciling firewall rules")
+	}
+
+	if !csCluster.Spec.APIServerLoadBalancer.IsEnabled() && isoNet.Status.APIServerLoadBalancer != nil {
+		// If the APIServerLoadBalancer has been disabled, release its IP unless it's the SNAT IP.
+		released, err := c.DisassociatePublicIPAddressIfNotInUse(isoNet.Status.APIServerLoadBalancer.IPAddressID)
+		if err != nil {
+			return errors.Wrap(err, "disassociating public IP address")
+		}
+		if released {
+			isoNet.Status.APIServerLoadBalancer.IPAddress = ""
+			isoNet.Status.APIServerLoadBalancer.IPAddressID = ""
+		}
+
+		// Clear the load balancer status as it is disabled.
+		isoNet.Status.APIServerLoadBalancer = nil
+	}
+
+	return nil
 }
 
 // AssignVMToLoadBalancerRules assigns a VM instance to load balancing rules (specifying lb membership).

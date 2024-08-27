@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"reflect"
+	"sigs.k8s.io/cluster-api/util/annotations"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -72,14 +73,14 @@ func (reconciler *CloudStackIsoNetReconciler) Reconcile(ctx context.Context, req
 	return r.RunBaseReconciliationStages()
 }
 
-func (r *CloudStackIsoNetReconciliationRunner) Reconcile() (retRes ctrl.Result, retErr error) {
+func (r *CloudStackIsoNetReconciliationRunner) Reconcile() (ctrl.Result, error) {
 	controllerutil.AddFinalizer(r.ReconciliationSubject, infrav1.IsolatedNetworkFinalizer)
 
 	// Setup isolated network, endpoint, egress, and load balancing.
 	// Set endpoint of CloudStackCluster if it is not currently set. (uses patcher to do so)
 	csClusterPatcher, err := patch.NewHelper(r.CSCluster, r.K8sClient)
 	if err != nil {
-		return r.ReturnWrappedError(retErr, "setting up CloudStackCluster patcher")
+		return ctrl.Result{}, errors.Wrap(err, "setting up CloudStackCluster patcher")
 	}
 	if r.FailureDomain.Spec.Zone.ID == "" {
 		return r.RequeueWithMessage("Zone ID not resolved yet.")
@@ -91,8 +92,14 @@ func (r *CloudStackIsoNetReconciliationRunner) Reconcile() (retRes ctrl.Result, 
 	if err := r.CSUser.AddClusterTag(cloud.ResourceTypeNetwork, r.ReconciliationSubject.Spec.ID, r.CSCluster); err != nil {
 		return ctrl.Result{}, errors.Wrapf(err, "tagging network with id %s", r.ReconciliationSubject.Spec.ID)
 	}
+	// Configure API server load balancer, if enabled and this cluster is not externally managed.
+	if !annotations.IsExternallyManaged(r.CSCluster) {
+		if err := r.CSUser.ReconcileLoadBalancer(r.FailureDomain, r.ReconciliationSubject, r.CSCluster); err != nil {
+			return ctrl.Result{}, errors.Wrap(err, "reconciling load balancer")
+		}
+	}
 	if err := csClusterPatcher.Patch(r.RequestCtx, r.CSCluster); err != nil {
-		return r.ReturnWrappedError(err, "patching endpoint update to CloudStackCluster")
+		return ctrl.Result{}, errors.Wrap(err, "patching endpoint update to CloudStackCluster")
 	}
 
 	r.ReconciliationSubject.Status.Ready = true
