@@ -734,6 +734,16 @@ func (c *client) GetOrCreateIsolatedNetwork(
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 			return errors.New("unexpected amount of public outgoing ip addresses found")
 		}
+
+		if err := c.AddClusterTag(ResourceTypeIPAddress, publicAddresses.PublicIpAddresses[0].Id, csCluster); err != nil {
+			return errors.Wrapf(err,
+				"adding tag to public IP address with ID %s", publicAddresses.PublicIpAddresses[0].Id)
+		}
+		if err := c.AddCreatedByCAPCTag(ResourceTypeIPAddress, isoNet.Status.PublicIPID); err != nil {
+			return errors.Wrapf(err,
+				"adding tag to public IP address with ID %s", publicAddresses.PublicIpAddresses[0].Id)
+		}
+
 		isoNet.Status.PublicIPAddress = publicAddresses.PublicIpAddresses[0].Ipaddress
 		isoNet.Status.PublicIPID = publicAddresses.PublicIpAddresses[0].Id
 	}
