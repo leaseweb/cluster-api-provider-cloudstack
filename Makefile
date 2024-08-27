@@ -330,7 +330,7 @@ setup-envtest: $(SETUP_ENVTEST) ## Set up envtest (download kubebuilder assets)
 
 .PHONY: test
 test: ## Run tests.
-test: generate-deepcopy-test generate-manifest-test generate-mocks lint setup-envtest $(GINKGO)
+test: generate-deepcopy-test generate-manifest-test generate-mocks setup-envtest $(GINKGO)
 	@./hack/testing_ginkgo_recover_statements.sh --add # Add ginkgo.GinkgoRecover() statements to controllers.
 	@# The following is a slightly funky way to make sure the ginkgo statements are removed regardless the test results.
 	KUBEBUILDER_ASSETS="$(KUBEBUILDER_ASSETS)" $(GINKGO) --label-filter="!integ" --cover -coverprofile cover.out --covermode=atomic -v ./api/... ./controllers/... ./pkg/...; EXIT_STATUS=$$?;\
