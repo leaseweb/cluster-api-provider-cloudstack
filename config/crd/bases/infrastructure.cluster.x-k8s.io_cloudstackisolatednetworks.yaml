@@ -232,10 +232,13 @@ spec:
                     items:
                       type: string
                     type: array
-                  ip:
+                  ipAddress:
+                    type: string
+                  ipAddressID:
                     type: string
                 required:
-                - ip
+                - ipAddress
+                - ipAddressID
                 type: object
               cidr:
                 description: The CIDR of the assigned subnet.
@@ -250,8 +253,12 @@ spec:
                 items:
                   type: string
                 type: array
+              publicIPAddress:
+                description: The outgoing IP of the isolated network.
+                type: string
               publicIPID:
-                description: The CS public IP ID to use for the k8s endpoint.
+                description: The CS public IP ID of the outgoing IP of the isolated
+                  network.
                 type: string
               ready:
                 description: Ready indicates the readiness of this provider resource.

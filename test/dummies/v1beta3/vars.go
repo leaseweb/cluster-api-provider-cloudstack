@@ -80,6 +80,7 @@ var ( // Declare exported dummy vars.
 	FWRuleID                string
 	LBRuleID                string
 	LoadBalancerRuleIDs     []string
+	LoadBalancerIPID        string
 	PublicIPID              string
 	EndPointHost            string
 	EndPointPort            int32
@@ -282,6 +283,7 @@ func SetDummyCAPCClusterVars() {
 	ClusterName = "test-cluster"
 	EndPointHost = "EndpointHost"
 	EndPointPort = int32(5309)
+	LoadBalancerIPID = "FakeLoadBalancerPublicIPID"
 	PublicIPID = "FakePublicIPID"
 	ClusterNameSpace = "default"
 	ClusterLabel = map[string]string{clusterv1.ClusterNameLabel: ClusterName}

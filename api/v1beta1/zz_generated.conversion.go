@@ -519,6 +519,7 @@ func autoConvert_v1beta1_CloudStackIsolatedNetworkStatus_To_v1beta3_CloudStackIs
 
 func autoConvert_v1beta3_CloudStackIsolatedNetworkStatus_To_v1beta1_CloudStackIsolatedNetworkStatus(in *v1beta3.CloudStackIsolatedNetworkStatus, out *CloudStackIsolatedNetworkStatus, s conversion.Scope) error {
 	// WARNING: in.CIDR requires manual conversion: does not exist in peer-type
+	// WARNING: in.PublicIPAddress requires manual conversion: does not exist in peer-type
 	out.PublicIPID = in.PublicIPID
 	out.LBRuleID = in.LBRuleID
 	// WARNING: in.LoadBalancerRuleIDs requires manual conversion: does not exist in peer-type

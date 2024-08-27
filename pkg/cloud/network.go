@@ -37,7 +37,7 @@ const (
 	NetworkProtocolICMP = "icmp"
 )
 
-// ResolveNetwork fetches networks' ID, Name, and Type.
+// ResolveNetwork fetches networks' ID, Name, Type and Domain.
 func (c *client) ResolveNetwork(net *infrav1.Network) (retErr error) {
 	// TODO rebuild this to consider cases with networks in many zones.
 	// Use ListNetworks instead.
@@ -52,6 +52,7 @@ func (c *client) ResolveNetwork(net *infrav1.Network) (retErr error) {
 	} else { // Got netID from the network's name.
 		net.ID = netDetails.Id
 		net.Type = netDetails.Type
+		net.Domain = netDetails.Networkdomain
 		return nil
 	}
 
@@ -66,6 +67,7 @@ func (c *client) ResolveNetwork(net *infrav1.Network) (retErr error) {
 	net.Name = netDetails.Name
 	net.ID = netDetails.Id
 	net.Type = netDetails.Type
+	net.Domain = netDetails.Networkdomain
 	return nil
 }
 

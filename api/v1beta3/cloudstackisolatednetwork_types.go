@@ -50,7 +50,10 @@ type CloudStackIsolatedNetworkStatus struct {
 	// The CIDR of the assigned subnet.
 	CIDR string `json:"cidr,omitempty"`
 
-	// The CS public IP ID to use for the k8s endpoint.
+	// The outgoing IP of the isolated network.
+	PublicIPAddress string `json:"publicIPAddress,omitempty"`
+
+	// The CS public IP ID of the outgoing IP of the isolated network.
 	PublicIPID string `json:"publicIPID,omitempty"`
 
 	// Deprecated: The ID of the lb rule used to assign VMs to the lb.

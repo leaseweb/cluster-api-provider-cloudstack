@@ -78,8 +78,8 @@ var _ = Describe("Network", func() {
 			ns.EXPECT().GetNetworkByName(dummies.ISONet1.Name).Return(nil, 0, nil)
 			ns.EXPECT().GetNetworkByID(dummies.ISONet1.ID).Return(nil, 0, nil)
 			ns.EXPECT().CreateNetwork(gomock.Any()).Return(&csapi.CreateNetworkResponse{Id: dummies.ISONet1.ID}, nil)
-			as.EXPECT().NewListPublicIpAddressesParams().Return(&csapi.ListPublicIpAddressesParams{})
-			as.EXPECT().ListPublicIpAddresses(gomock.Any()).
+			as.EXPECT().NewListPublicIpAddressesParams().Return(&csapi.ListPublicIpAddressesParams{}).Times(2)
+			as.EXPECT().ListPublicIpAddresses(gomock.Any()).Times(2).
 				Return(&csapi.ListPublicIpAddressesResponse{
 					Count:             1,
 					PublicIpAddresses: []*csapi.PublicIpAddress{{Id: dummies.PublicIPID, Ipaddress: "fakeIP"}}}, nil)
@@ -140,6 +140,86 @@ var _ = Describe("Network", func() {
 				}}, nil)
 
 			Ω(client.GetOrCreateIsolatedNetwork(dummies.CSFailureDomain1, dummies.CSISONet1, dummies.CSCluster)).Should(Succeed())
+			Ω(dummies.CSISONet1.Status.PublicIPID).Should(Equal(dummies.PublicIPID))
+			Ω(dummies.CSISONet1.Status.APIServerLoadBalancer.IPAddressID).Should(Equal(dummies.PublicIPID))
+		})
+
+		It("resolves the existing isolated network", func() {
+			dummies.SetClusterSpecToNet(&dummies.ISONet1)
+
+			ns.EXPECT().GetNetworkByName(dummies.ISONet1.Name).Return(dummies.CAPCNetToCSAPINet(&dummies.ISONet1), 1, nil)
+			as.EXPECT().NewListPublicIpAddressesParams().Return(&csapi.ListPublicIpAddressesParams{}).Times(2)
+			// Load balancer uses a different IP than the isonet outgoing (SNAT) IP.
+			gomock.InOrder(
+				as.EXPECT().ListPublicIpAddresses(gomock.Any()).
+					Return(&csapi.ListPublicIpAddressesResponse{
+						Count:             1,
+						PublicIpAddresses: []*csapi.PublicIpAddress{{Id: dummies.PublicIPID, Ipaddress: "fakeIP"}}}, nil),
+				as.EXPECT().ListPublicIpAddresses(gomock.Any()).
+					Return(&csapi.ListPublicIpAddressesResponse{
+						Count:             1,
+						PublicIpAddresses: []*csapi.PublicIpAddress{{Id: dummies.LoadBalancerIPID, Ipaddress: "fakeLBIP"}}}, nil),
+			)
+			as.EXPECT().NewAssociateIpAddressParams().Return(&csapi.AssociateIpAddressParams{})
+			as.EXPECT().AssociateIpAddress(gomock.Any())
+			fs.EXPECT().NewCreateEgressFirewallRuleParams(dummies.ISONet1.ID, gomock.Any()).
+				DoAndReturn(func(networkid string, protocol string) *csapi.CreateEgressFirewallRuleParams {
+					p := &csapi.CreateEgressFirewallRuleParams{}
+					if protocol == "icmp" {
+						p.SetIcmptype(-1)
+						p.SetIcmpcode(-1)
+					}
+					return p
+				}).Times(3)
+
+			ruleParamsICMP := &csapi.CreateEgressFirewallRuleParams{}
+			ruleParamsICMP.SetIcmptype(-1)
+			ruleParamsICMP.SetIcmpcode(-1)
+			gomock.InOrder(
+				fs.EXPECT().CreateEgressFirewallRule(&csapi.CreateEgressFirewallRuleParams{}).
+					Return(&csapi.CreateEgressFirewallRuleResponse{}, nil).Times(2),
+				fs.EXPECT().CreateEgressFirewallRule(ruleParamsICMP).
+					Return(&csapi.CreateEgressFirewallRuleResponse{}, nil))
+
+			// Will add cluster tag once to Network and once to PublicIP.
+			createdByResponse := &csapi.ListTagsResponse{Tags: []*csapi.Tag{{Key: cloud.CreatedByCAPCTagName, Value: "1"}}}
+			gomock.InOrder(
+				rs.EXPECT().NewListTagsParams().Return(&csapi.ListTagsParams{}),
+				rs.EXPECT().ListTags(gomock.Any()).Return(createdByResponse, nil),
+				rs.EXPECT().NewListTagsParams().Return(&csapi.ListTagsParams{}),
+				rs.EXPECT().ListTags(gomock.Any()).Return(createdByResponse, nil))
+
+			// Will add creation and cluster tags to network and PublicIP.
+			rs.EXPECT().NewCreateTagsParams(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&csapi.CreateTagsParams{}).Times(3)
+			rs.EXPECT().CreateTags(gomock.Any()).Return(&csapi.CreateTagsResponse{}, nil).Times(3)
+
+			lbs.EXPECT().NewListLoadBalancerRulesParams().Return(&csapi.ListLoadBalancerRulesParams{})
+			lbs.EXPECT().ListLoadBalancerRules(gomock.Any()).Return(
+				&csapi.ListLoadBalancerRulesResponse{LoadBalancerRules: []*csapi.LoadBalancerRule{
+					{
+						Id:         dummies.LBRuleID,
+						Publicport: strconv.Itoa(int(dummies.EndPointPort)),
+						Tags:       dummies.CreatedByCAPCTag,
+					},
+				}}, nil)
+
+			fs.EXPECT().NewListFirewallRulesParams().Return(&csapi.ListFirewallRulesParams{})
+			fs.EXPECT().ListFirewallRules(gomock.Any()).Return(
+				&csapi.ListFirewallRulesResponse{FirewallRules: []*csapi.FirewallRule{
+					{
+						Id:        dummies.FWRuleID,
+						Cidrlist:  "0.0.0.0/0",
+						Startport: int(dummies.EndPointPort),
+						Endport:   int(dummies.EndPointPort),
+						Tags:      dummies.CreatedByCAPCTag,
+					},
+				}}, nil)
+
+			Ω(client.GetOrCreateIsolatedNetwork(dummies.CSFailureDomain1, dummies.CSISONet1, dummies.CSCluster)).Should(Succeed())
+			Ω(dummies.CSISONet1.Spec.ID).ShouldNot(BeEmpty())
+			Ω(dummies.CSISONet1.Status.PublicIPID).Should(Equal(dummies.PublicIPID))
+			Ω(dummies.CSISONet1.Status.APIServerLoadBalancer.IPAddressID).Should(Equal(dummies.LoadBalancerIPID))
 		})
 
 		It("fails to get network offering from CloudStack", func() {
@@ -298,6 +378,7 @@ var _ = Describe("Network", func() {
 	Context("The specific load balancer rule exists", func() {
 		It("resolves the rule's ID", func() {
 			dummies.CSISONet1.Status.PublicIPID = dummies.PublicIPID
+			dummies.CSISONet1.Status.APIServerLoadBalancer.IPAddressID = dummies.LoadBalancerIPID
 			lbs.EXPECT().NewListLoadBalancerRulesParams().Return(&csapi.ListLoadBalancerRulesParams{})
 			lbs.EXPECT().ListLoadBalancerRules(gomock.Any()).Return(
 				&csapi.ListLoadBalancerRulesResponse{LoadBalancerRules: []*csapi.LoadBalancerRule{
@@ -315,6 +396,7 @@ var _ = Describe("Network", func() {
 
 		It("when API load balancer additional ports are defined, resolves all rule IDs", func() {
 			dummies.CSISONet1.Status.PublicIPID = dummies.PublicIPID
+			dummies.CSISONet1.Status.APIServerLoadBalancer.IPAddressID = dummies.LoadBalancerIPID
 			dummies.CSCluster.Spec.APIServerLoadBalancer.AdditionalPorts = append(dummies.CSCluster.Spec.APIServerLoadBalancer.AdditionalPorts, 456)
 			lbs.EXPECT().NewListLoadBalancerRulesParams().Return(&csapi.ListLoadBalancerRulesParams{})
 			lbs.EXPECT().ListLoadBalancerRules(gomock.Any()).Return(
@@ -347,6 +429,7 @@ var _ = Describe("Network", func() {
 
 		It("doesn't create a new load balancer rule on create", func() {
 			dummies.CSISONet1.Status.PublicIPID = dummies.PublicIPID
+			dummies.CSISONet1.Status.APIServerLoadBalancer.IPAddressID = dummies.LoadBalancerIPID
 			lbs.EXPECT().NewListLoadBalancerRulesParams().Return(&csapi.ListLoadBalancerRulesParams{})
 			lbs.EXPECT().ListLoadBalancerRules(gomock.Any()).
 				Return(&csapi.ListLoadBalancerRulesResponse{
@@ -432,6 +515,7 @@ var _ = Describe("Network", func() {
 	Context("load balancer rule does not exist", func() {
 		It("calls CloudStack to create a new load balancer rule", func() {
 			dummies.CSISONet1.Status.PublicIPID = dummies.PublicIPID
+			dummies.CSISONet1.Status.APIServerLoadBalancer.IPAddressID = dummies.LoadBalancerIPID
 			lbs.EXPECT().NewListLoadBalancerRulesParams().Return(&csapi.ListLoadBalancerRulesParams{})
 			lbs.EXPECT().ListLoadBalancerRules(gomock.Any()).
 				Return(&csapi.ListLoadBalancerRulesResponse{
@@ -453,6 +537,7 @@ var _ = Describe("Network", func() {
 
 		It("when API load balancer additional ports are defined, creates additional rules", func() {
 			dummies.CSISONet1.Status.PublicIPID = dummies.PublicIPID
+			dummies.CSISONet1.Status.APIServerLoadBalancer.IPAddressID = dummies.LoadBalancerIPID
 			dummies.CSCluster.Spec.APIServerLoadBalancer.AdditionalPorts = append(dummies.CSCluster.Spec.APIServerLoadBalancer.AdditionalPorts, 456)
 			lbs.EXPECT().NewListLoadBalancerRulesParams().Return(&csapi.ListLoadBalancerRulesParams{})
 			lbs.EXPECT().ListLoadBalancerRules(gomock.Any()).Return(
@@ -482,6 +567,7 @@ var _ = Describe("Network", func() {
 
 		It("when API load balancer additional ports are defined, and a port is removed, deletes related rules", func() {
 			dummies.CSISONet1.Status.PublicIPID = dummies.PublicIPID
+			dummies.CSISONet1.Status.APIServerLoadBalancer.IPAddressID = dummies.LoadBalancerIPID
 			lbs.EXPECT().NewListLoadBalancerRulesParams().Return(&csapi.ListLoadBalancerRulesParams{})
 			lbs.EXPECT().ListLoadBalancerRules(gomock.Any()).Return(
 				&csapi.ListLoadBalancerRulesResponse{LoadBalancerRules: []*csapi.LoadBalancerRule{
@@ -518,6 +604,7 @@ var _ = Describe("Network", func() {
 
 		It("Fails to resolve load balancer rule details", func() {
 			dummies.CSISONet1.Status.PublicIPID = dummies.PublicIPID
+			dummies.CSISONet1.Status.APIServerLoadBalancer.IPAddressID = dummies.LoadBalancerIPID
 			lbs.EXPECT().NewListLoadBalancerRulesParams().Return(&csapi.ListLoadBalancerRulesParams{})
 			lbs.EXPECT().ListLoadBalancerRules(gomock.Any()).
 				Return(nil, fakeError)
@@ -528,6 +615,7 @@ var _ = Describe("Network", func() {
 
 		It("Fails to create a new load balancer rule.", func() {
 			dummies.CSISONet1.Status.PublicIPID = dummies.PublicIPID
+			dummies.CSISONet1.Status.APIServerLoadBalancer.IPAddressID = dummies.LoadBalancerIPID
 			lbs.EXPECT().NewListLoadBalancerRulesParams().Return(&csapi.ListLoadBalancerRulesParams{})
 			lbs.EXPECT().ListLoadBalancerRules(gomock.Any()).
 				Return(&csapi.ListLoadBalancerRulesResponse{
@@ -545,6 +633,7 @@ var _ = Describe("Network", func() {
 	Context("The specific firewall rule exists", func() {
 		It("does not call create or delete firewall rule", func() {
 			dummies.CSISONet1.Status.PublicIPID = dummies.PublicIPID
+			dummies.CSISONet1.Status.APIServerLoadBalancer.IPAddressID = dummies.LoadBalancerIPID
 			fs.EXPECT().NewListFirewallRulesParams().Return(&csapi.ListFirewallRulesParams{})
 			fs.EXPECT().ListFirewallRules(gomock.Any()).Return(
 				&csapi.ListFirewallRulesResponse{FirewallRules: []*csapi.FirewallRule{
@@ -564,6 +653,7 @@ var _ = Describe("Network", func() {
 
 		It("calls delete firewall rule when there is a rule with a cidr not in allowed cidr list", func() {
 			dummies.CSISONet1.Status.PublicIPID = dummies.PublicIPID
+			dummies.CSISONet1.Status.APIServerLoadBalancer.IPAddressID = dummies.LoadBalancerIPID
 			fs.EXPECT().NewListFirewallRulesParams().Return(&csapi.ListFirewallRulesParams{})
 			fs.EXPECT().ListFirewallRules(gomock.Any()).Return(
 				&csapi.ListFirewallRulesResponse{FirewallRules: []*csapi.FirewallRule{
@@ -605,6 +695,7 @@ var _ = Describe("Network", func() {
 
 		It("calls delete firewall rule when a port is removed from additionalPorts", func() {
 			dummies.CSISONet1.Status.PublicIPID = dummies.PublicIPID
+			dummies.CSISONet1.Status.APIServerLoadBalancer.IPAddressID = dummies.LoadBalancerIPID
 			// We pretend that port 6565 was removed from additionalPorts
 			fs.EXPECT().NewListFirewallRulesParams().Return(&csapi.ListFirewallRulesParams{})
 			fs.EXPECT().ListFirewallRules(gomock.Any()).Return(
@@ -649,6 +740,7 @@ var _ = Describe("Network", func() {
 	Context("The specific firewall rule does not exist", func() {
 		It("calls create firewall rule, does not call delete firewall rule", func() {
 			dummies.CSISONet1.Status.PublicIPID = dummies.PublicIPID
+			dummies.CSISONet1.Status.APIServerLoadBalancer.IPAddressID = dummies.LoadBalancerIPID
 			fs.EXPECT().NewListFirewallRulesParams().Return(&csapi.ListFirewallRulesParams{})
 			fs.EXPECT().ListFirewallRules(gomock.Any()).Return(
 				&csapi.ListFirewallRulesResponse{FirewallRules: []*csapi.FirewallRule{}}, nil)
@@ -672,6 +764,7 @@ var _ = Describe("Network", func() {
 
 		It("calls create and delete firewall rule when there is a rule with a cidr not in allowed cidr list", func() {
 			dummies.CSISONet1.Status.PublicIPID = dummies.PublicIPID
+			dummies.CSISONet1.Status.APIServerLoadBalancer.IPAddressID = dummies.LoadBalancerIPID
 			fs.EXPECT().NewListFirewallRulesParams().Return(&csapi.ListFirewallRulesParams{})
 			fs.EXPECT().ListFirewallRules(gomock.Any()).Return(
 				&csapi.ListFirewallRulesResponse{FirewallRules: []*csapi.FirewallRule{
@@ -717,6 +810,7 @@ var _ = Describe("Network", func() {
 		It("calls create firewall rule 2 times with additional port, does not call delete firewall rule", func() {
 			dummies.CSCluster.Spec.APIServerLoadBalancer.AdditionalPorts = append(dummies.CSCluster.Spec.APIServerLoadBalancer.AdditionalPorts, 456)
 			dummies.CSISONet1.Status.PublicIPID = dummies.PublicIPID
+			dummies.CSISONet1.Status.APIServerLoadBalancer.IPAddressID = dummies.LoadBalancerIPID
 			fs.EXPECT().NewListFirewallRulesParams().Return(&csapi.ListFirewallRulesParams{})
 			fs.EXPECT().ListFirewallRules(gomock.Any()).Return(
 				&csapi.ListFirewallRulesResponse{FirewallRules: []*csapi.FirewallRule{}}, nil)
@@ -750,11 +844,13 @@ var _ = Describe("Network", func() {
 			Ω(client.ReconcileFirewallRules(dummies.CSISONet1, dummies.CSCluster)).Should(Succeed())
 		})
 
-		It("with a list of allowed CIDRs, calls create firewall rule for each of them, and the isonet CIDR, does not call delete firewall rule", func() {
+		It("with a list of allowed CIDRs, calls create firewall rule for each of them, and the isonet outgoing IP, does not call delete firewall rule", func() {
 			dummies.CSCluster.Spec.APIServerLoadBalancer.AllowedCIDRs = append(dummies.CSCluster.Spec.APIServerLoadBalancer.AllowedCIDRs,
 				"192.168.1.0/24",
 				"192.168.2.0/24")
 			dummies.CSISONet1.Status.PublicIPID = dummies.PublicIPID
+			dummies.CSISONet1.Status.PublicIPAddress = "10.11.12.13/32"
+			dummies.CSISONet1.Status.APIServerLoadBalancer.IPAddressID = dummies.LoadBalancerIPID
 			dummies.CSISONet1.Status.CIDR = "10.1.0.0/24"
 			fs.EXPECT().NewListFirewallRulesParams().Return(&csapi.ListFirewallRulesParams{})
 			fs.EXPECT().ListFirewallRules(gomock.Any()).Return(
@@ -764,7 +860,7 @@ var _ = Describe("Network", func() {
 				fs.EXPECT().NewCreateFirewallRuleParams(gomock.Any(), gomock.Any()).DoAndReturn(func(publicipid, proto string) *csapi.CreateFirewallRuleParams {
 					p := &csapi.CreateFirewallRuleParams{}
 					p.SetIpaddressid(publicipid)
-					p.SetCidrlist([]string{"10.1.0.0/24"})
+					p.SetCidrlist([]string{"10.11.12.13/32"})
 					p.SetStartport(int(dummies.EndPointPort))
 					p.SetEndport(int(dummies.EndPointPort))
 					p.SetProtocol(proto)
@@ -808,6 +904,7 @@ var _ = Describe("Network", func() {
 				"192.168.2.0/24")
 			dummies.CSCluster.Spec.APIServerLoadBalancer.Enabled = pointer.Bool(false)
 			dummies.CSISONet1.Status.PublicIPID = dummies.PublicIPID
+			dummies.CSISONet1.Status.APIServerLoadBalancer.IPAddressID = dummies.LoadBalancerIPID
 
 			lbs.EXPECT().NewListLoadBalancerRulesParams().Return(&csapi.ListLoadBalancerRulesParams{})
 			lbs.EXPECT().ListLoadBalancerRules(gomock.Any()).Return(

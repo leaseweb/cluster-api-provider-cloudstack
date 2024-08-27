@@ -79,11 +79,12 @@ func (c *client) AssociatePublicIPAddress(
 		// control plane to update this.
 		csCluster.Spec.ControlPlaneEndpoint.Host = publicAddress.Ipaddress
 	}
-	isoNet.Status.PublicIPID = publicAddress.Id
+
 	if isoNet.Status.APIServerLoadBalancer == nil {
 		isoNet.Status.APIServerLoadBalancer = &infrav1.LoadBalancer{}
 	}
-	isoNet.Status.APIServerLoadBalancer.IP = publicAddress.Ipaddress
+	isoNet.Status.APIServerLoadBalancer.IPAddressID = publicAddress.Id
+	isoNet.Status.APIServerLoadBalancer.IPAddress = publicAddress.Ipaddress
 
 	// Check if the address is already associated with the network.
 	if publicAddress.Associatednetworkid == isoNet.Spec.ID {
@@ -219,7 +220,7 @@ func (c *client) GetIsolatedNetwork(isoNet *infrav1.CloudStackIsolatedNetwork) (
 // GetLoadBalancerRules fetches the current loadbalancer rules for the isolated network.
 func (c *client) GetLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNetwork) ([]*cloudstack.LoadBalancerRule, error) {
 	p := c.cs.LoadBalancer.NewListLoadBalancerRulesParams()
-	p.SetPublicipid(isoNet.Status.PublicIPID)
+	p.SetPublicipid(isoNet.Status.APIServerLoadBalancer.IPAddressID)
 	loadBalancerRules, err := c.cs.LoadBalancer.ListLoadBalancerRules(p)
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
@@ -231,8 +232,8 @@ func (c *client) GetLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNetwork)
 
 // ReconcileLoadBalancerRules manages the loadbalancer rules for all ports.
 func (c *client) ReconcileLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNetwork, csCluster *infrav1.CloudStackCluster) error {
-	// If there is no public IP address associated with the isonet, do nothing.
-	if isoNet.Status.PublicIPID == "" {
+	// If there is no public IP address associated with the load balancer, do nothing.
+	if isoNet.Status.APIServerLoadBalancer.IPAddressID == "" {
 		return nil
 	}
 
@@ -379,7 +380,7 @@ func (c *client) CreateLoadBalancerRule(isoNet *infrav1.CloudStackIsolatedNetwor
 	p.SetPublicport(port)
 	p.SetNetworkid(isoNet.Spec.ID)
 
-	p.SetPublicipid(isoNet.Status.PublicIPID)
+	p.SetPublicipid(isoNet.Status.APIServerLoadBalancer.IPAddressID)
 	p.SetProtocol(NetworkProtocolTCP)
 	// Do not open the firewall to the world, we'll manage that ourselves (unfortunately).
 	p.SetOpenfirewall(false)
@@ -421,7 +422,7 @@ func (c *client) DeleteLoadBalancerRule(id string) (bool, error) {
 // GetFirewallRules fetches the current firewall rules for the isolated network.
 func (c *client) GetFirewallRules(isoNet *infrav1.CloudStackIsolatedNetwork) ([]*cloudstack.FirewallRule, error) {
 	p := c.cs.Firewall.NewListFirewallRulesParams()
-	p.SetIpaddressid(isoNet.Status.PublicIPID)
+	p.SetIpaddressid(isoNet.Status.APIServerLoadBalancer.IPAddressID)
 	p.SetNetworkid(isoNet.Spec.ID)
 	fwRules, err := c.cs.Firewall.ListFirewallRules(p)
 	if err != nil {
@@ -434,8 +435,8 @@ func (c *client) GetFirewallRules(isoNet *infrav1.CloudStackIsolatedNetwork) ([]
 
 // ReconcileFirewallRules manages the firewall rules for all port <-> allowedCIDR combinations.
 func (c *client) ReconcileFirewallRules(isoNet *infrav1.CloudStackIsolatedNetwork, csCluster *infrav1.CloudStackCluster) error {
-	// If there is no public IP address associated with the isonet, do nothing.
-	if isoNet.Status.PublicIPID == "" {
+	// If there is no public IP address associated with the load balancer, do nothing.
+	if isoNet.Status.APIServerLoadBalancer.IPAddressID == "" {
 		return nil
 	}
 
@@ -606,7 +607,7 @@ func (c *client) deleteFirewallRuleByID(ruleID string) error {
 // CreateFirewallRule creates a firewall rule to allow traffic from a certain CIDR to a port on our public IP.
 func (c *client) CreateFirewallRule(isoNet *infrav1.CloudStackIsolatedNetwork, port int, cidr string) error {
 	cidrList := []string{cidr}
-	p := c.cs.Firewall.NewCreateFirewallRuleParams(isoNet.Status.PublicIPID, NetworkProtocolTCP)
+	p := c.cs.Firewall.NewCreateFirewallRuleParams(isoNet.Status.APIServerLoadBalancer.IPAddressID, NetworkProtocolTCP)
 	p.SetStartport(port)
 	p.SetEndport(port)
 	p.SetCidrlist(cidrList)
@@ -654,8 +655,9 @@ func getCanonicalAllowedCIDRs(isoNet *infrav1.CloudStackIsolatedNetwork, csClust
 	if csCluster.Spec.APIServerLoadBalancer != nil && len(csCluster.Spec.APIServerLoadBalancer.AllowedCIDRs) > 0 {
 		allowedCIDRs = append(allowedCIDRs, csCluster.Spec.APIServerLoadBalancer.AllowedCIDRs...)
 
-		if isoNet.Status.CIDR != "" {
-			allowedCIDRs = append(allowedCIDRs, isoNet.Status.CIDR)
+		// Add our own outgoing IP
+		if len(isoNet.Status.PublicIPAddress) > 0 {
+			allowedCIDRs = append(allowedCIDRs, isoNet.Status.PublicIPAddress)
 		}
 	} else {
 		// If there are no specific CIDRs defined to allow traffic from, default to allow all.
@@ -701,6 +703,26 @@ func (c *client) GetOrCreateIsolatedNetwork(
 		return errors.Wrapf(err, "tagging network with id %s", networkID)
 	}
 
+	// Set the outgoing IP details in the isolated network status.
+	if isoNet.Status.PublicIPID == "" || isoNet.Status.PublicIPAddress == "" {
+		// Look up the details of the isolated network SNAT IP (outgoing IP).
+		p := c.cs.Address.NewListPublicIpAddressesParams()
+		p.SetAllocatedonly(true)
+		p.SetZoneid(fd.Spec.Zone.ID)
+		p.SetAssociatednetworkid(networkID)
+		p.SetIssourcenat(true)
+		publicAddresses, err := c.cs.Address.ListPublicIpAddresses(p)
+		if err != nil {
+			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+			return errors.Wrap(err, "listing public ip addresses")
+		} else if publicAddresses.Count == 0 || publicAddresses.Count > 1 {
+			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+			return errors.New("unexpected amount of public outgoing ip addresses found")
+		}
+		isoNet.Status.PublicIPAddress = publicAddresses.PublicIpAddresses[0].Ipaddress
+		isoNet.Status.PublicIPID = publicAddresses.PublicIpAddresses[0].Id
+	}
+
 	if !annotations.IsExternallyManaged(csCluster) {
 		// Check/set ControlPlaneEndpoint port.
 		// Prefer csCluster ControlPlaneEndpoint port. Use isonet port if CP missing. Set to default if both missing.
@@ -731,14 +753,15 @@ func (c *client) GetOrCreateIsolatedNetwork(
 			return errors.Wrap(err, "reconciling firewall rules")
 		}
 
-		if !csCluster.Spec.APIServerLoadBalancer.IsEnabled() {
+		if !csCluster.Spec.APIServerLoadBalancer.IsEnabled() && isoNet.Status.APIServerLoadBalancer != nil {
 			// If the APIServerLoadBalancer has been disabled, release its IP unless it's the SNAT IP.
-			released, err := c.DisassociatePublicIPAddressIfNotInUse(isoNet)
+			released, err := c.DisassociatePublicIPAddressIfNotInUse(isoNet.Status.APIServerLoadBalancer.IPAddressID)
 			if err != nil {
 				return errors.Wrap(err, "disassociating public IP address")
 			}
 			if released {
-				isoNet.Status.PublicIPID = ""
+				isoNet.Status.APIServerLoadBalancer.IPAddress = ""
+				isoNet.Status.APIServerLoadBalancer.IPAddressID = ""
 			}
 
 			// Clear the load balancer status as it is disabled.
@@ -793,15 +816,29 @@ func (c *client) DeleteNetwork(net infrav1.Network) error {
 func (c *client) DisposeIsoNetResources(
 	isoNet *infrav1.CloudStackIsolatedNetwork,
 	csCluster *infrav1.CloudStackCluster,
-) (retError error) {
+) error {
+	// Release the load balancer IP, if the load balancer is enabled and its IP is different from the isonet public IP.
+	if csCluster.Spec.APIServerLoadBalancer.IsEnabled() && isoNet.Status.APIServerLoadBalancer.IPAddressID != "" &&
+		isoNet.Status.APIServerLoadBalancer.IPAddressID != isoNet.Status.PublicIPID {
+		if err := c.DeleteClusterTag(ResourceTypeIPAddress, isoNet.Status.APIServerLoadBalancer.IPAddressID, csCluster); err != nil {
+			return err
+		}
+		if _, err := c.DisassociatePublicIPAddressIfNotInUse(isoNet.Status.APIServerLoadBalancer.IPAddressID); err != nil {
+			return err
+		}
+	}
+
+	// Release the isolated network public IP.
 	if isoNet.Status.PublicIPID != "" {
 		if err := c.DeleteClusterTag(ResourceTypeIPAddress, isoNet.Status.PublicIPID, csCluster); err != nil {
 			return err
 		}
-		if _, err := c.DisassociatePublicIPAddressIfNotInUse(isoNet); err != nil {
+		if _, err := c.DisassociatePublicIPAddressIfNotInUse(isoNet.Status.PublicIPID); err != nil {
 			return err
 		}
 	}
+
+	// Remove this cluster's tag from the isolated network.
 	if err := c.RemoveClusterTagFromNetwork(csCluster, *isoNet.Network()); err != nil {
 		return err
 	}
@@ -830,19 +867,22 @@ func (c *client) DeleteNetworkIfNotInUse(net infrav1.Network) (retError error) {
 	return nil
 }
 
-// DisassociatePublicIPAddressIfNotInUse removes a CloudStack public IP association from passed isolated network
-// if it is no longer in use (indicated by in use tags). It returns a bool indicating whether or not an IP was actually
+// DisassociatePublicIPAddressIfNotInUse removes a CloudStack public IP association from an isolated network
+// if it is no longer in use (indicated by in use tags). It returns a bool indicating whether an IP was actually
 // disassociated, and an error in case an error occurred.
-func (c *client) DisassociatePublicIPAddressIfNotInUse(isoNet *infrav1.CloudStackIsolatedNetwork) (bool, error) {
-	if tagsAllowDisposal, err := c.DoClusterTagsAllowDisposal(ResourceTypeIPAddress, isoNet.Status.PublicIPID); err != nil {
+func (c *client) DisassociatePublicIPAddressIfNotInUse(ipAddressID string) (bool, error) {
+	if ipAddressID == "" {
+		return false, errors.New("ipAddressID cannot be empty")
+	}
+	if tagsAllowDisposal, err := c.DoClusterTagsAllowDisposal(ResourceTypeIPAddress, ipAddressID); err != nil {
 		return false, err
-	} else if publicIP, _, err := c.cs.Address.GetPublicIpAddressByID(isoNet.Status.PublicIPID); err != nil {
+	} else if publicIP, _, err := c.cs.Address.GetPublicIpAddressByID(ipAddressID); err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 		return false, err
 	} else if publicIP == nil || publicIP.Issourcenat { // Can't disassociate an address if it's the source NAT address.
 		return false, nil
 	} else if tagsAllowDisposal {
-		if err := c.DisassociatePublicIPAddress(isoNet); err != nil {
+		if err := c.DisassociatePublicIPAddress(ipAddressID); err != nil {
 			return false, err
 		}
 
@@ -852,17 +892,21 @@ func (c *client) DisassociatePublicIPAddressIfNotInUse(isoNet *infrav1.CloudStac
 	return false, nil
 }
 
-// DisassociatePublicIPAddress removes a CloudStack public IP association from passed isolated network.
-func (c *client) DisassociatePublicIPAddress(isoNet *infrav1.CloudStackIsolatedNetwork) (retErr error) {
-	// Remove the CAPC creation tag, so it won't be there the next time this address is associated.
-	retErr = c.DeleteCreatedByCAPCTag(ResourceTypeIPAddress, isoNet.Status.PublicIPID)
-	if retErr != nil {
-		return retErr
+// DisassociatePublicIPAddress removes a CloudStack public IP association an isolated network.
+func (c *client) DisassociatePublicIPAddress(ipAddressID string) error {
+	if ipAddressID == "" {
+		return errors.New("ipAddressID cannot be empty")
 	}
 
-	p := c.cs.Address.NewDisassociateIpAddressParams(isoNet.Status.PublicIPID)
-	_, retErr = c.cs.Address.DisassociateIpAddress(p)
-	c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(retErr)
+	// Remove the CAPC creation tag, so it won't be there the next time this address is associated.
+	err := c.DeleteCreatedByCAPCTag(ResourceTypeIPAddress, ipAddressID)
+	if err != nil {
+		return err
+	}
 
-	return retErr
+	p := c.cs.Address.NewDisassociateIpAddressParams(ipAddressID)
+	_, err = c.cs.Address.DisassociateIpAddress(p)
+	c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
+	return err
 }

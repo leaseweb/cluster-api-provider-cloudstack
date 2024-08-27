@@ -18,7 +18,8 @@ package v1beta3
 
 // LoadBalancer represents basic information about the associated OpenStack LoadBalancer.
 type LoadBalancer struct {
-	IP string `json:"ip"`
+	IPAddress   string `json:"ipAddress"`
+	IPAddressID string `json:"ipAddressID"`
 	//+optional
 	AllowedCIDRs []string `json:"allowedCIDRs,omitempty"`
 }
