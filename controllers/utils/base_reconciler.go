@@ -491,7 +491,6 @@ func (r *ReconciliationRunner) GetObjectByName(name string, target client.Object
 		if len(nameGetter) == 1 {
 			name = nameGetter[0]()
 		}
-		name = strings.ToLower(name)
 		objectKey := client.ObjectKey{Name: strings.ToLower(name), Namespace: r.Request.Namespace}
 		return r.ReturnWrappedError(
 			client.IgnoreNotFound(r.K8sClient.Get(r.RequestCtx, objectKey, target)), "failed to get object")
