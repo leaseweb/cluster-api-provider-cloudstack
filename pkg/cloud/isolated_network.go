@@ -805,7 +805,8 @@ func (c *client) ReconcileLoadBalancer(
 	return nil
 }
 
-// AssignVMToLoadBalancerRules assigns a VM instance to load balancing rules (specifying lb membership).
+// AssignVMToLoadBalancerRules assigns a VM to the load balancing rules listed in isoNet.Status.LoadBalancerRuleIDs,
+// if not already assigned.
 func (c *client) AssignVMToLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNetwork, instanceID string) error {
 	var found bool
 	for _, lbRuleID := range isoNet.Status.LoadBalancerRuleIDs {
@@ -815,11 +816,14 @@ func (c *client) AssignVMToLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedN
 			c.cs.LoadBalancer.NewListLoadBalancerRuleInstancesParams(lbRuleID))
 		if err != nil {
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
 			return err
 		}
 		for _, instance := range lbRuleInstances.LoadBalancerRuleInstances {
-			if instance.Id == instanceID { // Already assigned to load balancer..
+			if instance.Id == instanceID { // Already assigned to load balancer.
 				found = true
+
+				break
 			}
 		}
 
@@ -829,6 +833,7 @@ func (c *client) AssignVMToLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedN
 			p.SetVirtualmachineids([]string{instanceID})
 			if _, err = c.cs.LoadBalancer.AssignToLoadBalancerRule(p); err != nil {
 				c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
 				return err
 			}
 		}
