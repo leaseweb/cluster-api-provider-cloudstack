@@ -78,11 +78,6 @@ var _ = Describe("Network", func() {
 			ns.EXPECT().GetNetworkByName(dummies.ISONet1.Name).Return(nil, 0, nil)
 			ns.EXPECT().GetNetworkByID(dummies.ISONet1.ID).Return(nil, 0, nil)
 			ns.EXPECT().CreateNetwork(gomock.Any()).Return(&csapi.CreateNetworkResponse{Id: dummies.ISONet1.ID}, nil)
-			as.EXPECT().NewListPublicIpAddressesParams().Return(&csapi.ListPublicIpAddressesParams{})
-			as.EXPECT().ListPublicIpAddresses(gomock.Any()).
-				Return(&csapi.ListPublicIpAddressesResponse{
-					Count:             1,
-					PublicIpAddresses: []*csapi.PublicIpAddress{{Id: dummies.PublicIPID, Ipaddress: "fakeIP"}}}, nil)
 
 			fs.EXPECT().NewCreateEgressFirewallRuleParams(dummies.ISONet1.ID, gomock.Any()).
 				DoAndReturn(func(networkid string, protocol string) *csapi.CreateEgressFirewallRuleParams {
@@ -103,29 +98,19 @@ var _ = Describe("Network", func() {
 				fs.EXPECT().CreateEgressFirewallRule(ruleParamsICMP).
 					Return(&csapi.CreateEgressFirewallRuleResponse{}, nil))
 
-			// Will add cluster tag once to Network and once to PublicIP.
-			createdByResponse := &csapi.ListTagsResponse{Tags: []*csapi.Tag{{Key: cloud.CreatedByCAPCTagName, Value: "1"}}}
-			rs.EXPECT().NewListTagsParams().Return(&csapi.ListTagsParams{}).Times(2)
-			rs.EXPECT().ListTags(gomock.Any()).Return(createdByResponse, nil).Times(2)
-
-			// Will add creation and cluster tags to network and PublicIP.
+			// Will add creation tags to network.
 			rs.EXPECT().NewCreateTagsParams(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(&csapi.CreateTagsParams{}).Times(4)
-			rs.EXPECT().CreateTags(gomock.Any()).Return(&csapi.CreateTagsResponse{}, nil).Times(4)
+				Return(&csapi.CreateTagsParams{})
+			rs.EXPECT().CreateTags(gomock.Any()).Return(&csapi.CreateTagsResponse{}, nil)
 
 			Ω(client.GetOrCreateIsolatedNetwork(dummies.CSFailureDomain1, dummies.CSISONet1, dummies.CSCluster)).Should(Succeed())
-			Ω(dummies.CSISONet1.Status.PublicIPID).Should(Equal(dummies.PublicIPID))
+			Ω(dummies.CSISONet1.Spec.ID).ShouldNot(BeEmpty())
 		})
 
 		It("resolves the existing isolated network", func() {
 			dummies.SetClusterSpecToNet(&dummies.ISONet1)
 
 			ns.EXPECT().GetNetworkByName(dummies.ISONet1.Name).Return(dummies.CAPCNetToCSAPINet(&dummies.ISONet1), 1, nil)
-			as.EXPECT().NewListPublicIpAddressesParams().Return(&csapi.ListPublicIpAddressesParams{})
-			as.EXPECT().ListPublicIpAddresses(gomock.Any()).
-				Return(&csapi.ListPublicIpAddressesResponse{
-					Count:             1,
-					PublicIpAddresses: []*csapi.PublicIpAddress{{Id: dummies.PublicIPID, Ipaddress: "fakeIP"}}}, nil)
 
 			fs.EXPECT().NewCreateEgressFirewallRuleParams(dummies.ISONet1.ID, gomock.Any()).
 				DoAndReturn(func(networkid string, protocol string) *csapi.CreateEgressFirewallRuleParams {
@@ -146,19 +131,8 @@ var _ = Describe("Network", func() {
 				fs.EXPECT().CreateEgressFirewallRule(ruleParamsICMP).
 					Return(&csapi.CreateEgressFirewallRuleResponse{}, nil))
 
-			// Will add cluster tag once to Network and once to PublicIP.
-			createdByResponse := &csapi.ListTagsResponse{Tags: []*csapi.Tag{{Key: cloud.CreatedByCAPCTagName, Value: "1"}}}
-			rs.EXPECT().NewListTagsParams().Return(&csapi.ListTagsParams{}).Times(2)
-			rs.EXPECT().ListTags(gomock.Any()).Return(createdByResponse, nil).Times(2)
-
-			// Will add creation and cluster tags to network and PublicIP.
-			rs.EXPECT().NewCreateTagsParams(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(&csapi.CreateTagsParams{}).Times(3)
-			rs.EXPECT().CreateTags(gomock.Any()).Return(&csapi.CreateTagsResponse{}, nil).Times(3)
-
 			Ω(client.GetOrCreateIsolatedNetwork(dummies.CSFailureDomain1, dummies.CSISONet1, dummies.CSCluster)).Should(Succeed())
 			Ω(dummies.CSISONet1.Spec.ID).ShouldNot(BeEmpty())
-			Ω(dummies.CSISONet1.Status.PublicIPID).Should(Equal(dummies.PublicIPID))
 		})
 
 		It("fails to get network offering from CloudStack", func() {
@@ -226,14 +200,14 @@ var _ = Describe("Network", func() {
 	})
 
 	Context("in an isolated network with public IPs available", func() {
-		It("will resolve public IP details given an endpoint spec", func() {
+		It("will resolve public IP details given an endpoint host", func() {
 			as.EXPECT().NewListPublicIpAddressesParams().Return(&csapi.ListPublicIpAddressesParams{})
 			as.EXPECT().ListPublicIpAddresses(gomock.Any()).
 				Return(&csapi.ListPublicIpAddressesResponse{
 					Count:             1,
 					PublicIpAddresses: []*csapi.PublicIpAddress{{Id: "PublicIPID", Ipaddress: ipAddress}},
 				}, nil)
-			publicIPAddress, err := client.GetPublicIP(dummies.CSFailureDomain1, dummies.CSCluster)
+			publicIPAddress, err := client.GetPublicIP(dummies.CSFailureDomain1, dummies.CSCluster.Spec.ControlPlaneEndpoint.Host)
 			Ω(err).Should(Succeed())
 			Ω(publicIPAddress).ShouldNot(BeNil())
 			Ω(publicIPAddress.Ipaddress).Should(Equal(ipAddress))
@@ -248,7 +222,7 @@ var _ = Describe("Network", func() {
 					Count:             0,
 					PublicIpAddresses: []*csapi.PublicIpAddress{},
 				}, nil)
-			publicIPAddress, err := client.GetPublicIP(dummies.CSFailureDomain1, dummies.CSCluster)
+			publicIPAddress, err := client.GetPublicIP(dummies.CSFailureDomain1, dummies.CSCluster.Spec.ControlPlaneEndpoint.Host)
 			Ω(publicIPAddress).Should(BeNil())
 			Ω(err.Error()).Should(ContainSubstring("no public addresses found in available networks"))
 		})
@@ -269,7 +243,7 @@ var _ = Describe("Network", func() {
 							Associatednetworkid: "1",
 						}},
 				}, nil)
-			publicIPAddress, err := client.GetPublicIP(dummies.CSFailureDomain1, dummies.CSCluster)
+			publicIPAddress, err := client.GetPublicIP(dummies.CSFailureDomain1, dummies.CSCluster.Spec.ControlPlaneEndpoint.Host)
 			Ω(publicIPAddress).Should(BeNil())
 			Ω(err.Error()).Should(ContainSubstring("all Public IP Address(es) found were already allocated"))
 		})
@@ -286,18 +260,14 @@ var _ = Describe("Network", func() {
 			aip := &csapi.AssociateIpAddressParams{}
 			as.EXPECT().NewAssociateIpAddressParams().Return(aip)
 			as.EXPECT().AssociateIpAddress(aip).Return(&csapi.AssociateIpAddressResponse{}, nil)
-			// Will add cluster tag once to Network and once to PublicIP.
-			createdByResponse := &csapi.ListTagsResponse{Tags: []*csapi.Tag{{Key: cloud.CreatedByCAPCTagName, Value: "1"}}}
-			gomock.InOrder(
-				rs.EXPECT().NewListTagsParams().Return(&csapi.ListTagsParams{}),
-				rs.EXPECT().ListTags(gomock.Any()).Return(createdByResponse, nil))
 
 			// Will add creation and cluster tags to network and PublicIP.
 			rs.EXPECT().NewCreateTagsParams(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(&csapi.CreateTagsParams{}).Times(2)
-			rs.EXPECT().CreateTags(gomock.Any()).Return(&csapi.CreateTagsResponse{}, nil).Times(2)
+				Return(&csapi.CreateTagsParams{})
+			rs.EXPECT().CreateTags(gomock.Any()).Return(&csapi.CreateTagsResponse{}, nil)
 
-			Ω(client.AssociatePublicIPAddress(dummies.CSFailureDomain1, dummies.CSISONet1, dummies.CSCluster)).Should(Succeed())
+			_, err := client.AssociatePublicIPAddress(dummies.CSFailureDomain1, dummies.CSISONet1, dummies.CSCluster.Spec.ControlPlaneEndpoint.Host)
+			Ω(err).Should(Succeed())
 		})
 
 		It("Failure Associating Public IP to Isolated network", func() {
@@ -310,29 +280,25 @@ var _ = Describe("Network", func() {
 			aip := &csapi.AssociateIpAddressParams{}
 			as.EXPECT().NewAssociateIpAddressParams().Return(aip)
 			as.EXPECT().AssociateIpAddress(aip).Return(nil, errors.New("Failed to allocate IP address"))
-			Ω(client.AssociatePublicIPAddress(dummies.CSFailureDomain1, dummies.CSISONet1, dummies.CSCluster).Error()).Should(ContainSubstring("associating public IP address with ID"))
+
+			_, err := client.AssociatePublicIPAddress(dummies.CSFailureDomain1, dummies.CSISONet1, dummies.CSCluster.Spec.ControlPlaneEndpoint.Host)
+			Ω(err.Error()).Should(ContainSubstring("associating public IP address with ID"))
 		})
 	})
 
 	Context("With an enabled API load balancer", func() {
 		It("reconciles the required load balancer and firewall rules", func() {
 			dummies.SetClusterSpecToNet(&dummies.ISONet1)
+			dummies.CSISONet1.Status.APIServerLoadBalancer.IPAddressID = dummies.LoadBalancerIPID
 
-			as.EXPECT().NewListPublicIpAddressesParams().Return(&csapi.ListPublicIpAddressesParams{})
-			as.EXPECT().ListPublicIpAddresses(gomock.Any()).
-				Return(&csapi.ListPublicIpAddressesResponse{
-					Count:             1,
-					PublicIpAddresses: []*csapi.PublicIpAddress{{Id: dummies.LoadBalancerIPID, Ipaddress: "fakeLBIP"}}}, nil)
-			as.EXPECT().NewAssociateIpAddressParams().Return(&csapi.AssociateIpAddressParams{})
-			as.EXPECT().AssociateIpAddress(gomock.Any())
-
-			createdByResponse := &csapi.ListTagsResponse{Tags: []*csapi.Tag{{Key: cloud.CreatedByCAPCTagName, Value: "1"}}}
-			rs.EXPECT().NewListTagsParams().Return(&csapi.ListTagsParams{})
-			rs.EXPECT().ListTags(gomock.Any()).Return(createdByResponse, nil)
-
-			rs.EXPECT().NewCreateTagsParams(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(&csapi.CreateTagsParams{}).Times(2)
-			rs.EXPECT().CreateTags(gomock.Any()).Return(&csapi.CreateTagsResponse{}, nil).Times(2)
+			/*
+				as.EXPECT().NewListPublicIpAddressesParams().Return(&csapi.ListPublicIpAddressesParams{})
+				as.EXPECT().ListPublicIpAddresses(gomock.Any()).
+					Return(&csapi.ListPublicIpAddressesResponse{
+						Count:             1,
+						PublicIpAddresses: []*csapi.PublicIpAddress{{Id: dummies.LoadBalancerIPID, Ipaddress: "fakeLBIP"}}}, nil)
+				as.EXPECT().NewAssociateIpAddressParams().Return(&csapi.AssociateIpAddressParams{})
+				as.EXPECT().AssociateIpAddress(gomock.Any())*/
 
 			lbs.EXPECT().NewListLoadBalancerRulesParams().Return(&csapi.ListLoadBalancerRulesParams{})
 			lbs.EXPECT().ListLoadBalancerRules(gomock.Any()).Return(

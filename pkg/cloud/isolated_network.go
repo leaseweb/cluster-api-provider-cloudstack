@@ -29,7 +29,6 @@ import (
 	utilsnet "k8s.io/utils/net"
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	capcstrings "sigs.k8s.io/cluster-api-provider-cloudstack/pkg/utils/strings"
-	"sigs.k8s.io/cluster-api/util/annotations"
 	"sigs.k8s.io/cluster-api/util/record"
 )
 
@@ -37,9 +36,9 @@ type IsoNetworkIface interface {
 	GetOrCreateIsolatedNetwork(*infrav1.CloudStackFailureDomain, *infrav1.CloudStackIsolatedNetwork, *infrav1.CloudStackCluster) error
 	ReconcileLoadBalancer(*infrav1.CloudStackFailureDomain, *infrav1.CloudStackIsolatedNetwork, *infrav1.CloudStackCluster) error
 
-	AssociatePublicIPAddress(*infrav1.CloudStackFailureDomain, *infrav1.CloudStackIsolatedNetwork, *infrav1.CloudStackCluster) error
+	AssociatePublicIPAddress(*infrav1.CloudStackFailureDomain, *infrav1.CloudStackIsolatedNetwork, string) (*cloudstack.PublicIpAddress, error)
 	CreateEgressFirewallRules(*infrav1.CloudStackIsolatedNetwork) error
-	GetPublicIP(*infrav1.CloudStackFailureDomain, *infrav1.CloudStackCluster) (*cloudstack.PublicIpAddress, error)
+	GetPublicIP(*infrav1.CloudStackFailureDomain, string) (*cloudstack.PublicIpAddress, error)
 	GetLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNetwork) ([]*cloudstack.LoadBalancerRule, error)
 	ReconcileLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNetwork, csCluster *infrav1.CloudStackCluster) error
 	GetFirewallRules(isoNet *infrav1.CloudStackIsolatedNetwork) ([]*cloudstack.FirewallRule, error)
@@ -63,53 +62,38 @@ func (c *client) getNetworkOfferingID() (string, error) {
 	return offeringID, nil
 }
 
-// AssociatePublicIPAddress Gets a PublicIP and associates the public IP to passed isolated network.
+// AssociatePublicIPAddress gets a public IP and associates it to the isolated network.
 func (c *client) AssociatePublicIPAddress(
 	fd *infrav1.CloudStackFailureDomain,
 	isoNet *infrav1.CloudStackIsolatedNetwork,
-	csCluster *infrav1.CloudStackCluster,
-) (retErr error) {
+	desiredIP string,
+) (*cloudstack.PublicIpAddress, error) {
 	// Check specified IP address is available or get an unused one if not specified.
-	publicAddress, err := c.GetPublicIP(fd, csCluster)
+	publicAddress, err := c.GetPublicIP(fd, desiredIP)
 	if err != nil {
-		return errors.Wrapf(err, "fetching a public IP address")
+		return nil, errors.Wrap(err, "fetching a public IP address")
 	}
-	isoNet.Spec.ControlPlaneEndpoint.Host = publicAddress.Ipaddress
-	if !annotations.IsExternallyManaged(csCluster) {
-		// Do not update the infracluster's controlPlaneEndpoint when the controlplane
-		// is externally managed, it is the responsibility of the externally managed
-		// control plane to update this.
-		csCluster.Spec.ControlPlaneEndpoint.Host = publicAddress.Ipaddress
-	}
-
-	if isoNet.Status.APIServerLoadBalancer == nil {
-		isoNet.Status.APIServerLoadBalancer = &infrav1.LoadBalancer{}
-	}
-	isoNet.Status.APIServerLoadBalancer.IPAddressID = publicAddress.Id
-	isoNet.Status.APIServerLoadBalancer.IPAddress = publicAddress.Ipaddress
 
 	// Check if the address is already associated with the network.
 	if publicAddress.Associatednetworkid == isoNet.Spec.ID {
-		return nil
+		return publicAddress, nil
 	}
 
 	// Public IP found, but not yet associated with network -- associate it.
 	p := c.cs.Address.NewAssociateIpAddressParams()
-	p.SetIpaddress(isoNet.Spec.ControlPlaneEndpoint.Host)
+	p.SetIpaddress(publicAddress.Ipaddress)
 	p.SetNetworkid(isoNet.Spec.ID)
 	if _, err := c.cs.Address.AssociateIpAddress(p); err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
-		return errors.Wrapf(err,
+		return nil, errors.Wrapf(err,
 			"associating public IP address with ID %s to network with ID %s",
 			publicAddress.Id, isoNet.Spec.ID)
-	} else if err := c.AddClusterTag(ResourceTypeIPAddress, publicAddress.Id, csCluster); err != nil {
-		return errors.Wrapf(err,
-			"adding tag to public IP address with ID %s", publicAddress.Id)
-	} else if err := c.AddCreatedByCAPCTag(ResourceTypeIPAddress, isoNet.Status.PublicIPID); err != nil {
-		return errors.Wrapf(err,
+	} else if err := c.AddCreatedByCAPCTag(ResourceTypeIPAddress, publicAddress.Id); err != nil {
+		return nil, errors.Wrapf(err,
 			"adding tag to public IP address with ID %s", publicAddress.Id)
 	}
-	return nil
+
+	return publicAddress, nil
 }
 
 // CreateIsolatedNetwork creates an isolated network in the relevant FailureDomain per passed network specification.
@@ -172,27 +156,25 @@ func (c *client) CreateEgressFirewallRules(isoNet *infrav1.CloudStackIsolatedNet
 	return retErr
 }
 
-// GetPublicIP gets a public IP with ID for cluster endpoint.
+// GetPublicIP gets a public IP. If desiredIP is empty, it will pick the next available IP.
 func (c *client) GetPublicIP(
 	fd *infrav1.CloudStackFailureDomain,
-	csCluster *infrav1.CloudStackCluster,
+	desiredIP string,
 ) (*cloudstack.PublicIpAddress, error) {
-	ip := csCluster.Spec.ControlPlaneEndpoint.Host
-
 	p := c.cs.Address.NewListPublicIpAddressesParams()
 	p.SetAllocatedonly(false)
 	p.SetZoneid(fd.Spec.Zone.ID)
-	setIfNotEmpty(ip, p.SetIpaddress)
+	setIfNotEmpty(desiredIP, p.SetIpaddress)
 	publicAddresses, err := c.cs.Address.ListPublicIpAddresses(p)
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 		return nil, err
-	} else if ip != "" && publicAddresses.Count == 1 {
-		// Endpoint specified and IP found.
+	} else if desiredIP != "" && publicAddresses.Count == 1 {
+		// Desired IP specified and IP found.
 		// Ignore already allocated here since the IP was specified.
 		return publicAddresses.PublicIpAddresses[0], nil
 	} else if publicAddresses.Count > 0 {
-		// Endpoint not specified. Pick first available address.
+		// Desired IP not specified. Pick first available address.
 		for _, v := range publicAddresses.PublicIpAddresses {
 			if v.Allocated == "" { // Found un-allocated Public IP.
 				return v, nil
@@ -712,42 +694,6 @@ func (c *client) GetOrCreateIsolatedNetwork(
 		isoNet.Spec.CIDR = network.CIDR
 	}
 
-	// Tag the created network.
-	networkID := isoNet.Spec.ID
-	if err := c.AddClusterTag(ResourceTypeNetwork, networkID, csCluster); err != nil {
-		return errors.Wrapf(err, "tagging network with id %s", networkID)
-	}
-
-	// Set the outgoing IP details in the isolated network status.
-	if isoNet.Status.PublicIPID == "" || isoNet.Status.PublicIPAddress == "" {
-		// Look up the details of the isolated network SNAT IP (outgoing IP).
-		p := c.cs.Address.NewListPublicIpAddressesParams()
-		p.SetAllocatedonly(true)
-		p.SetZoneid(fd.Spec.Zone.ID)
-		p.SetAssociatednetworkid(networkID)
-		p.SetIssourcenat(true)
-		publicAddresses, err := c.cs.Address.ListPublicIpAddresses(p)
-		if err != nil {
-			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
-			return errors.Wrap(err, "listing public ip addresses")
-		} else if publicAddresses.Count == 0 || publicAddresses.Count > 1 {
-			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
-			return errors.New("unexpected amount of public outgoing ip addresses found")
-		}
-
-		if err := c.AddClusterTag(ResourceTypeIPAddress, publicAddresses.PublicIpAddresses[0].Id, csCluster); err != nil {
-			return errors.Wrapf(err,
-				"adding tag to public IP address with ID %s", publicAddresses.PublicIpAddresses[0].Id)
-		}
-		if err := c.AddCreatedByCAPCTag(ResourceTypeIPAddress, isoNet.Status.PublicIPID); err != nil {
-			return errors.Wrapf(err,
-				"adding tag to public IP address with ID %s", publicAddresses.PublicIpAddresses[0].Id)
-		}
-
-		isoNet.Status.PublicIPAddress = publicAddresses.PublicIpAddresses[0].Ipaddress
-		isoNet.Status.PublicIPID = publicAddresses.PublicIpAddresses[0].Id
-	}
-
 	// Open the Isolated Network egress firewall.
 	return errors.Wrap(c.CreateEgressFirewallRules(isoNet), "opening the isolated network's egress firewall")
 }
@@ -770,12 +716,13 @@ func (c *client) ReconcileLoadBalancer(
 	}
 
 	// Associate public IP with the load balancer if enabled.
+	/* TODO: implement possibility for load balancer to use a different IP than isonet
 	if csCluster.Spec.APIServerLoadBalancer.IsEnabled() {
 		// Associate Public IP with CloudStackIsolatedNetwork
 		if err := c.AssociatePublicIPAddress(fd, isoNet, csCluster); err != nil {
 			return errors.Wrapf(err, "associating public IP address to csCluster")
 		}
-	}
+	}*/
 
 	// Set up load balancing rules to map VM ports to Public IP ports.
 	if err := c.ReconcileLoadBalancerRules(isoNet, csCluster); err != nil {

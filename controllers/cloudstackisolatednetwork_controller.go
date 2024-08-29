@@ -85,6 +85,7 @@ func (r *CloudStackIsoNetReconciliationRunner) Reconcile() (ctrl.Result, error) 
 	if r.FailureDomain.Spec.Zone.ID == "" {
 		return r.RequeueWithMessage("Zone ID not resolved yet.")
 	}
+
 	if err := r.CSUser.GetOrCreateIsolatedNetwork(r.FailureDomain, r.ReconciliationSubject, r.CSCluster); err != nil {
 		return ctrl.Result{}, err
 	}
@@ -92,17 +93,39 @@ func (r *CloudStackIsoNetReconciliationRunner) Reconcile() (ctrl.Result, error) 
 	if err := r.CSUser.AddClusterTag(cloud.ResourceTypeNetwork, r.ReconciliationSubject.Spec.ID, r.CSCluster); err != nil {
 		return ctrl.Result{}, errors.Wrapf(err, "tagging network with id %s", r.ReconciliationSubject.Spec.ID)
 	}
-	// Configure API server load balancer, if enabled and this cluster is not externally managed.
+
+	// Assign IP and configure API server load balancer, if enabled and this cluster is not externally managed.
 	if !annotations.IsExternallyManaged(r.CSCluster) {
+		pubIP, err := r.CSUser.AssociatePublicIPAddress(r.FailureDomain, r.ReconciliationSubject, r.CSCluster.Spec.ControlPlaneEndpoint.Host)
+		if err != nil {
+			return ctrl.Result{}, errors.Wrap(err, "associating public IP address")
+		}
+		r.ReconciliationSubject.Spec.ControlPlaneEndpoint.Host = pubIP.Ipaddress
+		r.CSCluster.Spec.ControlPlaneEndpoint.Host = pubIP.Ipaddress
+		r.ReconciliationSubject.Status.PublicIPID = pubIP.Id
+		r.ReconciliationSubject.Status.PublicIPAddress = pubIP.Ipaddress
+
+		if r.ReconciliationSubject.Status.APIServerLoadBalancer == nil {
+			r.ReconciliationSubject.Status.APIServerLoadBalancer = &infrav1.LoadBalancer{}
+		}
+		r.ReconciliationSubject.Status.APIServerLoadBalancer.IPAddressID = pubIP.Id
+		r.ReconciliationSubject.Status.APIServerLoadBalancer.IPAddress = pubIP.Ipaddress
+		if err := r.CSUser.AddClusterTag(cloud.ResourceTypeIPAddress, pubIP.Id, r.CSCluster); err != nil {
+			return ctrl.Result{}, errors.Wrapf(err,
+				"adding cluster tag to public IP address with ID %s", pubIP.Id)
+		}
+
 		if err := r.CSUser.ReconcileLoadBalancer(r.FailureDomain, r.ReconciliationSubject, r.CSCluster); err != nil {
 			return ctrl.Result{}, errors.Wrap(err, "reconciling load balancer")
 		}
 	}
+
 	if err := csClusterPatcher.Patch(r.RequestCtx, r.CSCluster); err != nil {
 		return ctrl.Result{}, errors.Wrap(err, "patching endpoint update to CloudStackCluster")
 	}
 
 	r.ReconciliationSubject.Status.Ready = true
+
 	return ctrl.Result{}, nil
 }
 

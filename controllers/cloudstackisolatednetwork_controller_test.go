@@ -17,6 +17,7 @@ limitations under the License.
 package controllers_test
 
 import (
+	"github.com/apache/cloudstack-go/v2/cloudstack"
 	g "github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -38,6 +39,11 @@ var _ = Describe("CloudStackIsolatedNetworkReconciler", func() {
 		It("Should set itself to ready if there are no errors in calls to CloudStack methods.", func() {
 			mockCloudClient.EXPECT().GetOrCreateIsolatedNetwork(g.Any(), g.Any(), g.Any()).AnyTimes()
 			mockCloudClient.EXPECT().AddClusterTag(g.Any(), g.Any(), g.Any()).AnyTimes()
+			mockCloudClient.EXPECT().AssociatePublicIPAddress(g.Any(), g.Any(), g.Any()).AnyTimes().Return(&cloudstack.PublicIpAddress{
+				Id:                  dummies.PublicIPID,
+				Associatednetworkid: dummies.ISONet1.ID,
+				Ipaddress:           dummies.CSCluster.Spec.ControlPlaneEndpoint.Host,
+			}, nil)
 			mockCloudClient.EXPECT().ReconcileLoadBalancer(g.Any(), g.Any(), g.Any()).AnyTimes()
 
 			// We use CSFailureDomain2 here because CSFailureDomain1 has an empty Spec.Zone.ID
