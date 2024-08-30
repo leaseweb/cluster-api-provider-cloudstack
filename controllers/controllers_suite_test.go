@@ -22,9 +22,10 @@ import (
 	"fmt"
 	"go/build"
 	"os"
-	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
+	goruntime "runtime"
 	"strings"
 	"testing"
 	"time"
@@ -37,7 +38,6 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -131,16 +131,6 @@ var (
 )
 
 var _ = BeforeSuite(func() {
-	repoRoot := os.Getenv("REPO_ROOT")
-
-	// Add ginkgo recover statements to controllers.
-	cmd := exec.Command(repoRoot+"/hack/testing_ginkgo_recover_statements.sh", "--contains")
-	cmd.Stdout = os.Stdout
-	if err := cmd.Run(); err != nil {
-		fmt.Println(errors.Wrapf(err, "refusing to run test suite without ginkgo recover statements present"))
-		os.Exit(1)
-	}
-
 	By("bootstrapping test environment")
 
 	Ω(infrav1.AddToScheme(scheme.Scheme)).Should(Succeed())
@@ -177,11 +167,14 @@ func (m *MockCtrlrCloudClientImplementation) RegisterExtension(r *csCtrlrUtils.R
 }
 
 func SetupTestEnvironment() {
-	repoRoot := os.Getenv("REPO_ROOT")
-	crdPaths := []string{filepath.Join(repoRoot, "config", "crd", "bases"), filepath.Join(repoRoot, "test", "fakes")}
+	// Get the root of the current file to use in CRD paths.
+	_, filename, _, _ := goruntime.Caller(0) //nolint:dogsled // Ignore "declaration has 3 blank identifiers" check.
+	root := path.Join(path.Dir(filename), "..")
+
+	crdPaths := []string{filepath.Join(root, "config", "crd", "bases"), filepath.Join(root, "test", "fakes")}
 
 	// Append CAPI CRDs path
-	if capiPath := getFilePathToCAPICRDs(repoRoot); capiPath != "" {
+	if capiPath := getFilePathToCAPICRDs(root); capiPath != "" {
 		crdPaths = append(crdPaths, capiPath)
 	}
 	testEnv = &envtest.Environment{

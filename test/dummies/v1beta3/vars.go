@@ -2,6 +2,8 @@ package dummies
 
 import (
 	"os"
+	"path"
+	goruntime "runtime"
 
 	csapi "github.com/apache/cloudstack-go/v2/cloudstack"
 	"github.com/onsi/gomega"
@@ -94,8 +96,10 @@ var ( // Declare exported dummy vars.
 
 // SetDummyVars sets/resets all dummy vars.
 func SetDummyVars() {
-	projDir := os.Getenv("REPO_ROOT")
-	source, err := os.ReadFile(projDir + "/test/e2e/config/cloudstack.yaml")
+	// Get the root of the current file to use in CRD paths.
+	_, filename, _, _ := goruntime.Caller(0) //nolint:dogsled // Ignore "declaration has 3 blank identifiers" check.
+	root := path.Join(path.Dir(filename), "..", "..")
+	source, err := os.ReadFile(root + "/e2e/config/cloudstack.yaml")
 	if err != nil {
 		panic(err)
 	}
