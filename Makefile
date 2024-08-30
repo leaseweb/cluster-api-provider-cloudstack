@@ -169,12 +169,6 @@ lint: $(GOLANGCI_LINT) generate-mocks ## Run linting for the project.
 	$(MAKE) fmt
 	$(MAKE) vet
 	$(GOLANGCI_LINT) run -v --timeout 360s ./...
-	@ # The below string of commands checks that ginkgo isn't present in the controllers.
-	@(grep ginkgo ${REPO_ROOT}/controllers/cloudstack*_controller.go | grep -v import && \
-		echo "Remove ginkgo from controllers. This is probably an artifact of testing." \
-		 	 "See the hack/testing_ginkgo_recover_statements.sh file") && exit 1 || \
-		echo "Gingko statements not found in controllers... (passed)"
-
 
 ##@ Generate
 ## --------------------------------------
@@ -331,10 +325,7 @@ setup-envtest: $(SETUP_ENVTEST) ## Set up envtest (download kubebuilder assets)
 .PHONY: test
 test: ## Run tests.
 test: generate-deepcopy-test generate-manifest-test generate-mocks setup-envtest $(GINKGO)
-	@./hack/testing_ginkgo_recover_statements.sh --add # Add ginkgo.GinkgoRecover() statements to controllers.
-	@# The following is a slightly funky way to make sure the ginkgo statements are removed regardless the test results.
-	KUBEBUILDER_ASSETS="$(KUBEBUILDER_ASSETS)" $(GINKGO) --label-filter="!integ" --cover -coverprofile cover.out --covermode=atomic -v ./api/... ./controllers/... ./pkg/...; EXIT_STATUS=$$?;\
-		./hack/testing_ginkgo_recover_statements.sh --remove; exit $$EXIT_STATUS
+	KUBEBUILDER_ASSETS="$(KUBEBUILDER_ASSETS)" $(GINKGO) --label-filter="!integ" --cover -coverprofile cover.out --covermode=atomic -v ./api/... ./controllers/... ./pkg/...
 
 .PHONY: test-pkg
 test-pkg: $(GINKGO)  ## Run pkg tests.
