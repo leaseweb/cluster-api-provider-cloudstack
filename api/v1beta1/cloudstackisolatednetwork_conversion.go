@@ -19,6 +19,7 @@ package v1beta1
 import (
 	machineryconversion "k8s.io/apimachinery/pkg/conversion"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
+	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	utilconversion "sigs.k8s.io/cluster-api/util/conversion"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
 )
@@ -52,4 +53,20 @@ func (dst *CloudStackIsolatedNetwork) ConvertFrom(srcRaw conversion.Hub) error {
 
 func Convert_v1beta3_CloudStackIsolatedNetworkSpec_To_v1beta1_CloudStackIsolatedNetworkSpec(in *v1beta3.CloudStackIsolatedNetworkSpec, out *CloudStackIsolatedNetworkSpec, s machineryconversion.Scope) error { // nolint
 	return autoConvert_v1beta3_CloudStackIsolatedNetworkSpec_To_v1beta1_CloudStackIsolatedNetworkSpec(in, out, s)
+}
+
+func Convert_v1beta1_CloudStackIsolatedNetworkStatus_To_v1beta3_CloudStackIsolatedNetworkStatus(in *CloudStackIsolatedNetworkStatus, out *v1beta3.CloudStackIsolatedNetworkStatus, s machineryconversion.Scope) error {
+	out.PublicIPID = in.PublicIPID
+	out.LBRuleID = in.LBRuleID
+	out.APIServerLoadBalancer = &infrav1.LoadBalancer{}
+	out.LoadBalancerRuleIDs = []string{in.LBRuleID}
+	out.Ready = in.Ready
+	return nil
+}
+
+func Convert_v1beta3_CloudStackIsolatedNetworkStatus_To_v1beta1_CloudStackIsolatedNetworkStatus(in *v1beta3.CloudStackIsolatedNetworkStatus, out *CloudStackIsolatedNetworkStatus, s machineryconversion.Scope) error {
+	out.PublicIPID = in.PublicIPID
+	out.LBRuleID = in.LBRuleID
+	out.Ready = in.Ready
+	return nil
 }

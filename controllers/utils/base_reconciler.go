@@ -251,7 +251,7 @@ func (r *ReconciliationRunner) CheckOwnedCRDsForReadiness(gvks ...schema.GroupVe
 	}
 }
 
-// CheckOwnedObjectsDeleted queries for the presence of owned objects and requeues if any are still present. Primarily
+// DeleteOwnedObjects queries for the presence of owned objects and requeues if any are still present. Primarily
 // used to prevent deletions of owners before dependents.
 func (r *ReconciliationRunner) DeleteOwnedObjects(gvks ...schema.GroupVersionKind) CloudStackReconcilerMethod {
 	return func() (ctrl.Result, error) {
@@ -328,13 +328,6 @@ func (r *ReconciliationRunner) SetupPatcher() (res ctrl.Result, retErr error) {
 	return res, errors.Wrapf(retErr, "setting up patcher")
 }
 
-// PatchChangesBackToAPI patches changes to the ReconciliationSubject back to the appropriate API.
-func (r *ReconciliationRunner) PatchChangesBackToAPI() (res ctrl.Result, retErr error) {
-	r.Log.V(1).Info("Patching changes back to api.")
-	err := r.Patcher.Patch(r.RequestCtx, r.ReconciliationSubject)
-	return res, errors.Wrapf(err, "patching reconciliation subject")
-}
-
 // RequeueWithMessage is a convenience method to log requeue message and then return a result with RequeueAfter set.
 func (r *ReconciliationRunner) RequeueWithMessage(msg string, keysAndValues ...interface{}) (ctrl.Result, error) {
 	// Add requeuing to message if not present. Might turn this into a lint check later.
@@ -350,17 +343,12 @@ func (r *ReconciliationRunner) ReturnWrappedError(err error, msg string) (ctrl.R
 	return ctrl.Result{}, errors.Wrap(err, msg)
 }
 
-func (r *ReconciliationRunner) LogReconciliationSubject() (ctrl.Result, error) {
-	r.Log.Info("The subject", "subject", r.ReconciliationSubject)
-	return ctrl.Result{}, nil
-}
-
 // CloudStackReconcilerMethod is the method type used in RunReconciliationStages. Additional arguments can be added
 // by wrapping this type in another function affectively currying them.
 type CloudStackReconcilerMethod func() (ctrl.Result, error)
 
-// RunReconciliationStage runs a CloudStackReconcilerMethod and returns a boolean to indicate whether that stage would
-// have returned a result that cuts the process short or not.
+// ShouldReturn returns a boolean to indicate whether a CloudStackReconcilerMethod returned a result that should cut the
+// reconciliation process short or not.
 func (r *ReconciliationRunner) ShouldReturn(rslt ctrl.Result, err error) bool {
 	if err != nil {
 		return true
@@ -380,6 +368,9 @@ func (r *ReconciliationRunner) RunReconciliationStages(fns ...CloudStackReconcil
 			return rslt, nil
 		}
 	}
+
+	r.Log.V(1).Info("Finished reconciliation")
+
 	return ctrl.Result{}, nil
 }
 
@@ -429,7 +420,7 @@ func (r *ReconciliationRunner) SetReturnEarly() {
 	r.returnEarly = true
 }
 
-// GetReconcilationSubject gets the reconciliation subject of type defined by the concrete reconciler. It also sets up
+// GetReconciliationSubject gets the reconciliation subject of type defined by the concrete reconciler. It also sets up
 // a patch helper at this point.
 func (r *ReconciliationRunner) GetReconciliationSubject() (res ctrl.Result, reterr error) {
 	r.Log.V(1).Info("Getting reconciliation subject.")
@@ -500,7 +491,6 @@ func (r *ReconciliationRunner) GetObjectByName(name string, target client.Object
 		if len(nameGetter) == 1 {
 			name = nameGetter[0]()
 		}
-		name = strings.ToLower(name)
 		objectKey := client.ObjectKey{Name: strings.ToLower(name), Namespace: r.Request.Namespace}
 		return r.ReturnWrappedError(
 			client.IgnoreNotFound(r.K8sClient.Get(r.RequestCtx, objectKey, target)), "failed to get object")

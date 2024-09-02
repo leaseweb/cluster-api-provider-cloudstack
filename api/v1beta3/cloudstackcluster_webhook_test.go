@@ -30,6 +30,7 @@ import (
 var _ = Describe("CloudStackCluster webhooks", func() {
 	var ctx context.Context
 	forbiddenRegex := "admission webhook.*denied the request.*Forbidden\\: %s"
+	invalidRegex := "admission webhook.*denied the request.*Invalid value\\: \".*\"\\: %s"
 	requiredRegex := "admission webhook.*denied the request.*Required value\\: %s"
 
 	BeforeEach(func() { // Reset test vars to initial state.
@@ -44,6 +45,12 @@ var _ = Describe("CloudStackCluster webhooks", func() {
 			Ω(k8sClient.Create(ctx, dummies.CSCluster)).Should(Succeed())
 		})
 
+		It("Should reject a CloudStackCluster with invalid failure domain name", func() {
+			dummies.CSCluster.Spec.FailureDomains[0].Name = "bogus_failuredomain"
+			Ω(k8sClient.Create(ctx, dummies.CSCluster)).Should(MatchError(MatchRegexp(invalidRegex,
+				"a lowercase RFC 1123 subdomain must consist of")))
+		})
+
 		It("Should reject a CloudStackCluster with missing Zones.Network attribute", func() {
 			dummies.CSCluster.Spec.FailureDomains = []infrav1.CloudStackFailureDomainSpec{{}}
 			dummies.CSCluster.Spec.FailureDomains[0].Zone.Name = "ZoneWNoNetwork"
@@ -55,6 +62,18 @@ var _ = Describe("CloudStackCluster webhooks", func() {
 			dummies.CSCluster.Spec.FailureDomains[0].Zone = infrav1.CloudStackZoneSpec{}
 			Ω(k8sClient.Create(ctx, dummies.CSCluster)).Should(MatchError(MatchRegexp(requiredRegex,
 				"each Zone requires a Network specification")))
+		})
+
+		It("Should reject a CloudStackCluster with invalid network domain", func() {
+			dummies.CSCluster.Spec.FailureDomains[0].Zone.Network.Domain = "bogus_domain.example.com"
+			Ω(k8sClient.Create(ctx, dummies.CSCluster)).Should(MatchError(MatchRegexp(invalidRegex,
+				"a lowercase RFC 1123 subdomain must consist of")))
+		})
+
+		It("Should reject a CloudStackCluster with invalid network CIDR", func() {
+			dummies.CSCluster.Spec.FailureDomains[0].Zone.Network.CIDR = "111.222.333.444/55"
+			Ω(k8sClient.Create(ctx, dummies.CSCluster)).Should(MatchError(MatchRegexp(invalidRegex,
+				"must be valid CIDR: invalid CIDR address: 111.222.333.444/55")))
 		})
 	})
 

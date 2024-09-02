@@ -35,6 +35,9 @@ GH_REPO ?= kubernetes-sigs/cluster-api-provider-cloudstack
 # Helper function to get dependency version from go.mod
 get_go_version = $(shell go list -m $1 | awk '{print $$2}')
 
+# Set build time variables including version details
+LDFLAGS := $(shell source ./hack/version.sh; version::ldflags)
+
 # Binaries
 KUSTOMIZE_VER := v4.5.7
 KUSTOMIZE_BIN := kustomize
@@ -92,15 +95,10 @@ MOCKGEN_VER := v1.6.0
 MOCKGEN := $(abspath $(TOOLS_BIN_DIR)/$(MOCKGEN_BIN)-$(MOCKGEN_VER))
 MOCKGEN_PKG := github.com/golang/mock/mockgen
 
-STATIC_CHECK_BIN := staticcheck
-STATIC_CHECK_VER := v0.4.7
-STATIC_CHECK := $(abspath $(TOOLS_BIN_DIR)/staticcheck)
-STATIC_CHECK_PKG := honnef.co/go/tools/cmd/staticcheck
-
 KUBECTL := $(TOOLS_BIN_DIR)/kubectl
 
 # Release
-STAGING_REGISTRY := gcr.io/k8s-staging-capi-cloudstack
+STAGING_REGISTRY := ghcr.io/leaseweb
 STAGING_BUCKET ?= artifacts.k8s-staging-capi-cloudstack.appspot.com
 BUCKET ?= $(STAGING_BUCKET)
 PROD_REGISTRY ?= registry.k8s.io/capi-cloudstack
@@ -112,7 +110,7 @@ RELEASE_ALIAS_TAG ?= $(PULL_BASE_REF)
 # Image URL to use all building/pushing image targets
 REGISTRY ?= $(STAGING_REGISTRY)
 IMAGE_NAME ?= capi-cloudstack-controller
-TAG ?= dev
+TAG ?= develop
 CONTROLLER_IMG ?= $(REGISTRY)/$(IMAGE_NAME)
 IMG ?= $(CONTROLLER_IMG):$(TAG)
 IMG_LOCAL ?= localhost:5000/$(IMAGE_NAME):$(TAG)
@@ -143,7 +141,7 @@ all: build
 ## --------------------------------------
 
 .PHONY: binaries
-binaries: $(CONTROLLER_GEN) $(CONVERSION_GEN) $(GOLANGCI_LINT) $(STATIC_CHECK) $(GINKGO) $(MOCKGEN) $(KUSTOMIZE) $(SETUP_ENVTEST) managers # Builds and installs all binaries
+binaries: $(CONTROLLER_GEN) $(CONVERSION_GEN) $(GOLANGCI_LINT) $(GINKGO) $(MOCKGEN) $(KUSTOMIZE) $(SETUP_ENVTEST) managers # Builds and installs all binaries
 
 .PHONY: managers
 managers:
@@ -167,17 +165,10 @@ vet: ## Run go vet on the whole project.
 	go vet ./...
 
 .PHONY: lint
-lint: $(GOLANGCI_LINT) $(STATIC_CHECK) generate-mocks ## Run linting for the project.
+lint: $(GOLANGCI_LINT) generate-mocks ## Run linting for the project.
 	$(MAKE) fmt
 	$(MAKE) vet
 	$(GOLANGCI_LINT) run -v --timeout 360s ./...
-	$(STATIC_CHECK) ./...
-	@ # The below string of commands checks that ginkgo isn't present in the controllers.
-	@(grep ginkgo ${REPO_ROOT}/controllers/cloudstack*_controller.go | grep -v import && \
-		echo "Remove ginkgo from controllers. This is probably an artifact of testing." \
-		 	 "See the hack/testing_ginkgo_recover_statements.sh file") && exit 1 || \
-		echo "Gingko statements not found in controllers... (passed)"
-
 
 ##@ Generate
 ## --------------------------------------
@@ -186,11 +177,11 @@ lint: $(GOLANGCI_LINT) $(STATIC_CHECK) generate-mocks ## Run linting for the pro
 
 .PHONY: modules
 modules: ## Runs go mod to ensure proper vendoring.
-	go mod tidy -compat=1.21
-	cd $(TOOLS_DIR); go mod tidy -compat=1.21
+	go mod tidy -compat=1.22
+	cd $(TOOLS_DIR); go mod tidy -compat=1.22
 
 .PHONY: generate-all
-generate-all: generate-mocks generate-deepcopy generate-manifests
+generate-all: generate-mocks generate-conversion generate-deepcopy generate-manifests
 
 .PHONY: generate-mocks
 generate-mocks: $(MOCKGEN) generate-deepcopy pkg/mocks/mock_client.go $(shell find ./pkg/mocks -type f -name "mock*.go") ## Generate mocks needed for testing. Primarily mocks of the cloud package.
@@ -235,13 +226,13 @@ MANAGER_BIN_INPUTS=$(shell find ./controllers ./api ./pkg -name "*mock*" -prune 
 .PHONY: build
 build: binaries generate-deepcopy lint generate-manifests release-manifests ## Build manager binary.
 $(BIN_DIR)/manager: $(MANAGER_BIN_INPUTS)
-	go build -o $(BIN_DIR)/manager main.go
+	go build -ldflags "${LDFLAGS}" -o $(BIN_DIR)/manager main.go
 
 .PHONY: build-for-docker
 build-for-docker: $(BIN_DIR)/manager-linux-amd64 ## Build manager binary for docker image building.
 $(BIN_DIR)/manager-linux-amd64: $(MANAGER_BIN_INPUTS)
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    	go build -a -ldflags "${ldflags} -extldflags '-static'" \
+    	go build -a -ldflags "${LDFLAGS} -extldflags '-static'" \
     	-o $(BIN_DIR)/manager-linux-amd64 main.go
 
 .PHONY: run
@@ -333,11 +324,8 @@ setup-envtest: $(SETUP_ENVTEST) ## Set up envtest (download kubebuilder assets)
 
 .PHONY: test
 test: ## Run tests.
-test: generate-deepcopy-test generate-manifest-test generate-mocks lint setup-envtest $(GINKGO)
-	@./hack/testing_ginkgo_recover_statements.sh --add # Add ginkgo.GinkgoRecover() statements to controllers.
-	@# The following is a slightly funky way to make sure the ginkgo statements are removed regardless the test results.
-	KUBEBUILDER_ASSETS="$(KUBEBUILDER_ASSETS)" $(GINKGO) --label-filter="!integ" --cover -coverprofile cover.out --covermode=atomic -v ./api/... ./controllers/... ./pkg/...; EXIT_STATUS=$$?;\
-		./hack/testing_ginkgo_recover_statements.sh --remove; exit $$EXIT_STATUS
+test: generate-deepcopy-test generate-manifest-test generate-mocks setup-envtest $(GINKGO)
+	KUBEBUILDER_ASSETS="$(KUBEBUILDER_ASSETS)" $(GINKGO) --label-filter="!integ" --cover -coverprofile cover.out --covermode=atomic -v ./api/... ./controllers/... ./pkg/...
 
 .PHONY: test-pkg
 test-pkg: $(GINKGO)  ## Run pkg tests.
@@ -452,9 +440,6 @@ $(GOLANGCI_LINT_BIN): $(GOLANGCI_LINT) ## Build a local copy of golangci-lint.
 .PHONY: $(MOCKGEN_BIN)
 $(MOCKGEN_BIN): $(MOCKGEN) ## Build a local copy of mockgen.
 
-.PHONY: $(STATIC_CHECK_BIN)
-$(STATIC_CHECK_BIN): $(STATIC_CHECK) ## Build a local copy of staticcheck.
-
 $(CONTROLLER_GEN): # Build controller-gen from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(CONTROLLER_GEN_PKG) $(CONTROLLER_GEN_BIN) $(CONTROLLER_GEN_VER)
 
@@ -481,6 +466,3 @@ $(GOLANGCI_LINT): # Build golangci-lint from tools folder.
 
 $(MOCKGEN): # Build mockgen from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(MOCKGEN_PKG) $(MOCKGEN_BIN) $(MOCKGEN_VER)
-
-$(STATIC_CHECK): # Build golangci-lint from tools folder.
-	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(STATIC_CHECK_PKG) $(STATIC_CHECK_BIN) $(STATIC_CHECK_VER)

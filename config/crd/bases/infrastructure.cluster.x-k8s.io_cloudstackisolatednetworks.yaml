@@ -188,6 +188,9 @@ spec:
             description: CloudStackIsolatedNetworkSpec defines the desired state of
               CloudStackIsolatedNetwork
             properties:
+              cidr:
+                description: CIDR is the IP range of the isolated network.
+                type: string
               controlPlaneEndpoint:
                 description: The kubernetes control plane endpoint.
                 properties:
@@ -224,11 +227,38 @@ spec:
             description: CloudStackIsolatedNetworkStatus defines the observed state
               of CloudStackIsolatedNetwork
             properties:
+              apiServerLoadBalancer:
+                description: APIServerLoadBalancer describes the api server load balancer
+                  if one exists
+                properties:
+                  allowedCIDRs:
+                    items:
+                      type: string
+                    type: array
+                  ipAddress:
+                    type: string
+                  ipAddressID:
+                    type: string
+                required:
+                - ipAddress
+                - ipAddressID
+                type: object
               loadBalancerRuleID:
-                description: The ID of the lb rule used to assign VMs to the lb.
+                description: |-
+                  Deprecated: The ID of the lb rule used to assign VMs to the lb.
+                  No longer used, see LoadBalancerRuleIDs. Will be removed in next API version.
+                type: string
+              loadBalancerRuleIDs:
+                description: The IDs of the lb rule used to assign VMs to the lb.
+                items:
+                  type: string
+                type: array
+              publicIPAddress:
+                description: The outgoing IP of the isolated network.
                 type: string
               publicIPID:
-                description: The CS public IP ID to use for the k8s endpoint.
+                description: The CS public IP ID of the outgoing IP of the isolated
+                  network.
                 type: string
               ready:
                 description: Ready indicates the readiness of this provider resource.

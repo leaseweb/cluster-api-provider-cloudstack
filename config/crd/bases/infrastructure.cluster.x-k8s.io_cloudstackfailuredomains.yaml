@@ -175,6 +175,9 @@ spec:
                   network:
                     description: The network within the Zone to use.
                     properties:
+                      cidr:
+                        description: CIDR is the IP address range of the network.
+                        type: string
                       domain:
                         description: Domain is the DNS domain name used for all instances
                           in the network.

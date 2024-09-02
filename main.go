@@ -18,14 +18,16 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"k8s.io/klog/v2"
+	"net/http"
 	"os"
+	"sigs.k8s.io/cluster-api-provider-cloudstack/version"
+	"time"
 
-	flag "github.com/spf13/pflag"
+	"github.com/spf13/pflag"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-
-	goflag "flag"
 
 	corev1 "k8s.io/api/core/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -57,9 +59,6 @@ import (
 var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
-
-	tlsOptions = flags.TLSOptions{}
-	logOptions = logs.NewOptions()
 )
 
 func init() {
@@ -71,128 +70,163 @@ func init() {
 	//+kubebuilder:scaffold:scheme
 }
 
-type managerOpts struct {
-	CloudConfigFile      string
-	MetricsAddr          string
-	EnableLeaderElection bool
-	ProbeAddr            string
-	WatchNamespace       string
-	WatchFilterValue     string
-	ProfilerAddr         string
-	WebhookCertDir       string
-	WebhookPort          int
+var (
+	enableLeaderElection        bool
+	leaderElectionLeaseDuration time.Duration
+	leaderElectionRenewDeadline time.Duration
+	leaderElectionRetryPeriod   time.Duration
+	leaderElectionNamespace     string
+	watchNamespace              string
+	watchFilterValue            string
+	profilerAddr                string
+	metricsAddr                 string
+	probeAddr                   string
+	syncPeriod                  time.Duration
+	webhookCertDir              string
+	webhookPort                 int
+	showVersion                 bool
 
-	CloudStackClusterConcurrency       int
-	CloudStackMachineConcurrency       int
-	CloudStackAffinityGroupConcurrency int
-	CloudStackFailureDomainConcurrency int
-}
+	cloudStackClusterConcurrency       int
+	cloudStackMachineConcurrency       int
+	cloudStackAffinityGroupConcurrency int
+	cloudStackFailureDomainConcurrency int
 
-func setFlags() *managerOpts {
-	opts := &managerOpts{}
-	flag.StringVar(
-		&opts.CloudConfigFile,
-		"cloud-config-file",
-		"/config/cloud-config",
-		"Overrides the default path to the cloud-config file that contains the CloudStack credentials.")
-	flag.StringVar(
-		&opts.MetricsAddr,
+	tlsOptions = flags.TLSOptions{}
+	logOptions = logs.NewOptions()
+)
+
+func initFlags(fs *pflag.FlagSet) {
+	fs.StringVar(
+		&metricsAddr,
 		"metrics-bind-addr",
 		"localhost:8080",
 		"The address the metric endpoint binds to.")
-	flag.StringVar(
-		&opts.ProbeAddr,
+	fs.StringVar(
+		&probeAddr,
 		"health-probe-bind-address",
 		":8081",
 		"The address the probe endpoint binds to.")
-	flag.BoolVar(
-		&opts.EnableLeaderElection,
+	fs.BoolVar(
+		&enableLeaderElection,
 		"leader-elect",
 		false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	flag.StringVar(
-		&opts.WatchNamespace,
+	fs.DurationVar(&leaderElectionLeaseDuration, "leader-elect-lease-duration", 15*time.Second,
+		"Interval at which non-leader candidates will wait to force acquire leadership (duration string)")
+
+	fs.DurationVar(&leaderElectionRenewDeadline, "leader-elect-renew-deadline", 10*time.Second,
+		"Duration that the leading controller manager will retry refreshing leadership before giving up (duration string)")
+
+	fs.DurationVar(&leaderElectionRetryPeriod, "leader-elect-retry-period", 2*time.Second,
+		"Duration the LeaderElector clients should wait between tries of actions (duration string)")
+	fs.StringVar(
+		&watchNamespace,
 		"namespace",
 		"",
 		"Namespace that the controller watches to reconcile cluster-api objects. If unspecified, "+
 			"the controller watches for cluster-api objects across all namespaces.")
-	flag.StringVar(
-		&opts.WatchFilterValue,
+	fs.StringVar(
+		&watchFilterValue,
 		"watch-filter",
 		"",
 		fmt.Sprintf(
 			"Label value that the controller watches to reconcile cluster-api objects. "+
 				"Label key is always %s. If unspecified, the controller watches for all cluster-api objects.",
 			clusterv1.WatchLabel))
-	flag.StringVar(
-		&opts.ProfilerAddr,
+	fs.StringVar(
+		&leaderElectionNamespace,
+		"leader-elect-namespace",
+		"",
+		"Namespace that the controller performs leader election in. If unspecified, the controller will discover which namespace it is running in.",
+	)
+	fs.StringVar(
+		&profilerAddr,
 		"profiler-address",
 		"",
 		"Bind address to expose the pprof profiler (e.g. localhost:6060)")
-	flag.IntVar(
-		&opts.WebhookPort,
+	fs.IntVar(
+		&webhookPort,
 		"webhook-port",
 		9443,
 		"The webhook server port the manager will listen on.")
-	flag.StringVar(
-		&opts.WebhookCertDir,
+	fs.StringVar(
+		&webhookCertDir,
 		"webhook-cert-dir",
 		"/tmp/k8s-webhook-server/serving-certs/",
 		"Specify the directory where webhooks will get tls certificates.")
-	flag.IntVar(
-		&opts.CloudStackClusterConcurrency,
+	fs.IntVar(
+		&cloudStackClusterConcurrency,
 		"cloudstackcluster-concurrency",
 		10,
 		"Maximum concurrent reconciles for CloudStackCluster resources",
 	)
-	flag.IntVar(
-		&opts.CloudStackMachineConcurrency,
+	fs.IntVar(
+		&cloudStackMachineConcurrency,
 		"cloudstackmachine-concurrency",
 		10,
 		"Maximum concurrent reconciles for CloudStackMachine resources",
 	)
-	flag.IntVar(
-		&opts.CloudStackAffinityGroupConcurrency,
+	fs.IntVar(
+		&cloudStackAffinityGroupConcurrency,
 		"cloudstackaffinitygroup-concurrency",
 		5,
 		"Maximum concurrent reconciles for CloudStackAffinityGroup resources",
 	)
-	flag.IntVar(
-		&opts.CloudStackFailureDomainConcurrency,
+	fs.IntVar(
+		&cloudStackFailureDomainConcurrency,
 		"cloudstackfailuredomain-concurrency",
 		5,
 		"Maximum concurrent reconciles for CloudStackFailureDomain resources",
 	)
+	fs.DurationVar(&syncPeriod,
+		"sync-period",
+		10*time.Minute,
+		"The minimum interval at which watched resources are reconciled",
+	)
+	fs.BoolVar(&showVersion, "version", false, "Show current version and exit.")
 
-	return opts
+	logs.AddFlags(fs, logs.SkipLoggingConfigurationFlags())
+	logsv1.AddFlags(logOptions, fs)
+
+	flags.AddTLSOptions(fs, &tlsOptions)
 }
 
 func main() {
-	opts := setFlags() // Add our options to flag set.
-	logsv1.AddFlags(logOptions, flag.CommandLine)
-	flags.AddTLSOptions(flag.CommandLine, &tlsOptions)
-	flag.CommandLine.SetNormalizeFunc(cliflag.WordSepNormalizeFunc)
-	flag.CommandLine.AddGoFlagSet(goflag.CommandLine) // Merge klog's goflag flags into the pflags.
-	flag.Parse()
+	initFlags(pflag.CommandLine)
+	pflag.CommandLine.SetNormalizeFunc(cliflag.WordSepNormalizeFunc)
+	pflag.CommandLine.AddGoFlagSet(flag.CommandLine) // Merge klog's goflag flags into the pflags.
+	pflag.Parse()
+
+	if showVersion {
+		fmt.Println(version.Get().String()) //nolint:forbidigo
+		os.Exit(0)
+	}
 
 	if err := logsv1.ValidateAndApply(logOptions, nil); err != nil {
 		setupLog.Error(err, "unable to start manager")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 
 	ctrl.SetLogger(klog.Background())
 
+	if profilerAddr != "" {
+		klog.Infof("Profiler listening for requests at %s", profilerAddr)
+		go func() {
+			klog.Info(http.ListenAndServe(profilerAddr, nil)) //nolint:gosec
+		}()
+	}
+
 	tlsOptionOverrides, err := flags.GetTLSOptionOverrideFuncs(tlsOptions)
 	if err != nil {
 		setupLog.Error(err, "unable to add TLS settings to the webhook server")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 
 	var watchNamespaces []string
-	if opts.WatchNamespace != "" {
-		setupLog.Info("Watching cluster-api objects only in namespace for reconciliation", "namespace", opts.WatchNamespace)
-		watchNamespaces = []string{opts.WatchNamespace}
+	if watchNamespace != "" {
+		setupLog.Info("Watching cluster-api objects only in namespace for reconciliation", "namespace", watchNamespace)
+		watchNamespaces = []string{watchNamespace}
 	}
 
 	// Machine and cluster operations can create enough events to trigger the event recorder spam filter
@@ -207,15 +241,19 @@ func main() {
 
 	// Create the controller manager.
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                 scheme,
-		MetricsBindAddress:     opts.MetricsAddr,
-		Port:                   9443,
-		HealthProbeBindAddress: opts.ProbeAddr,
-		LeaderElection:         opts.EnableLeaderElection,
-		LeaderElectionID:       "capc-leader-election-controller",
-		PprofBindAddress:       opts.ProfilerAddr,
+		Scheme:                  scheme,
+		MetricsBindAddress:      metricsAddr,
+		HealthProbeBindAddress:  probeAddr,
+		LeaderElection:          enableLeaderElection,
+		LeaderElectionID:        "capc-leader-election-controller",
+		LeaderElectionNamespace: leaderElectionNamespace,
+		LeaseDuration:           &leaderElectionLeaseDuration,
+		RenewDeadline:           &leaderElectionRenewDeadline,
+		RetryPeriod:             &leaderElectionRetryPeriod,
+		PprofBindAddress:        profilerAddr,
 		Cache: cache.Options{
 			Namespaces: watchNamespaces,
+			SyncPeriod: &syncPeriod,
 		},
 		Client: client.Options{
 			Cache: &client.CacheOptions{
@@ -226,15 +264,15 @@ func main() {
 			},
 		},
 		WebhookServer: webhook.NewServer(webhook.Options{
-			Port:    opts.WebhookPort,
-			CertDir: opts.WebhookCertDir,
+			Port:    webhookPort,
+			CertDir: webhookCertDir,
 			TLSOpts: tlsOptionOverrides,
 		}),
 		EventBroadcaster: broadcaster,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 
 	// Register reconcilers with the controller manager.
@@ -242,11 +280,11 @@ func main() {
 		K8sClient:        mgr.GetClient(),
 		Recorder:         mgr.GetEventRecorderFor("capc-controller-manager"),
 		Scheme:           mgr.GetScheme(),
-		WatchFilterValue: opts.WatchFilterValue,
+		WatchFilterValue: watchFilterValue,
 	}
 
 	ctx := ctrl.SetupSignalHandler()
-	setupReconcilers(ctx, base, *opts, mgr)
+	setupReconcilers(ctx, base, mgr)
 	infrav1b3.K8sClient = base.K8sClient
 
 	// +kubebuilder:scaffold:builder
@@ -254,53 +292,53 @@ func main() {
 	// Add health and ready checks.
 	if err = mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 	if err = mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 
 	// Start the controller manager.
 	if err = (&infrav1b3.CloudStackCluster{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "CloudStackCluster")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 	if err = (&infrav1b3.CloudStackMachine{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "CloudStackMachine")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 	if err = (&infrav1b3.CloudStackMachineTemplate{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "CloudStackMachineTemplate")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 
-	setupLog.Info("starting manager")
+	setupLog.Info("starting manager", "version", version.Get().String())
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 }
 
-func setupReconcilers(ctx context.Context, base utils.ReconcilerBase, opts managerOpts, mgr manager.Manager) {
-	if err := (&controllers.CloudStackClusterReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: opts.CloudStackClusterConcurrency}); err != nil {
+func setupReconcilers(ctx context.Context, base utils.ReconcilerBase, mgr manager.Manager) {
+	if err := (&controllers.CloudStackClusterReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackClusterConcurrency}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CloudStackCluster")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
-	if err := (&controllers.CloudStackMachineReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: opts.CloudStackMachineConcurrency}); err != nil {
+	if err := (&controllers.CloudStackMachineReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackMachineConcurrency}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CloudStackMachine")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 	if err := (&controllers.CloudStackIsoNetReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CloudStackIsoNetReconciler")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
-	if err := (&controllers.CloudStackAffinityGroupReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: opts.CloudStackAffinityGroupConcurrency}); err != nil {
+	if err := (&controllers.CloudStackAffinityGroupReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackAffinityGroupConcurrency}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CloudStackAffinityGroup")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
-	if err := (&controllers.CloudStackFailureDomainReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: opts.CloudStackFailureDomainConcurrency}); err != nil {
+	if err := (&controllers.CloudStackFailureDomainReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackFailureDomainConcurrency}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CloudStackFailureDomain")
-		os.Exit(1)
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 }

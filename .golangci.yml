@@ -32,11 +32,12 @@ linters-settings:
 
 linters:
   enable:
-    - gosec
-    - goheader
-    - revive
     - gocyclo
+    - goheader
+    - gosec
     - misspell
+    - revive
+    - staticcheck
 
 run:
   issues-exit-code: 1
@@ -51,3 +52,6 @@ issues:
     - path: _test\.go
       linters:
         - gosec
+    - text: "SA1019: .+LBRuleID is deprecated"
+      linters:
+        - staticcheck

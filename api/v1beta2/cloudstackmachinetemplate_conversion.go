@@ -42,6 +42,9 @@ func (src *CloudStackMachineTemplate) ConvertTo(dstRaw conversion.Hub) error { /
 	if restored.Spec.Template.Spec.UncompressedUserData != nil {
 		dst.Spec.Template.Spec.UncompressedUserData = restored.Spec.Template.Spec.UncompressedUserData
 	}
+
+	dst.Spec.Template.ObjectMeta = restored.Spec.Template.ObjectMeta
+
 	return nil
 }
 

@@ -17,6 +17,8 @@ limitations under the License.
 package v1beta2
 
 import (
+	machineryconversion "k8s.io/apimachinery/pkg/conversion"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
 )
@@ -29,4 +31,26 @@ func (src *CloudStackCluster) ConvertTo(dstRaw conversion.Hub) error { // nolint
 func (dst *CloudStackCluster) ConvertFrom(srcRaw conversion.Hub) error { // nolint
 	src := srcRaw.(*v1beta3.CloudStackCluster)
 	return Convert_v1beta3_CloudStackCluster_To_v1beta2_CloudStackCluster(src, dst, nil)
+}
+
+func Convert_v1beta3_CloudStackClusterSpec_To_v1beta2_CloudStackClusterSpec(in *v1beta3.CloudStackClusterSpec, out *CloudStackClusterSpec, s machineryconversion.Scope) error { // nolint
+	err := autoConvert_v1beta3_CloudStackClusterSpec_To_v1beta2_CloudStackClusterSpec(in, out, s)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func Convert_v1beta2_CloudStackClusterSpec_To_v1beta3_CloudStackClusterSpec(in *CloudStackClusterSpec, out *v1beta3.CloudStackClusterSpec, s machineryconversion.Scope) error { // nolint
+	err := autoConvert_v1beta2_CloudStackClusterSpec_To_v1beta3_CloudStackClusterSpec(in, out, s)
+	if err != nil {
+		return err
+	}
+
+	out.APIServerLoadBalancer = &v1beta3.APIServerLoadBalancer{
+		Enabled: pointer.Bool(true),
+	}
+
+	return nil
 }

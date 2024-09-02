@@ -17,13 +17,12 @@ limitations under the License.
 package v1beta1
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	machineryconversion "k8s.io/apimachinery/pkg/conversion"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	utilconversion "sigs.k8s.io/cluster-api/util/conversion"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
 func (src *CloudStackMachineTemplate) ConvertTo(dstRaw conversion.Hub) error { // nolint
@@ -43,6 +42,9 @@ func (src *CloudStackMachineTemplate) ConvertTo(dstRaw conversion.Hub) error { /
 	if restored.Spec.Template.Spec.UncompressedUserData != nil {
 		dst.Spec.Template.Spec.UncompressedUserData = restored.Spec.Template.Spec.UncompressedUserData
 	}
+
+	dst.Spec.Template.ObjectMeta = restored.Spec.Template.ObjectMeta
+
 	return nil
 }
 

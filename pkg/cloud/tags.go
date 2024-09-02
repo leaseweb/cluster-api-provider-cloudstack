@@ -39,10 +39,12 @@ type TagIface interface {
 type ResourceType string
 
 const (
-	ClusterTagNamePrefix               = "CAPC_cluster_"
-	CreatedByCAPCTagName               = "created_by_CAPC"
-	ResourceTypeNetwork   ResourceType = "Network"
-	ResourceTypeIPAddress ResourceType = "PublicIpAddress"
+	ClusterTagNamePrefix                      = "CAPC_cluster_"
+	CreatedByCAPCTagName                      = "created_by_CAPC"
+	ResourceTypeNetwork          ResourceType = "Network"
+	ResourceTypeIPAddress        ResourceType = "PublicIpAddress"
+	ResourceTypeLoadBalancerRule ResourceType = "LoadBalancer"
+	ResourceTypeFirewallRule     ResourceType = "FirewallRule"
 )
 
 // ignoreAlreadyPresentErrors returns nil if the error is an already present tag error.
@@ -54,6 +56,7 @@ func ignoreAlreadyPresentErrors(err error, rType ResourceType, rID string) error
 	return nil
 }
 
+// IsCapcManaged checks whether the resource has the CreatedByCAPCTag.
 func (c *client) IsCapcManaged(resourceType ResourceType, resourceID string) (bool, error) {
 	tags, err := c.GetTags(resourceType, resourceID)
 	if err != nil {

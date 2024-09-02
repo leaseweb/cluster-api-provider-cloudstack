@@ -98,16 +98,6 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*CloudStackClusterSpec)(nil), (*v1beta3.CloudStackClusterSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1beta2_CloudStackClusterSpec_To_v1beta3_CloudStackClusterSpec(a.(*CloudStackClusterSpec), b.(*v1beta3.CloudStackClusterSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*v1beta3.CloudStackClusterSpec)(nil), (*CloudStackClusterSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1beta3_CloudStackClusterSpec_To_v1beta2_CloudStackClusterSpec(a.(*v1beta3.CloudStackClusterSpec), b.(*CloudStackClusterSpec), scope)
-	}); err != nil {
-		return err
-	}
 	if err := s.AddGeneratedConversionFunc((*CloudStackClusterStatus)(nil), (*v1beta3.CloudStackClusterStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1beta2_CloudStackClusterStatus_To_v1beta3_CloudStackClusterStatus(a.(*CloudStackClusterStatus), b.(*v1beta3.CloudStackClusterStatus), scope)
 	}); err != nil {
@@ -180,16 +170,6 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}
 	if err := s.AddGeneratedConversionFunc((*CloudStackIsolatedNetworkSpec)(nil), (*v1beta3.CloudStackIsolatedNetworkSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1beta2_CloudStackIsolatedNetworkSpec_To_v1beta3_CloudStackIsolatedNetworkSpec(a.(*CloudStackIsolatedNetworkSpec), b.(*v1beta3.CloudStackIsolatedNetworkSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*CloudStackIsolatedNetworkStatus)(nil), (*v1beta3.CloudStackIsolatedNetworkStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1beta2_CloudStackIsolatedNetworkStatus_To_v1beta3_CloudStackIsolatedNetworkStatus(a.(*CloudStackIsolatedNetworkStatus), b.(*v1beta3.CloudStackIsolatedNetworkStatus), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*v1beta3.CloudStackIsolatedNetworkStatus)(nil), (*CloudStackIsolatedNetworkStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1beta3_CloudStackIsolatedNetworkStatus_To_v1beta2_CloudStackIsolatedNetworkStatus(a.(*v1beta3.CloudStackIsolatedNetworkStatus), b.(*CloudStackIsolatedNetworkStatus), scope)
 	}); err != nil {
 		return err
 	}
@@ -338,6 +318,16 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
+	if err := s.AddConversionFunc((*CloudStackClusterSpec)(nil), (*v1beta3.CloudStackClusterSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1beta2_CloudStackClusterSpec_To_v1beta3_CloudStackClusterSpec(a.(*CloudStackClusterSpec), b.(*v1beta3.CloudStackClusterSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddConversionFunc((*CloudStackIsolatedNetworkStatus)(nil), (*v1beta3.CloudStackIsolatedNetworkStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1beta2_CloudStackIsolatedNetworkStatus_To_v1beta3_CloudStackIsolatedNetworkStatus(a.(*CloudStackIsolatedNetworkStatus), b.(*v1beta3.CloudStackIsolatedNetworkStatus), scope)
+	}); err != nil {
+		return err
+	}
 	if err := s.AddConversionFunc((*CloudStackMachineSpec)(nil), (*v1beta3.CloudStackMachineSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1beta2_CloudStackMachineSpec_To_v1beta3_CloudStackMachineSpec(a.(*CloudStackMachineSpec), b.(*v1beta3.CloudStackMachineSpec), scope)
 	}); err != nil {
@@ -348,8 +338,18 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
+	if err := s.AddConversionFunc((*v1beta3.CloudStackClusterSpec)(nil), (*CloudStackClusterSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1beta3_CloudStackClusterSpec_To_v1beta2_CloudStackClusterSpec(a.(*v1beta3.CloudStackClusterSpec), b.(*CloudStackClusterSpec), scope)
+	}); err != nil {
+		return err
+	}
 	if err := s.AddConversionFunc((*v1beta3.CloudStackIsolatedNetworkSpec)(nil), (*CloudStackIsolatedNetworkSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1beta3_CloudStackIsolatedNetworkSpec_To_v1beta2_CloudStackIsolatedNetworkSpec(a.(*v1beta3.CloudStackIsolatedNetworkSpec), b.(*CloudStackIsolatedNetworkSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddConversionFunc((*v1beta3.CloudStackIsolatedNetworkStatus)(nil), (*CloudStackIsolatedNetworkStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1beta3_CloudStackIsolatedNetworkStatus_To_v1beta2_CloudStackIsolatedNetworkStatus(a.(*v1beta3.CloudStackIsolatedNetworkStatus), b.(*CloudStackIsolatedNetworkStatus), scope)
 	}); err != nil {
 		return err
 	}
@@ -561,11 +561,6 @@ func autoConvert_v1beta2_CloudStackClusterSpec_To_v1beta3_CloudStackClusterSpec(
 	return nil
 }
 
-// Convert_v1beta2_CloudStackClusterSpec_To_v1beta3_CloudStackClusterSpec is an autogenerated conversion function.
-func Convert_v1beta2_CloudStackClusterSpec_To_v1beta3_CloudStackClusterSpec(in *CloudStackClusterSpec, out *v1beta3.CloudStackClusterSpec, s conversion.Scope) error {
-	return autoConvert_v1beta2_CloudStackClusterSpec_To_v1beta3_CloudStackClusterSpec(in, out, s)
-}
-
 func autoConvert_v1beta3_CloudStackClusterSpec_To_v1beta2_CloudStackClusterSpec(in *v1beta3.CloudStackClusterSpec, out *CloudStackClusterSpec, s conversion.Scope) error {
 	if in.FailureDomains != nil {
 		in, out := &in.FailureDomains, &out.FailureDomains
@@ -579,12 +574,8 @@ func autoConvert_v1beta3_CloudStackClusterSpec_To_v1beta2_CloudStackClusterSpec(
 		out.FailureDomains = nil
 	}
 	out.ControlPlaneEndpoint = in.ControlPlaneEndpoint
+	// WARNING: in.APIServerLoadBalancer requires manual conversion: does not exist in peer-type
 	return nil
-}
-
-// Convert_v1beta3_CloudStackClusterSpec_To_v1beta2_CloudStackClusterSpec is an autogenerated conversion function.
-func Convert_v1beta3_CloudStackClusterSpec_To_v1beta2_CloudStackClusterSpec(in *v1beta3.CloudStackClusterSpec, out *CloudStackClusterSpec, s conversion.Scope) error {
-	return autoConvert_v1beta3_CloudStackClusterSpec_To_v1beta2_CloudStackClusterSpec(in, out, s)
 }
 
 func autoConvert_v1beta2_CloudStackClusterStatus_To_v1beta3_CloudStackClusterStatus(in *CloudStackClusterStatus, out *v1beta3.CloudStackClusterStatus, s conversion.Scope) error {
@@ -827,6 +818,7 @@ func autoConvert_v1beta3_CloudStackIsolatedNetworkSpec_To_v1beta2_CloudStackIsol
 	out.ID = in.ID
 	out.ControlPlaneEndpoint = in.ControlPlaneEndpoint
 	out.FailureDomainName = in.FailureDomainName
+	// WARNING: in.CIDR requires manual conversion: does not exist in peer-type
 	// WARNING: in.Domain requires manual conversion: does not exist in peer-type
 	return nil
 }
@@ -838,21 +830,14 @@ func autoConvert_v1beta2_CloudStackIsolatedNetworkStatus_To_v1beta3_CloudStackIs
 	return nil
 }
 
-// Convert_v1beta2_CloudStackIsolatedNetworkStatus_To_v1beta3_CloudStackIsolatedNetworkStatus is an autogenerated conversion function.
-func Convert_v1beta2_CloudStackIsolatedNetworkStatus_To_v1beta3_CloudStackIsolatedNetworkStatus(in *CloudStackIsolatedNetworkStatus, out *v1beta3.CloudStackIsolatedNetworkStatus, s conversion.Scope) error {
-	return autoConvert_v1beta2_CloudStackIsolatedNetworkStatus_To_v1beta3_CloudStackIsolatedNetworkStatus(in, out, s)
-}
-
 func autoConvert_v1beta3_CloudStackIsolatedNetworkStatus_To_v1beta2_CloudStackIsolatedNetworkStatus(in *v1beta3.CloudStackIsolatedNetworkStatus, out *CloudStackIsolatedNetworkStatus, s conversion.Scope) error {
+	// WARNING: in.PublicIPAddress requires manual conversion: does not exist in peer-type
 	out.PublicIPID = in.PublicIPID
 	out.LBRuleID = in.LBRuleID
+	// WARNING: in.LoadBalancerRuleIDs requires manual conversion: does not exist in peer-type
+	// WARNING: in.APIServerLoadBalancer requires manual conversion: does not exist in peer-type
 	out.Ready = in.Ready
 	return nil
-}
-
-// Convert_v1beta3_CloudStackIsolatedNetworkStatus_To_v1beta2_CloudStackIsolatedNetworkStatus is an autogenerated conversion function.
-func Convert_v1beta3_CloudStackIsolatedNetworkStatus_To_v1beta2_CloudStackIsolatedNetworkStatus(in *v1beta3.CloudStackIsolatedNetworkStatus, out *CloudStackIsolatedNetworkStatus, s conversion.Scope) error {
-	return autoConvert_v1beta3_CloudStackIsolatedNetworkStatus_To_v1beta2_CloudStackIsolatedNetworkStatus(in, out, s)
 }
 
 func autoConvert_v1beta2_CloudStackMachine_To_v1beta3_CloudStackMachine(in *CloudStackMachine, out *v1beta3.CloudStackMachine, s conversion.Scope) error {
@@ -1305,6 +1290,7 @@ func autoConvert_v1beta3_Network_To_v1beta2_Network(in *v1beta3.Network, out *Ne
 	out.ID = in.ID
 	out.Type = in.Type
 	out.Name = in.Name
+	// WARNING: in.CIDR requires manual conversion: does not exist in peer-type
 	// WARNING: in.Domain requires manual conversion: does not exist in peer-type
 	return nil
 }

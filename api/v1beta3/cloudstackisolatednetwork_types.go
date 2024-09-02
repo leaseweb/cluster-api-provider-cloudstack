@@ -40,6 +40,10 @@ type CloudStackIsolatedNetworkSpec struct {
 	// FailureDomainName -- the FailureDomain the network is placed in.
 	FailureDomainName string `json:"failureDomainName"`
 
+	// CIDR is the IP range of the isolated network.
+	//+optional
+	CIDR string `json:"cidr,omitempty"`
+
 	// Domain is the DNS domain name used for all instances in the isolated network.
 	//+optional
 	Domain string `json:"domain,omitempty"`
@@ -47,11 +51,22 @@ type CloudStackIsolatedNetworkSpec struct {
 
 // CloudStackIsolatedNetworkStatus defines the observed state of CloudStackIsolatedNetwork
 type CloudStackIsolatedNetworkStatus struct {
-	// The CS public IP ID to use for the k8s endpoint.
+	// The outgoing IP of the isolated network.
+	PublicIPAddress string `json:"publicIPAddress,omitempty"`
+
+	// The CS public IP ID of the outgoing IP of the isolated network.
 	PublicIPID string `json:"publicIPID,omitempty"`
 
-	// The ID of the lb rule used to assign VMs to the lb.
+	// Deprecated: The ID of the lb rule used to assign VMs to the lb.
+	// No longer used, see LoadBalancerRuleIDs. Will be removed in next API version.
 	LBRuleID string `json:"loadBalancerRuleID,omitempty"`
+
+	// The IDs of the lb rule used to assign VMs to the lb.
+	LoadBalancerRuleIDs []string `json:"loadBalancerRuleIDs,omitempty"`
+
+	// APIServerLoadBalancer describes the api server load balancer if one exists
+	//+optional
+	APIServerLoadBalancer *LoadBalancer `json:"apiServerLoadBalancer,omitempty"`
 
 	// Ready indicates the readiness of this provider resource.
 	//+optional

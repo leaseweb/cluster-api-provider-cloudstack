@@ -22,12 +22,14 @@ import (
 	"math/rand"
 	"reflect"
 	"regexp"
+	"strings"
 	"time"
 
 	"k8s.io/utils/pointer"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/cluster-api/util"
@@ -226,7 +228,6 @@ func (r *CloudStackMachineReconciliationRunner) GetOrCreateVMInstance() (retRes 
 		r.Recorder.Event(r.ReconciliationSubject, "Normal", "Creating", BootstrapDataNotReady)
 		return r.RequeueWithMessage(BootstrapDataNotReady + ".")
 	}
-	r.Log.Info("Got Bootstrap DataSecretName.")
 
 	// Get the kubeadm bootstrap secret for this machine.
 	secret := &corev1.Secret{}
@@ -268,8 +269,11 @@ func processCustomMetadata(data []byte, r *CloudStackMachineReconciliationRunner
 // RequeueIfInstanceNotRunning checks the Instance's status for running state and requeues otherwise.
 func (r *CloudStackMachineReconciliationRunner) RequeueIfInstanceNotRunning() (retRes ctrl.Result, reterr error) {
 	if r.ReconciliationSubject.Status.InstanceState == "Running" {
-		r.Recorder.Event(r.ReconciliationSubject, "Normal", "Running", MachineInstanceRunning)
-		r.Log.Info(MachineInstanceRunning)
+		// Only emit this event when relevant.
+		if !r.ReconciliationSubject.Status.Ready {
+			r.Recorder.Event(r.ReconciliationSubject, "Normal", "Running", MachineInstanceRunning)
+			r.Log.Info(MachineInstanceRunning)
+		}
 		r.ReconciliationSubject.Status.Ready = true
 	} else if r.ReconciliationSubject.Status.InstanceState == "Error" {
 		r.Recorder.Event(r.ReconciliationSubject, "Warning", "Error", MachineInErrorMessage)
@@ -286,39 +290,54 @@ func (r *CloudStackMachineReconciliationRunner) RequeueIfInstanceNotRunning() (r
 	return ctrl.Result{}, nil
 }
 
-// AddToLBIfNeeded adds instance to load balancer if it is a control plane in an isolated network.
+// AddToLBIfNeeded adds instance to load balancer if it is a control plane node in an isolated network, and the load balancer is enabled.
 func (r *CloudStackMachineReconciliationRunner) AddToLBIfNeeded() (retRes ctrl.Result, reterr error) {
-	if util.IsControlPlaneMachine(r.CAPIMachine) && r.FailureDomain.Spec.Zone.Network.Type == cloud.NetworkTypeIsolated {
-		r.Log.Info("Assigning VM to load balancer rule.")
+	if util.IsControlPlaneMachine(r.CAPIMachine) &&
+		r.FailureDomain.Spec.Zone.Network.Type == cloud.NetworkTypeIsolated &&
+		r.CSCluster.Spec.APIServerLoadBalancer.IsEnabled() {
+		r.Log.V(4).Info("Assigning VM to load balancer rule.")
 		if r.IsoNet.Spec.Name == "" {
 			return r.RequeueWithMessage("Could not get required Isolated Network for VM, requeueing.")
 		}
-		err := r.CSUser.AssignVMToLoadBalancerRule(r.IsoNet, *r.ReconciliationSubject.Spec.InstanceID)
+		err := r.CSUser.AssignVMToLoadBalancerRules(r.IsoNet, *r.ReconciliationSubject.Spec.InstanceID)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 	}
+
 	return ctrl.Result{}, nil
 }
 
-// GetOrCreateMachineStateChecker creates or gets CloudStackMachineStateChecker object.
+// GetOrCreateMachineStateChecker gets or creates a CloudStackMachineStateChecker object.
 func (r *CloudStackMachineReconciliationRunner) GetOrCreateMachineStateChecker() (retRes ctrl.Result, reterr error) {
 	checkerName := r.ReconciliationSubject.Spec.InstanceID
 	if checkerName == nil {
 		return ctrl.Result{}, errors.New(CSMachineStateCheckerCreationFailed)
 	}
-	csMachineStateChecker := &infrav1.CloudStackMachineStateChecker{
-		ObjectMeta: r.NewChildObjectMeta(*checkerName),
-		Spec:       infrav1.CloudStackMachineStateCheckerSpec{InstanceID: *checkerName},
-		Status:     infrav1.CloudStackMachineStateCheckerStatus{Ready: false},
-	}
 
-	if err := r.K8sClient.Create(r.RequestCtx, csMachineStateChecker); err != nil && !utils.ContainsAlreadyExistsSubstring(err) {
-		r.Recorder.Eventf(r.ReconciliationSubject, "Warning", "Machine State Checker", CSMachineStateCheckerCreationFailed)
-		return r.ReturnWrappedError(err, CSMachineStateCheckerCreationFailed)
+	csMachineStateChecker := &infrav1.CloudStackMachineStateChecker{}
+	objectKey := client.ObjectKey{Name: strings.ToLower(*checkerName), Namespace: r.Request.Namespace}
+	err := r.K8sClient.Get(r.RequestCtx, objectKey, csMachineStateChecker)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			csMachineStateChecker.ObjectMeta = r.NewChildObjectMeta(*checkerName)
+			csMachineStateChecker.Spec = infrav1.CloudStackMachineStateCheckerSpec{InstanceID: *checkerName}
+			csMachineStateChecker.Status = infrav1.CloudStackMachineStateCheckerStatus{Ready: false}
+
+			if err := r.K8sClient.Create(r.RequestCtx, csMachineStateChecker); err != nil {
+				r.Recorder.Eventf(r.ReconciliationSubject, "Warning", "Machine State Checker", CSMachineStateCheckerCreationFailed)
+				return r.ReturnWrappedError(err, CSMachineStateCheckerCreationFailed)
+			}
+			r.Recorder.Eventf(r.ReconciliationSubject, "Normal", "Machine State Checker", CSMachineStateCheckerCreationSuccess)
+		} else {
+			r.Recorder.Eventf(r.ReconciliationSubject, "Warning", "Machine State Checker", CSMachineStateCheckerCreationFailed)
+
+			return ctrl.Result{}, errors.Wrap(err, CSMachineStateCheckerCreationFailed)
+		}
 	}
-	r.Recorder.Eventf(r.ReconciliationSubject, "Normal", "Machine State Checker", CSMachineStateCheckerCreationSuccess)
-	return r.GetObjectByName(*checkerName, r.StateChecker)()
+	r.StateChecker = csMachineStateChecker
+
+	return ctrl.Result{}, nil
 }
 
 func (r *CloudStackMachineReconciliationRunner) ReconcileDelete() (retRes ctrl.Result, reterr error) {
@@ -357,16 +376,18 @@ func (r *CloudStackMachineReconciliationRunner) ReconcileDelete() (retRes ctrl.R
 
 // SetupWithManager registers the machine reconciler to the CAPI controller manager.
 func (reconciler *CloudStackMachineReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, opts controller.Options) error {
+	log := ctrl.LoggerFrom(ctx)
+
 	reconciler.Recorder = mgr.GetEventRecorderFor("capc-machine-controller")
-	CloudStackClusterToCloudStackMachines, err := utils.CloudStackClusterToCloudStackMachines(reconciler.K8sClient, &infrav1.CloudStackMachineList{}, reconciler.Scheme, ctrl.LoggerFrom(ctx))
-	if err != nil {
-		return errors.Wrap(err, "failed to create CloudStackClusterToCloudStackMachines mapper")
-	}
-	//requeueCloudStackMachinesForUnpausedCluster := reconciler.requeueCloudStackMachinesForUnpausedCluster(ctx)
+
+	cloudStackClusterToCloudStackMachines := utils.CloudStackClusterToCloudStackMachines(reconciler.K8sClient, log)
+
 	csMachineMapper, err := util.ClusterToTypedObjectsMapper(reconciler.K8sClient, &infrav1.CloudStackMachineList{}, reconciler.Scheme)
 	if err != nil {
-		return errors.Wrap(err, "failed to create mapper for Cluster to AzureMachines")
+		return errors.Wrap(err, "failed to create mapper for Cluster to CloudStackMachines")
 	}
+
+	cloudStackIsolatedNetworkToControlPlaneCloudStackMachines := utils.CloudStackIsolatedNetworkToControlPlaneCloudStackMachines(reconciler.K8sClient, log)
 
 	err = ctrl.NewControllerManagedBy(mgr).
 		WithOptions(opts).
@@ -377,7 +398,11 @@ func (reconciler *CloudStackMachineReconciler) SetupWithManager(ctx context.Cont
 			builder.WithPredicates(
 				predicate.Funcs{
 					UpdateFunc: func(e event.UpdateEvent) bool {
-						oldMachine := e.ObjectOld.(*clusterv1.Machine)
+						oldMachine, ok := e.ObjectOld.(*clusterv1.Machine)
+						if !ok {
+							log.V(4).Info("Expected Machine", "type", fmt.Sprintf("%T", e.ObjectOld))
+							return false
+						}
 						newMachine := e.ObjectNew.(*clusterv1.Machine)
 
 						return (oldMachine.Spec.Bootstrap.DataSecretName == nil && newMachine.Spec.Bootstrap.DataSecretName != nil)
@@ -387,7 +412,7 @@ func (reconciler *CloudStackMachineReconciler) SetupWithManager(ctx context.Cont
 		).
 		Watches(
 			&infrav1.CloudStackCluster{},
-			handler.EnqueueRequestsFromMapFunc(CloudStackClusterToCloudStackMachines),
+			handler.EnqueueRequestsFromMapFunc(cloudStackClusterToCloudStackMachines),
 		).
 		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(ctrl.LoggerFrom(ctx), reconciler.WatchFilterValue)).
 		WithEventFilter(
@@ -432,6 +457,32 @@ func (reconciler *CloudStackMachineReconciler) SetupWithManager(ctx context.Cont
 			handler.EnqueueRequestsFromMapFunc(csMachineMapper),
 			builder.WithPredicates(
 				predicates.ClusterUnpausedAndInfrastructureReady(ctrl.LoggerFrom(ctx)),
+			),
+		).
+		Watches(
+			// This watch is here to assign VM's to loadbalancer rules
+			&infrav1.CloudStackIsolatedNetwork{},
+			handler.EnqueueRequestsFromMapFunc(cloudStackIsolatedNetworkToControlPlaneCloudStackMachines),
+			builder.WithPredicates(
+				predicate.Funcs{
+					UpdateFunc: func(e event.UpdateEvent) bool {
+						oldCSIsoNet, ok := e.ObjectOld.(*infrav1.CloudStackIsolatedNetwork)
+						if !ok {
+							log.V(4).Info("Expected CloudStackIsolatedNetwork", "type", fmt.Sprintf("%T", e.ObjectOld))
+							return false
+						}
+
+						newCSIsoNet := e.ObjectNew.(*infrav1.CloudStackIsolatedNetwork)
+
+						// We're only interested in status updates, not Spec updates
+						if oldCSIsoNet.Generation != newCSIsoNet.Generation {
+							return false
+						}
+
+						// Only trigger a CloudStackMachine reconcile if the loadbalancer rules changed.
+						return len(oldCSIsoNet.Status.LoadBalancerRuleIDs) != len(newCSIsoNet.Status.LoadBalancerRuleIDs)
+					},
+				},
 			),
 		).
 		Complete(reconciler)

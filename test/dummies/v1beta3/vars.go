@@ -2,6 +2,8 @@ package dummies
 
 import (
 	"os"
+	"path"
+	goruntime "runtime"
 
 	csapi "github.com/apache/cloudstack-go/v2/cloudstack"
 	"github.com/onsi/gomega"
@@ -39,6 +41,7 @@ var ( // Declare exported dummy vars.
 	Zone2                   infrav1.CloudStackZoneSpec
 	CSFailureDomain1        *infrav1.CloudStackFailureDomain
 	CSFailureDomain2        *infrav1.CloudStackFailureDomain
+	APIServerLoadBalancer   *infrav1.APIServerLoadBalancer
 	Net1                    infrav1.Network
 	Net2                    infrav1.Network
 	ISONet1                 infrav1.Network
@@ -75,9 +78,11 @@ var ( // Declare exported dummy vars.
 	CSClusterTagKey         string
 	CSClusterTagVal         string
 	CSClusterTag            map[string]string
-	CreatedByCapcKey        string
-	CreatedByCapcVal        string
+	CreatedByCAPCTag        []csapi.Tags
+	FWRuleID                string
 	LBRuleID                string
+	LoadBalancerRuleIDs     []string
+	LoadBalancerIPID        string
 	PublicIPID              string
 	EndPointHost            string
 	EndPointPort            int32
@@ -91,8 +96,10 @@ var ( // Declare exported dummy vars.
 
 // SetDummyVars sets/resets all dummy vars.
 func SetDummyVars() {
-	projDir := os.Getenv("REPO_ROOT")
-	source, err := os.ReadFile(projDir + "/test/e2e/config/cloudstack.yaml")
+	// Get the root of the current file to use in CRD paths.
+	_, filename, _, _ := goruntime.Caller(0) //nolint:dogsled // Ignore "declaration has 3 blank identifiers" check.
+	root := path.Join(path.Dir(filename), "..", "..")
+	source, err := os.ReadFile(root + "/e2e/config/cloudstack.yaml")
 	if err != nil {
 		panic(err)
 	}
@@ -114,7 +121,9 @@ func SetDummyVars() {
 	SetDummyBootstrapSecretVar()
 	SetCSMachineOwner()
 	SetDummyOwnerReferences()
+	FWRuleID = "FakeFWRuleID"
 	LBRuleID = "FakeLBRuleID"
+	LoadBalancerRuleIDs = []string{"FakeLBRuleID"}
 }
 
 func SetDiskOfferingVars() {
@@ -139,8 +148,6 @@ func SetDummyTagVars() {
 	CSClusterTagKey = "CAPC_cluster_" + string(CSCluster.ObjectMeta.UID)
 	CSClusterTagVal = "1"
 	CSClusterTag = map[string]string{CSClusterTagVal: CSClusterTagVal}
-	CreatedByCapcKey = "create_by_CAPC"
-	CreatedByCapcVal = ""
 	Tag1Key = "test_tag1"
 	Tag1Val = "arbitrary_value1"
 	Tag2Key = "test_tag2"
@@ -148,6 +155,12 @@ func SetDummyTagVars() {
 	Tag1 = map[string]string{Tag2Key: Tag2Val}
 	Tag2 = map[string]string{Tag2Key: Tag2Val}
 	Tags = map[string]string{Tag1Key: Tag1Val, Tag2Key: Tag2Val}
+	CreatedByCAPCTag = []csapi.Tags{
+		{
+			Key:   cloud.CreatedByCAPCTagName,
+			Value: "1",
+		},
+	}
 }
 
 func SetCSMachineOwner() {
@@ -274,6 +287,7 @@ func SetDummyCAPCClusterVars() {
 	ClusterName = "test-cluster"
 	EndPointHost = "EndpointHost"
 	EndPointPort = int32(5309)
+	LoadBalancerIPID = "FakeLoadBalancerPublicIPID"
 	PublicIPID = "FakePublicIPID"
 	ClusterNameSpace = "default"
 	ClusterLabel = map[string]string{clusterv1.ClusterNameLabel: ClusterName}
@@ -284,6 +298,11 @@ func SetDummyCAPCClusterVars() {
 	Net1 = infrav1.Network{Name: GetYamlVal("CLOUDSTACK_NETWORK_NAME"), Type: cloud.NetworkTypeShared}
 	Net2 = infrav1.Network{Name: "SharedGuestNet2", Type: cloud.NetworkTypeShared, ID: "FakeSharedNetID2"}
 	ISONet1 = infrav1.Network{Name: "isoguestnet1", Type: cloud.NetworkTypeIsolated, ID: "FakeIsolatedNetID1"}
+	APIServerLoadBalancer = &infrav1.APIServerLoadBalancer{
+		Enabled:         pointer.Bool(true),
+		AdditionalPorts: []int{},
+		AllowedCIDRs:    []string{},
+	}
 	CSFailureDomain1 = &infrav1.CloudStackFailureDomain{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: CSApiVersion,
@@ -335,8 +354,9 @@ func SetDummyCAPCClusterVars() {
 			Labels:    ClusterLabel,
 		},
 		Spec: infrav1.CloudStackClusterSpec{
-			ControlPlaneEndpoint: clusterv1.APIEndpoint{Host: EndPointHost, Port: EndPointPort},
-			FailureDomains:       []infrav1.CloudStackFailureDomainSpec{CSFailureDomain1.Spec, CSFailureDomain2.Spec},
+			ControlPlaneEndpoint:  clusterv1.APIEndpoint{Host: EndPointHost, Port: EndPointPort},
+			FailureDomains:        []infrav1.CloudStackFailureDomainSpec{CSFailureDomain1.Spec, CSFailureDomain2.Spec},
+			APIServerLoadBalancer: APIServerLoadBalancer,
 		},
 		Status: infrav1.CloudStackClusterStatus{},
 	}
@@ -352,7 +372,12 @@ func SetDummyCAPCClusterVars() {
 			Labels:    ClusterLabel,
 		},
 		Spec: infrav1.CloudStackIsolatedNetworkSpec{
-			ControlPlaneEndpoint: CSCluster.Spec.ControlPlaneEndpoint}}
+			ControlPlaneEndpoint: CSCluster.Spec.ControlPlaneEndpoint,
+		},
+		Status: infrav1.CloudStackIsolatedNetworkStatus{
+			APIServerLoadBalancer: &infrav1.LoadBalancer{},
+		},
+	}
 	CSISONet1.Spec.Name = ISONet1.Name
 	CSISONet1.Spec.ID = ISONet1.ID
 }

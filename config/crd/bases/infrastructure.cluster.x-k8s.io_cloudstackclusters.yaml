@@ -353,6 +353,39 @@ spec:
           spec:
             description: CloudStackClusterSpec defines the desired state of CloudStackCluster.
             properties:
+              apiServerLoadBalancer:
+                description: |-
+                  APIServerLoadBalancer configures the optional LoadBalancer for the APIServer.
+                  If not specified, no load balancer will be created for the API server.
+                properties:
+                  additionalPorts:
+                    description: AdditionalPorts adds additional tcp ports to the
+                      load balancer.
+                    items:
+                      type: integer
+                    type: array
+                    x-kubernetes-list-type: set
+                  allowedCIDRs:
+                    description: AllowedCIDRs restrict access to all API-Server listeners
+                      to the given address CIDRs.
+                    items:
+                      type: string
+                    type: array
+                    x-kubernetes-list-type: set
+                  enabled:
+                    default: true
+                    description: |-
+                      Enabled defines whether a load balancer should be created. This value
+                      defaults to true if an APIServerLoadBalancer is given.
+
+
+                      There is no reason to set this to false. To disable creation of the
+                      API server loadbalancer, omit the APIServerLoadBalancer field in the
+                      cluster spec instead.
+                    type: boolean
+                required:
+                - enabled
+                type: object
               controlPlaneEndpoint:
                 description: The kubernetes control plane endpoint.
                 properties:
@@ -406,6 +439,9 @@ spec:
                         network:
                           description: The network within the Zone to use.
                           properties:
+                            cidr:
+                              description: CIDR is the IP address range of the network.
+                              type: string
                             domain:
                               description: Domain is the DNS domain name used for
                                 all instances in the network.
