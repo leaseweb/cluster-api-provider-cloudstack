@@ -24,6 +24,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
 )
@@ -57,7 +58,7 @@ var _ = Describe("Zone", func() {
 
 	Context("an existing abstract dummies.CSCluster", func() {
 		It("handles zone not found.", func() {
-			expectedErr := fmt.Errorf("Not found")
+			expectedErr := errors.New("Not found")
 			zs.EXPECT().GetZoneID(dummies.Zone1.Name).Return("", -1, expectedErr)
 			zs.EXPECT().GetZoneByID(dummies.Zone1.ID).Return(nil, -1, expectedErr)
 
@@ -67,7 +68,7 @@ var _ = Describe("Zone", func() {
 
 		It("handles multiple zone IDs returned", func() {
 			zs.EXPECT().GetZoneID(dummies.Zone1.Name).Return(dummies.Zone1.ID, 2, nil)
-			zs.EXPECT().GetZoneByID(dummies.Zone1.ID).Return(nil, -1, fmt.Errorf("Not found"))
+			zs.EXPECT().GetZoneByID(dummies.Zone1.ID).Return(nil, -1, errors.New("Not found"))
 
 			Ω(client.ResolveZone(&dummies.CSFailureDomain1.Spec.Zone)).Should(MatchError(And(
 				ContainSubstring("expected 1 Zone with name "+dummies.Zone1.Name+", but got 2"),
@@ -109,7 +110,7 @@ var _ = Describe("Zone", func() {
 			ns.EXPECT().GetNetworkByName(dummies.Zone2.Network.Name).Return(nil, -1, fakeError)
 			ns.EXPECT().GetNetworkByID(dummies.Zone2.Network.ID).Return(nil, -1, fakeError)
 
-			Ω(client.ResolveNetworkForZone(&dummies.CSFailureDomain2.Spec.Zone).Error()).Should(ContainSubstring(fmt.Sprintf("could not get Network by ID %s", dummies.Zone2.Network.ID)))
+			Ω(client.ResolveNetworkForZone(&dummies.CSFailureDomain2.Spec.Zone).Error()).Should(ContainSubstring("could not get Network by ID " + dummies.Zone2.Network.ID))
 		})
 	})
 })

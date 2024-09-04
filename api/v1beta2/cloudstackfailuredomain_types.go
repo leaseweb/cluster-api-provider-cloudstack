@@ -69,7 +69,7 @@ type CloudStackZoneSpec struct {
 	Network Network `json:"network"`
 }
 
-// CloudStackFailureDomainSpec defines the desired state of CloudStackFailureDomain
+// CloudStackFailureDomainSpec defines the desired state of CloudStackFailureDomain.
 type CloudStackFailureDomainSpec struct {
 	// The failure domain unique name.
 	Name string `json:"name"`
@@ -89,7 +89,7 @@ type CloudStackFailureDomainSpec struct {
 	ACSEndpoint corev1.SecretReference `json:"acsEndpoint"`
 }
 
-// CloudStackFailureDomainStatus defines the observed state of CloudStackFailureDomain
+// CloudStackFailureDomainStatus defines the observed state of CloudStackFailureDomain.
 type CloudStackFailureDomainStatus struct {
 	// Reflects the readiness of the CloudStack Failure Domain.
 	Ready bool `json:"ready"`
@@ -98,7 +98,7 @@ type CloudStackFailureDomainStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// CloudStackFailureDomain is the Schema for the cloudstackfailuredomains API
+// CloudStackFailureDomain is the Schema for the cloudstackfailuredomains API.
 type CloudStackFailureDomain struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -109,7 +109,7 @@ type CloudStackFailureDomain struct {
 
 //+kubebuilder:object:root=true
 
-// CloudStackFailureDomainList contains a list of CloudStackFailureDomain
+// CloudStackFailureDomainList contains a list of CloudStackFailureDomain.
 type CloudStackFailureDomainList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

@@ -14,11 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package strings
+package strings_test
 
 import (
 	"slices"
 	"testing"
+
+	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/utils/strings"
 )
 
 func TestCanonicalize(t *testing.T) {
@@ -51,7 +53,7 @@ func TestCanonicalize(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := Canonicalize(tt.value)
+			got := strings.Canonicalize(tt.value)
 			if !slices.Equal(got, tt.want) {
 				t.Errorf("CompareLists() = %v, want %v", got, tt.want)
 			}
@@ -111,7 +113,7 @@ func TestSliceDiff(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res1, res2 := SliceDiff(tt.value1, tt.value2)
+			res1, res2 := strings.SliceDiff(tt.value1, tt.value2)
 			if !slices.Equal(res1, tt.want1) {
 				t.Errorf("CompareLists() = %v, want %v", res1, tt.want1)
 			}

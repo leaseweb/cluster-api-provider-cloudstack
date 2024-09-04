@@ -54,6 +54,7 @@ func NewCSAGReconciliationRunner() *CloudStackAGReconciliationRunner {
 	r.FailureDomain = &infrav1.CloudStackFailureDomain{}
 	// Setup the base runner. Initializes pointers and links reconciliation methods.
 	r.ReconciliationRunner = csCtrlrUtils.NewRunner(r, r.ReconciliationSubject, "CloudStackAffinityGroup")
+
 	return r
 }
 
@@ -63,6 +64,7 @@ func (reconciler *CloudStackAffinityGroupReconciler) Reconcile(ctx context.Conte
 	r.WithAdditionalCommonStages(
 		r.GetFailureDomainByName(func() string { return r.ReconciliationSubject.Spec.FailureDomainName }, r.FailureDomain),
 		r.AsFailureDomainUser(&r.FailureDomain.Spec))
+
 	return r.RunBaseReconciliationStages()
 }
 
@@ -74,6 +76,7 @@ func (r *CloudStackAGReconciliationRunner) Reconcile() (ctrl.Result, error) {
 	}
 	r.ReconciliationSubject.Spec.ID = affinityGroup.ID
 	r.ReconciliationSubject.Status.Ready = true
+
 	return ctrl.Result{}, nil
 }
 
@@ -86,12 +89,14 @@ func (r *CloudStackAGReconciliationRunner) ReconcileDelete() (ctrl.Result, error
 		// deleting the affinity group. Removing finalizer if affinity group is not
 		// present on Cloudstack ensures affinity group object deletion is not blocked.
 		controllerutil.RemoveFinalizer(r.ReconciliationSubject, infrav1.AffinityGroupFinalizer)
+
 		return ctrl.Result{}, nil
 	}
 	if err := r.CSUser.DeleteAffinityGroup(group); err != nil {
 		return ctrl.Result{}, err
 	}
 	controllerutil.RemoveFinalizer(r.ReconciliationSubject, infrav1.AffinityGroupFinalizer)
+
 	return ctrl.Result{}, nil
 }
 

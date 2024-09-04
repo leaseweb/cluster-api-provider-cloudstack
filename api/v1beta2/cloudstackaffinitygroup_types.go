@@ -22,7 +22,7 @@ import (
 
 const AffinityGroupFinalizer = "affinitygroup.infrastructure.cluster.x-k8s.io"
 
-// CloudStackAffinityGroupSpec defines the desired state of CloudStackAffinityGroup
+// CloudStackAffinityGroupSpec defines the desired state of CloudStackAffinityGroup.
 type CloudStackAffinityGroupSpec struct {
 	// Mutually exclusive parameter with AffinityGroupIDs.
 	// Can be "host affinity" or "host anti-affinity". Will create an affinity group per machine set.
@@ -40,7 +40,7 @@ type CloudStackAffinityGroupSpec struct {
 	FailureDomainName string `json:"failureDomainName,omitempty"`
 }
 
-// CloudStackAffinityGroupStatus defines the observed state of CloudStackAffinityGroup
+// CloudStackAffinityGroupStatus defines the observed state of CloudStackAffinityGroup.
 type CloudStackAffinityGroupStatus struct {
 	// Reflects the readiness of the CS Affinity Group.
 	Ready bool `json:"ready"`
@@ -49,7 +49,7 @@ type CloudStackAffinityGroupStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// CloudStackAffinityGroup is the Schema for the cloudstackaffinitygroups API
+// CloudStackAffinityGroup is the Schema for the cloudstackaffinitygroups API.
 type CloudStackAffinityGroup struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -60,7 +60,7 @@ type CloudStackAffinityGroup struct {
 
 //+kubebuilder:object:root=true
 
-// CloudStackAffinityGroupList contains a list of CloudStackAffinityGroup
+// CloudStackAffinityGroupList contains a list of CloudStackAffinityGroup.
 type CloudStackAffinityGroupList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

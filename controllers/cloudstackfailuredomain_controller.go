@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sort"
 
 	"github.com/pkg/errors"
@@ -28,6 +27,7 @@ import (
 	"sigs.k8s.io/cluster-api/util/predicates"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
@@ -76,7 +76,7 @@ func NewCSFailureDomainReconciliationRunner() *CloudStackFailureDomainReconcilia
 }
 
 // Reconcile is the method k8s will call upon a reconciliation request.
-func (reconciler *CloudStackFailureDomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (retRes ctrl.Result, retErr error) {
+func (reconciler *CloudStackFailureDomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	return NewCSFailureDomainReconciliationRunner().
 		UsingBaseReconciler(reconciler.ReconcilerBase).
 		ForRequest(req).
@@ -85,7 +85,7 @@ func (reconciler *CloudStackFailureDomainReconciler) Reconcile(ctx context.Conte
 }
 
 // Reconcile on the ReconciliationRunner actually attempts to modify or create the reconciliation subject.
-func (r *CloudStackFailureDomainReconciliationRunner) Reconcile() (retRes ctrl.Result, retErr error) {
+func (r *CloudStackFailureDomainReconciliationRunner) Reconcile() (ctrl.Result, error) {
 	res, err := r.AsFailureDomainUser(&r.ReconciliationSubject.Spec)()
 	if r.ShouldReturn(res, err) {
 		return res, err
@@ -120,6 +120,7 @@ func (r *CloudStackFailureDomainReconciliationRunner) Reconcile() (retRes ctrl.R
 		}
 	}
 	r.ReconciliationSubject.Status.Ready = true
+
 	return ctrl.Result{}, nil
 }
 
@@ -153,6 +154,7 @@ func (r *CloudStackFailureDomainReconciliationRunner) GetAllMachinesInFailureDom
 		return items[i].Name < items[j].Name
 	})
 	r.Machines = items
+
 	return ctrl.Result{}, nil
 }
 
@@ -168,46 +170,49 @@ func (r *CloudStackFailureDomainReconciliationRunner) RequeueIfClusterNotReady()
 			}
 		}
 	}
+
 	return ctrl.Result{}, nil
 }
 
 // RequeueIfMachineCannotBeRemoved checks for each machine to confirm it is not risky to remove it.
-func (r *CloudStackFailureDomainReconciliationRunner) RequeueIfMachineCannotBeRemoved() (ctrl.Result, error) {
+func (r *CloudStackFailureDomainReconciliationRunner) RequeueIfMachineCannotBeRemoved() (ctrl.Result, error) { //nolint:gocognit
 	// check CAPI machines for CloudStack machines found.
 	for _, machine := range r.Machines {
 		for _, ref := range machine.OwnerReferences {
-			if ref.Kind != "Machine" {
-				owner := &unstructured.Unstructured{}
-				owner.SetGroupVersionKind(schema.FromAPIVersionAndKind(ref.APIVersion, ref.Kind))
-				if err := r.K8sClient.Get(r.RequestCtx, client.ObjectKey{Namespace: machine.Namespace, Name: ref.Name}, owner); err != nil {
-					return ctrl.Result{}, err
-				}
-				specReplicas, statusReplicas, err := getSpecAndStatusReplicas(owner, ref.Name, machine.Name)
-				if err != nil {
-					return ctrl.Result{}, err
-				}
-				if specReplicas != statusReplicas {
-					return r.RequeueWithMessage("spec.replicas <> status.replicas, ", "owner", ref.Name, "spec.replicas", specReplicas, "status.replicas", statusReplicas)
-				}
+			if ref.Kind == "Machine" {
+				continue
+			}
+			owner := &unstructured.Unstructured{}
+			owner.SetGroupVersionKind(schema.FromAPIVersionAndKind(ref.APIVersion, ref.Kind))
+			if err := r.K8sClient.Get(r.RequestCtx, client.ObjectKey{Namespace: machine.Namespace, Name: ref.Name}, owner); err != nil {
+				return ctrl.Result{}, err
+			}
+			specReplicas, statusReplicas, err := getSpecAndStatusReplicas(owner, ref.Name, machine.Name)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			if specReplicas != statusReplicas {
+				return r.RequeueWithMessage("spec.replicas <> status.replicas, ", "owner", ref.Name, "spec.replicas", specReplicas, "status.replicas", statusReplicas)
+			}
 
-				statusReady, found, err := unstructured.NestedBool(owner.Object, "status", "ready")
-				if found && err != nil {
-					return ctrl.Result{}, err
-				}
-				if found && !statusReady {
-					return r.RequeueWithMessage("status.ready not true, ", "owner", ref.Name)
-				}
+			statusReady, found, err := unstructured.NestedBool(owner.Object, "status", "ready")
+			if found && err != nil {
+				return ctrl.Result{}, err
+			}
+			if found && !statusReady {
+				return r.RequeueWithMessage("status.ready not true, ", "owner", ref.Name)
+			}
 
-				statusReadyReplicas, found, err := unstructured.NestedInt64(owner.Object, "status", "readyReplicas")
-				if found && err != nil {
-					return ctrl.Result{}, err
-				}
-				if found && statusReadyReplicas != statusReplicas {
-					return r.RequeueWithMessage("status.replicas <> status.readyReplicas, ", "owner", ref.Name, "status.replicas", statusReplicas, "status.readyReplicas", statusReadyReplicas)
-				}
+			statusReadyReplicas, found, err := unstructured.NestedInt64(owner.Object, "status", "readyReplicas")
+			if found && err != nil {
+				return ctrl.Result{}, err
+			}
+			if found && statusReadyReplicas != statusReplicas {
+				return r.RequeueWithMessage("status.replicas <> status.readyReplicas, ", "owner", ref.Name, "status.replicas", statusReplicas, "status.readyReplicas", statusReadyReplicas)
 			}
 		}
 	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -240,27 +245,31 @@ func (r *CloudStackFailureDomainReconciliationRunner) ClearMachines() (ctrl.Resu
 	// pick first machine to delete
 	if len(r.Machines) > 0 {
 		for _, ref := range r.Machines[0].OwnerReferences {
-			if ref.Kind == "Machine" {
-				machine := &clusterv1.Machine{}
-				if err := r.K8sClient.Get(r.RequestCtx, client.ObjectKey{Namespace: r.ReconciliationSubject.Namespace, Name: ref.Name}, machine); err != nil {
-					return ctrl.Result{}, err
-				}
-				if !machine.DeletionTimestamp.IsZero() {
-					return r.RequeueWithMessage("machine is being deleted, ", "machine", machine.Name)
-				}
-				if err := r.K8sClient.Delete(r.RequestCtx, machine); err != nil {
-					return ctrl.Result{}, err
-				}
-				return r.RequeueWithMessage("start to delete machine, ", "machine", machine.Name)
+			if ref.Kind != "Machine" {
+				continue
 			}
+			machine := &clusterv1.Machine{}
+			if err := r.K8sClient.Get(r.RequestCtx, client.ObjectKey{Namespace: r.ReconciliationSubject.Namespace, Name: ref.Name}, machine); err != nil {
+				return ctrl.Result{}, err
+			}
+			if !machine.DeletionTimestamp.IsZero() {
+				return r.RequeueWithMessage("machine is being deleted, ", "machine", machine.Name)
+			}
+			if err := r.K8sClient.Delete(r.RequestCtx, machine); err != nil {
+				return ctrl.Result{}, err
+			}
+
+			return r.RequeueWithMessage("start to delete machine, ", "machine", machine.Name)
 		}
 	}
+
 	return ctrl.Result{}, nil
 }
 
 // RemoveFinalizer just removes the finalizer from the failure domain.
 func (r *CloudStackFailureDomainReconciliationRunner) RemoveFinalizer() (ctrl.Result, error) {
 	controllerutil.RemoveFinalizer(r.ReconciliationSubject, infrav1.FailureDomainFinalizer)
+
 	return ctrl.Result{}, nil
 }
 

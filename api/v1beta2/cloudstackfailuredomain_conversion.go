@@ -17,16 +17,19 @@ limitations under the License.
 package v1beta2
 
 import (
-	"sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
+
+	"sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 )
 
-func (src *CloudStackFailureDomain) ConvertTo(dstRaw conversion.Hub) error { // nolint
+func (r *CloudStackFailureDomain) ConvertTo(dstRaw conversion.Hub) error {
 	dst := dstRaw.(*v1beta3.CloudStackFailureDomain)
-	return Convert_v1beta2_CloudStackFailureDomain_To_v1beta3_CloudStackFailureDomain(src, dst, nil)
+
+	return Convert_v1beta2_CloudStackFailureDomain_To_v1beta3_CloudStackFailureDomain(r, dst, nil)
 }
 
-func (dst *CloudStackFailureDomain) ConvertFrom(srcRaw conversion.Hub) error { // nolint
+func (r *CloudStackFailureDomain) ConvertFrom(srcRaw conversion.Hub) error {
 	src := srcRaw.(*v1beta3.CloudStackFailureDomain)
-	return Convert_v1beta3_CloudStackFailureDomain_To_v1beta2_CloudStackFailureDomain(src, dst, nil)
+
+	return Convert_v1beta3_CloudStackFailureDomain_To_v1beta2_CloudStackFailureDomain(src, r, nil)
 }

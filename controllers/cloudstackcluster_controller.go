@@ -22,6 +22,9 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util"
+	"sigs.k8s.io/cluster-api/util/predicates"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -32,9 +35,6 @@ import (
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	csCtrlrUtils "sigs.k8s.io/cluster-api-provider-cloudstack/controllers/utils"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	"sigs.k8s.io/cluster-api/util"
-	"sigs.k8s.io/cluster-api/util/predicates"
 )
 
 // RBAC permissions used in all reconcilers. Events and Secrets.
@@ -78,7 +78,7 @@ func NewCSClusterReconciliationRunner() *CloudStackClusterReconciliationRunner {
 }
 
 // Reconcile is the method k8s will call upon a reconciliation request.
-func (reconciler *CloudStackClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (retRes ctrl.Result, retErr error) {
+func (reconciler *CloudStackClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	return NewCSClusterReconciliationRunner().
 		UsingBaseReconciler(reconciler.ReconcilerBase).
 		ForRequest(req).
@@ -87,7 +87,7 @@ func (reconciler *CloudStackClusterReconciler) Reconcile(ctx context.Context, re
 }
 
 // Reconcile actually reconciles the CloudStackCluster.
-func (r *CloudStackClusterReconciliationRunner) Reconcile() (res ctrl.Result, reterr error) {
+func (r *CloudStackClusterReconciliationRunner) Reconcile() (ctrl.Result, error) {
 	return r.RunReconciliationStages(
 		r.SetFailureDomainsStatusMap,
 		r.CreateFailureDomains(r.ReconciliationSubject.Spec.FailureDomains),
@@ -101,6 +101,7 @@ func (r *CloudStackClusterReconciliationRunner) Reconcile() (res ctrl.Result, re
 func (r *CloudStackClusterReconciliationRunner) SetReady() (ctrl.Result, error) {
 	controllerutil.AddFinalizer(r.ReconciliationSubject, infrav1.ClusterFinalizer)
 	r.ReconciliationSubject.Status.Ready = true
+
 	return ctrl.Result{}, nil
 }
 
@@ -115,6 +116,7 @@ func (r *CloudStackClusterReconciliationRunner) VerifyFailureDomainCRDs() (ctrl.
 				if !fd.Status.Ready {
 					return r.RequeueWithMessage(fmt.Sprintf("Required FailureDomain %s not ready, requeueing.", fd.Spec.Name))
 				}
+
 				break
 			}
 		}
@@ -122,6 +124,7 @@ func (r *CloudStackClusterReconciliationRunner) VerifyFailureDomainCRDs() (ctrl.
 			return r.RequeueWithMessage(fmt.Sprintf("Required FailureDomain %s not found, requeueing.", requiredFdSpec.Name))
 		}
 	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -134,6 +137,7 @@ func (r *CloudStackClusterReconciliationRunner) SetFailureDomainsStatusMap() (ct
 			ControlPlane: true, Attributes: map[string]string{"MetaHashName": metaHashName},
 		}
 	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -149,9 +153,11 @@ func (r *CloudStackClusterReconciliationRunner) ReconcileDelete() (ctrl.Result, 
 				return ctrl.Result{}, err
 			}
 		}
+
 		return r.RequeueWithMessage("Child FailureDomains still present, requeueing.")
 	}
 	controllerutil.RemoveFinalizer(r.ReconciliationSubject, infrav1.ClusterFinalizer)
+
 	return ctrl.Result{}, nil
 }
 
@@ -195,5 +201,6 @@ func (reconciler *CloudStackClusterReconciler) SetupWithManager(ctx context.Cont
 	if err != nil {
 		return errors.Wrap(err, "failed setting up with a controller manager")
 	}
+
 	return nil
 }

@@ -19,11 +19,11 @@ package v1beta3_test
 import (
 	"context"
 
-	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
-	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
+	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
 )
 
 var _ = Describe("CloudStackMachineTemplate webhook", func() {
@@ -75,7 +75,8 @@ var _ = Describe("CloudStackMachineTemplate webhook", func() {
 
 		It("should reject VM disk offering updates to the CloudStackMachineTemplate", func() {
 			dummies.CSMachineTemplate1.Spec.Template.Spec.DiskOffering = &infrav1.CloudStackResourceDiskOffering{
-				CloudStackResourceIdentifier: infrav1.CloudStackResourceIdentifier{Name: "DiskOffering2"}}
+				CloudStackResourceIdentifier: infrav1.CloudStackResourceIdentifier{Name: "DiskOffering2"},
+			}
 			Ω(k8sClient.Update(ctx, dummies.CSMachineTemplate1)).
 				Should(MatchError(MatchRegexp(forbiddenRegex, "diskOffering")))
 		})

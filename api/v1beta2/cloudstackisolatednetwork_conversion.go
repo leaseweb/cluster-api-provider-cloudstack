@@ -18,18 +18,21 @@ package v1beta2
 
 import (
 	machineryconversion "k8s.io/apimachinery/pkg/conversion"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
+
+	"sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 )
 
-func (src *CloudStackIsolatedNetwork) ConvertTo(dstRaw conversion.Hub) error { // nolint
+func (r *CloudStackIsolatedNetwork) ConvertTo(dstRaw conversion.Hub) error {
 	dst := dstRaw.(*v1beta3.CloudStackIsolatedNetwork)
-	return Convert_v1beta2_CloudStackIsolatedNetwork_To_v1beta3_CloudStackIsolatedNetwork(src, dst, nil)
+
+	return Convert_v1beta2_CloudStackIsolatedNetwork_To_v1beta3_CloudStackIsolatedNetwork(r, dst, nil)
 }
 
-func (dst *CloudStackIsolatedNetwork) ConvertFrom(srcRaw conversion.Hub) error { // nolint
+func (r *CloudStackIsolatedNetwork) ConvertFrom(srcRaw conversion.Hub) error {
 	src := srcRaw.(*v1beta3.CloudStackIsolatedNetwork)
-	return Convert_v1beta3_CloudStackIsolatedNetwork_To_v1beta2_CloudStackIsolatedNetwork(src, dst, nil)
+
+	return Convert_v1beta3_CloudStackIsolatedNetwork_To_v1beta2_CloudStackIsolatedNetwork(src, r, nil)
 }
 
 func Convert_v1beta2_CloudStackIsolatedNetworkStatus_To_v1beta3_CloudStackIsolatedNetworkStatus(in *CloudStackIsolatedNetworkStatus, out *v1beta3.CloudStackIsolatedNetworkStatus, s machineryconversion.Scope) error {
@@ -37,6 +40,7 @@ func Convert_v1beta2_CloudStackIsolatedNetworkStatus_To_v1beta3_CloudStackIsolat
 	out.LBRuleID = in.LBRuleID
 	out.LoadBalancerRuleIDs = []string{in.LBRuleID}
 	out.Ready = in.Ready
+
 	return nil
 }
 
@@ -44,5 +48,6 @@ func Convert_v1beta3_CloudStackIsolatedNetworkStatus_To_v1beta2_CloudStackIsolat
 	out.PublicIPID = in.PublicIPID
 	out.LBRuleID = in.LBRuleID
 	out.Ready = in.Ready
+
 	return nil
 }

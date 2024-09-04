@@ -25,27 +25,30 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/client-go/rest"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
-	admissionv1 "k8s.io/api/admission/v1"
 	//+kubebuilder:scaffold:imports
-	"k8s.io/apimachinery/pkg/runtime"
-	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
+	admissionv1 "k8s.io/api/admission/v1"
+	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
-var k8sClient client.Client
-var testEnv *envtest.Environment
-var ctx context.Context
-var cancel context.CancelFunc
+var (
+	cfg       *rest.Config
+	k8sClient client.Client
+	testEnv   *envtest.Environment
+	ctx       context.Context
+	cancel    context.CancelFunc
+)
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -58,26 +61,20 @@ var _ = BeforeSuite(func() {
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("../../", "config", "crd", "bases")},
+		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "config", "crd", "bases")},
 		ErrorIfCRDPathMissing: false,
 		WebhookInstallOptions: envtest.WebhookInstallOptions{
-			Paths: []string{filepath.Join("../../", "config", "webhook")},
+			Paths: []string{filepath.Join("..", "..", "config", "webhook")},
 		},
 	}
 
-	var cfg *rest.Config
 	var err error
-	done := make(chan interface{})
-	go func() {
-		defer GinkgoRecover()
-		cfg, err = testEnv.Start()
-		close(done)
-	}()
-	Eventually(done).WithTimeout(time.Minute).Should(BeClosed())
+	// cfg is defined in this file globally.
+	cfg, err = testEnv.Start()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
 
-	scheme := runtime.NewScheme()
+	scheme := apimachineryruntime.NewScheme()
 	err = infrav1.AddToScheme(scheme)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -90,13 +87,15 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
 
-	// start webhook server using Manager
+	// start webhook server using Manager.
 	webhookInstallOptions := &testEnv.WebhookInstallOptions
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-		Scheme:             scheme,
-		Host:               webhookInstallOptions.LocalServingHost,
-		Port:               webhookInstallOptions.LocalServingPort,
-		CertDir:            webhookInstallOptions.LocalServingCertDir,
+		Scheme: scheme,
+		WebhookServer: webhook.NewServer(webhook.Options{
+			Host:    webhookInstallOptions.LocalServingHost,
+			Port:    webhookInstallOptions.LocalServingPort,
+			CertDir: webhookInstallOptions.LocalServingCertDir,
+		}),
 		LeaderElection:     false,
 		MetricsBindAddress: "0",
 	})
@@ -110,27 +109,26 @@ var _ = BeforeSuite(func() {
 
 	go func() {
 		defer GinkgoRecover()
-		err = mgr.Start(ctrl.SetupSignalHandler())
+		err = mgr.Start(ctx)
 		Expect(err).NotTo(HaveOccurred())
 	}()
 
-	// wait for the webhook server to get ready
+	// wait for the webhook server to get ready.
 	dialer := &net.Dialer{Timeout: time.Second}
 	addrPort := fmt.Sprintf("%s:%d", webhookInstallOptions.LocalServingHost, webhookInstallOptions.LocalServingPort)
 	Eventually(func() error {
-		conn, err := tls.DialWithDialer(dialer, "tcp", addrPort, &tls.Config{InsecureSkipVerify: true}) //nolint:gosec //Used for testing only
+		conn, err := tls.DialWithDialer(dialer, "tcp", addrPort, &tls.Config{InsecureSkipVerify: true})
 		if err != nil {
 			return err
 		}
-		conn.Close()
-		return nil
-	}).Should(Succeed())
 
+		return conn.Close()
+	}).Should(Succeed())
 })
 
 var _ = AfterSuite(func() {
-	cancel()
 	By("tearing down the test environment")
+	cancel()
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })

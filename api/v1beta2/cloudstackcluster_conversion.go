@@ -19,21 +19,24 @@ package v1beta2
 import (
 	machineryconversion "k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/utils/pointer"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
+
+	"sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 )
 
-func (src *CloudStackCluster) ConvertTo(dstRaw conversion.Hub) error { // nolint
+func (r *CloudStackCluster) ConvertTo(dstRaw conversion.Hub) error {
 	dst := dstRaw.(*v1beta3.CloudStackCluster)
-	return Convert_v1beta2_CloudStackCluster_To_v1beta3_CloudStackCluster(src, dst, nil)
+
+	return Convert_v1beta2_CloudStackCluster_To_v1beta3_CloudStackCluster(r, dst, nil)
 }
 
-func (dst *CloudStackCluster) ConvertFrom(srcRaw conversion.Hub) error { // nolint
+func (r *CloudStackCluster) ConvertFrom(srcRaw conversion.Hub) error {
 	src := srcRaw.(*v1beta3.CloudStackCluster)
-	return Convert_v1beta3_CloudStackCluster_To_v1beta2_CloudStackCluster(src, dst, nil)
+
+	return Convert_v1beta3_CloudStackCluster_To_v1beta2_CloudStackCluster(src, r, nil)
 }
 
-func Convert_v1beta3_CloudStackClusterSpec_To_v1beta2_CloudStackClusterSpec(in *v1beta3.CloudStackClusterSpec, out *CloudStackClusterSpec, s machineryconversion.Scope) error { // nolint
+func Convert_v1beta3_CloudStackClusterSpec_To_v1beta2_CloudStackClusterSpec(in *v1beta3.CloudStackClusterSpec, out *CloudStackClusterSpec, s machineryconversion.Scope) error {
 	err := autoConvert_v1beta3_CloudStackClusterSpec_To_v1beta2_CloudStackClusterSpec(in, out, s)
 	if err != nil {
 		return err
@@ -42,7 +45,7 @@ func Convert_v1beta3_CloudStackClusterSpec_To_v1beta2_CloudStackClusterSpec(in *
 	return nil
 }
 
-func Convert_v1beta2_CloudStackClusterSpec_To_v1beta3_CloudStackClusterSpec(in *CloudStackClusterSpec, out *v1beta3.CloudStackClusterSpec, s machineryconversion.Scope) error { // nolint
+func Convert_v1beta2_CloudStackClusterSpec_To_v1beta3_CloudStackClusterSpec(in *CloudStackClusterSpec, out *v1beta3.CloudStackClusterSpec, s machineryconversion.Scope) error {
 	err := autoConvert_v1beta2_CloudStackClusterSpec_To_v1beta3_CloudStackClusterSpec(in, out, s)
 	if err != nil {
 		return err

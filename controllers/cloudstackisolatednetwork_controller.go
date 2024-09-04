@@ -19,19 +19,19 @@ package controllers
 import (
 	"context"
 	"reflect"
-	"sigs.k8s.io/cluster-api/util/annotations"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
-	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"strings"
 
+	"github.com/pkg/errors"
+	"sigs.k8s.io/cluster-api/util/annotations"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/cluster-api/util/predicates"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	"github.com/pkg/errors"
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	csCtrlrUtils "sigs.k8s.io/cluster-api-provider-cloudstack/controllers/utils"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
@@ -41,7 +41,7 @@ import (
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=cloudstackisolatednetworks/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=cloudstackisolatednetworks/finalizers,verbs=update
 
-// CloudStackIsoNetReconciler reconciles a CloudStackZone object
+// CloudStackIsoNetReconciler reconciles a CloudStackZone object.
 type CloudStackIsoNetReconciler struct {
 	csCtrlrUtils.ReconcilerBase
 }
@@ -58,18 +58,20 @@ func NewCSIsoNetReconciliationRunner() *CloudStackIsoNetReconciliationRunner {
 	// Set concrete type and init pointers.
 	r := &CloudStackIsoNetReconciliationRunner{ReconciliationSubject: &infrav1.CloudStackIsolatedNetwork{}}
 	r.FailureDomain = &infrav1.CloudStackFailureDomain{}
-	// Setup the base runner. Initializes pointers and links reconciliation methods.
+	// Set up the base runner. Initializes pointers and links reconciliation methods.
 	r.ReconciliationRunner = csCtrlrUtils.NewRunner(r, r.ReconciliationSubject, "CloudStackIsolatedNetwork")
+
 	return r
 }
 
-func (reconciler *CloudStackIsoNetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, retErr error) {
+func (reconciler *CloudStackIsoNetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	r := NewCSIsoNetReconciliationRunner()
 	r.UsingBaseReconciler(reconciler.ReconcilerBase).ForRequest(req).WithRequestCtx(ctx)
 	r.WithAdditionalCommonStages(
 		r.GetFailureDomainByName(func() string { return r.ReconciliationSubject.Spec.FailureDomainName }, r.FailureDomain),
 		r.AsFailureDomainUser(&r.FailureDomain.Spec),
 	)
+
 	return r.RunBaseReconciliationStages()
 }
 
@@ -98,7 +100,7 @@ func (r *CloudStackIsoNetReconciliationRunner) Reconcile() (ctrl.Result, error) 
 	if !annotations.IsExternallyManaged(r.CSCluster) {
 		pubIP, err := r.CSUser.AssociatePublicIPAddress(r.FailureDomain, r.ReconciliationSubject, r.CSCluster.Spec.ControlPlaneEndpoint.Host)
 		if err != nil {
-			return ctrl.Result{}, errors.Wrap(err, "associating public IP address")
+			return ctrl.Result{}, errors.Wrap(err, "failed to associate public IP address")
 		}
 		r.ReconciliationSubject.Spec.ControlPlaneEndpoint.Host = pubIP.Ipaddress
 		r.CSCluster.Spec.ControlPlaneEndpoint.Host = pubIP.Ipaddress
@@ -129,7 +131,7 @@ func (r *CloudStackIsoNetReconciliationRunner) Reconcile() (ctrl.Result, error) 
 	return ctrl.Result{}, nil
 }
 
-func (r *CloudStackIsoNetReconciliationRunner) ReconcileDelete() (retRes ctrl.Result, retErr error) {
+func (r *CloudStackIsoNetReconciliationRunner) ReconcileDelete() (ctrl.Result, error) {
 	r.Log.Info("Deleting IsolatedNetwork.")
 	if err := r.CSUser.DisposeIsoNetResources(r.ReconciliationSubject, r.CSCluster); err != nil {
 		if !strings.Contains(strings.ToLower(err.Error()), "no match found") {
@@ -137,6 +139,7 @@ func (r *CloudStackIsoNetReconciliationRunner) ReconcileDelete() (retRes ctrl.Re
 		}
 	}
 	controllerutil.RemoveFinalizer(r.ReconciliationSubject, infrav1.IsolatedNetworkFinalizer)
+
 	return ctrl.Result{}, nil
 }
 

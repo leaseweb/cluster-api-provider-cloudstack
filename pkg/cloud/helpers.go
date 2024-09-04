@@ -21,9 +21,11 @@ import (
 	cgzip "compress/gzip"
 )
 
-type set func(string)
-type setArray func([]string)
-type setInt func(int64)
+type (
+	set      func(string)
+	setArray func([]string)
+	setInt   func(int64)
+)
 
 func setIfNotEmpty(str string, setFn set) {
 	if str != "" {
@@ -52,5 +54,6 @@ func compress(str string) (string, error) {
 	if err := w.Close(); err != nil {
 		return "", err
 	}
+
 	return buf.String(), nil
 }

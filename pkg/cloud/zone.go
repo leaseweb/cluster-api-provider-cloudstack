@@ -19,12 +19,13 @@ package cloud
 import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
+
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 )
 
 type ZoneIFace interface {
-	ResolveZone(*infrav1.CloudStackZoneSpec) error
-	ResolveNetworkForZone(*infrav1.CloudStackZoneSpec) error
+	ResolveZone(zSpec *infrav1.CloudStackZoneSpec) error
+	ResolveNetworkForZone(zSpec *infrav1.CloudStackZoneSpec) error
 }
 
 func (c *client) ResolveZone(zSpec *infrav1.CloudStackZoneSpec) (retErr error) {
@@ -41,6 +42,7 @@ func (c *client) ResolveZone(zSpec *infrav1.CloudStackZoneSpec) (retErr error) {
 
 	if resp, count, err := c.cs.Zone.GetZoneByID(zSpec.ID); err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
 		return multierror.Append(retErr, errors.Wrapf(err, "could not get Zone by ID %v", zSpec.ID))
 	} else if count != 1 {
 		return multierror.Append(retErr, errors.Errorf(
@@ -65,6 +67,7 @@ func (c *client) ResolveNetworkForZone(zSpec *infrav1.CloudStackZoneSpec) (retEr
 	} else { // Got netID from the network's name.
 		zSpec.Network.ID = netDetails.Id
 		zSpec.Network.Type = netDetails.Type
+
 		return nil
 	}
 
@@ -74,10 +77,12 @@ func (c *client) ResolveNetworkForZone(zSpec *infrav1.CloudStackZoneSpec) (retEr
 		return multierror.Append(retErr, errors.Wrapf(err, "could not get Network by ID %s", zSpec.Network.ID))
 	} else if count != 1 {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
 		return multierror.Append(retErr, errors.Errorf("expected 1 Network with UUID %v, but got %d", zSpec.Network.ID, count))
 	}
 	zSpec.Network.Name = netDetails.Name
 	zSpec.Network.ID = netDetails.Id
 	zSpec.Network.Type = netDetails.Type
+
 	return nil
 }

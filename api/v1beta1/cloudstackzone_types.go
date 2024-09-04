@@ -24,7 +24,7 @@ const (
 	ZoneFinalizer = "cloudstackzone.infrastructure.cluster.x-k8s.io"
 )
 
-// CloudStackZoneSpec defines the desired state of CloudStackZone
+// CloudStackZoneSpec defines the desired state of CloudStackZone.
 type CloudStackZoneSpec struct {
 	// Name.
 	//+optional
@@ -38,7 +38,7 @@ type CloudStackZoneSpec struct {
 	Network Network `json:"network"`
 }
 
-// CloudStackZoneStatus defines the observed state of CloudStackZone
+// CloudStackZoneStatus defines the observed state of CloudStackZone.
 type CloudStackZoneStatus struct {
 	// Reflects the readiness of the CloudStack zone.
 	Ready bool `json:"ready"`
@@ -47,7 +47,7 @@ type CloudStackZoneStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +k8s:conversion-gen=false
-// CloudStackZone is the Schema for the cloudstackzones API
+// CloudStackZone is the Schema for the cloudstackzones API.
 type CloudStackZone struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -58,7 +58,7 @@ type CloudStackZone struct {
 
 //+kubebuilder:object:root=true
 
-// CloudStackZoneList contains a list of CloudStackZone
+// CloudStackZoneList contains a list of CloudStackZone.
 type CloudStackZoneList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

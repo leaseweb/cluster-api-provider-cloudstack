@@ -18,38 +18,40 @@ package v1beta1
 
 import (
 	machineryconversion "k8s.io/apimachinery/pkg/conversion"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	utilconversion "sigs.k8s.io/cluster-api/util/conversion"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
+
+	"sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 )
 
-func (src *CloudStackAffinityGroup) ConvertTo(dstRaw conversion.Hub) error { // nolint
+func (r *CloudStackAffinityGroup) ConvertTo(dstRaw conversion.Hub) error {
 	dst := dstRaw.(*v1beta3.CloudStackAffinityGroup)
-	if err := Convert_v1beta1_CloudStackAffinityGroup_To_v1beta3_CloudStackAffinityGroup(src, dst, nil); err != nil {
+	if err := Convert_v1beta1_CloudStackAffinityGroup_To_v1beta3_CloudStackAffinityGroup(r, dst, nil); err != nil {
 		return err
 	}
 
 	// Manually restore data
 	restored := &v1beta3.CloudStackAffinityGroup{}
-	if ok, err := utilconversion.UnmarshalData(src, restored); err != nil || !ok {
+	if ok, err := utilconversion.UnmarshalData(r, restored); err != nil || !ok {
 		return err
 	}
 	if restored.Spec.FailureDomainName != "" {
 		dst.Spec.FailureDomainName = restored.Spec.FailureDomainName
 	}
+
 	return nil
 }
 
-func (dst *CloudStackAffinityGroup) ConvertFrom(srcRaw conversion.Hub) error { // nolint
+func (r *CloudStackAffinityGroup) ConvertFrom(srcRaw conversion.Hub) error {
 	src := srcRaw.(*v1beta3.CloudStackAffinityGroup)
-	if err := Convert_v1beta3_CloudStackAffinityGroup_To_v1beta1_CloudStackAffinityGroup(src, dst, nil); err != nil {
+	if err := Convert_v1beta3_CloudStackAffinityGroup_To_v1beta1_CloudStackAffinityGroup(src, r, nil); err != nil {
 		return err
 	}
 
-	// Preserve Hub data on down-conversion
-	return utilconversion.MarshalData(src, dst)
+	// Preserve Hub data on down-conversion.
+	return utilconversion.MarshalData(src, r)
 }
 
-func Convert_v1beta3_CloudStackAffinityGroupSpec_To_v1beta1_CloudStackAffinityGroupSpec(in *v1beta3.CloudStackAffinityGroupSpec, out *CloudStackAffinityGroupSpec, s machineryconversion.Scope) error { // nolint
+func Convert_v1beta3_CloudStackAffinityGroupSpec_To_v1beta1_CloudStackAffinityGroupSpec(in *v1beta3.CloudStackAffinityGroupSpec, out *CloudStackAffinityGroupSpec, s machineryconversion.Scope) error {
 	return autoConvert_v1beta3_CloudStackAffinityGroupSpec_To_v1beta1_CloudStackAffinityGroupSpec(in, out, s)
 }

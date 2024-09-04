@@ -17,11 +17,13 @@ limitations under the License.
 package v1beta1_test
 
 import (
+	"time"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta1"
-	"time"
 )
 
 var _ = Describe("CloudStackMachine types", func() {
@@ -33,7 +35,7 @@ var _ = Describe("CloudStackMachine types", func() {
 
 	Context("When calculating time since state change", func() {
 		It("Return the correct value when the last state update time is known", func() {
-			delta := time.Duration(10 * time.Minute)
+			delta := 10 * time.Minute
 			lastUpdated := time.Now().Add(-delta)
 			cloudStackMachine.Status.InstanceStateLastUpdated = metav1.NewTime(lastUpdated)
 			Ω(cloudStackMachine.Status.TimeSinceLastStateChange()).Should(BeNumerically("~", delta, time.Second))

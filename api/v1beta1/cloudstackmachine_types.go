@@ -33,7 +33,7 @@ const (
 	NoAffinity       = "no"
 )
 
-// CloudStackMachineSpec defines the desired state of CloudStackMachine
+// CloudStackMachineSpec defines the desired state of CloudStackMachine.
 type CloudStackMachineSpec struct {
 	// Name.
 	//+optional
@@ -151,6 +151,7 @@ func (s *CloudStackMachineStatus) TimeSinceLastStateChange() time.Duration {
 	if s.InstanceStateLastUpdated.IsZero() {
 		return time.Duration(-1)
 	}
+
 	return time.Since(s.InstanceStateLastUpdated.Time)
 }
 
@@ -163,7 +164,7 @@ func (s *CloudStackMachineStatus) TimeSinceLastStateChange() time.Duration {
 // +kubebuilder:printcolumn:name="ProviderID",type="string",JSONPath=".spec.providerID",description="CloudStack instance ID"
 // +kubebuilder:printcolumn:name="Machine",type="string",JSONPath=".metadata.ownerReferences[?(@.kind==\"Machine\")].name",description="Machine object which owns with this CloudStackMachine"
 
-// CloudStackMachine is the Schema for the cloudstackmachines API
+// CloudStackMachine is the Schema for the cloudstackmachines API.
 type CloudStackMachine struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -174,7 +175,7 @@ type CloudStackMachine struct {
 
 //+kubebuilder:object:root=true
 
-// CloudStackMachineList contains a list of CloudStackMachine
+// CloudStackMachineList contains a list of CloudStackMachine.
 type CloudStackMachineList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

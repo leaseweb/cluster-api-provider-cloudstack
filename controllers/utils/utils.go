@@ -21,17 +21,13 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
-	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -40,6 +36,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 )
 
 // getMachineSetFromCAPIMachine attempts to fetch a MachineSet from CAPI machine owner reference.
@@ -51,6 +50,7 @@ func fetchOwnerRef(refList []metav1.OwnerReference, kind string) *metav1.OwnerRe
 			return &ref
 		}
 	}
+
 	return nil
 }
 
@@ -61,6 +61,7 @@ func GetManagementOwnerRef(capiMachine *clusterv1.Machine) *metav1.OwnerReferenc
 	} else if ref := fetchOwnerRef(capiMachine.OwnerReferences, "EtcdadmCluster"); ref != nil {
 		return ref
 	}
+
 	return fetchOwnerRef(capiMachine.OwnerReferences, "MachineSet")
 }
 
@@ -83,6 +84,7 @@ func GetOwnerOfKind(ctx context.Context, c client.Client, owned client.Object, o
 		if err := c.Get(ctx, key, owner); err != nil {
 			return errors.Wrapf(err, "finding owner of kind %s in namespace %s", gvk.Kind, owned.GetNamespace())
 		}
+
 		return nil
 	}
 
@@ -111,6 +113,7 @@ func GetOwnerClusterName(obj metav1.ObjectMeta) (string, error) {
 			return ref.Name, nil
 		}
 	}
+
 	return "", errors.New("failed to get owner Cluster name")
 }
 
@@ -121,6 +124,7 @@ func CloudStackClusterToCloudStackMachines(c client.Client, log logr.Logger) han
 		csCluster, ok := o.(*infrav1.CloudStackCluster)
 		if !ok {
 			log.Error(fmt.Errorf("expected a CloudStackCluster but got a %T", o), "Error in CloudStackClusterToCloudStackMachines")
+
 			return nil
 		}
 
@@ -129,12 +133,14 @@ func CloudStackClusterToCloudStackMachines(c client.Client, log logr.Logger) han
 		// Don't handle deleted CloudStackClusters
 		if !csCluster.ObjectMeta.DeletionTimestamp.IsZero() {
 			log.V(4).Info("CloudStackCluster has a deletion timestamp, skipping mapping.")
+
 			return nil
 		}
 
 		clusterName, err := GetOwnerClusterName(csCluster.ObjectMeta)
 		if err != nil {
 			log.Error(err, "Failed to get owning cluster, skipping mapping.")
+
 			return nil
 		}
 
@@ -142,6 +148,7 @@ func CloudStackClusterToCloudStackMachines(c client.Client, log logr.Logger) han
 		// list all the requested objects within the cluster namespace with the cluster name label
 		if err := c.List(ctx, machineList, client.InNamespace(csCluster.Namespace), client.MatchingLabels{clusterv1.ClusterNameLabel: clusterName}); err != nil {
 			log.Error(err, "Failed to get owned Machines, skipping mapping.")
+
 			return nil
 		}
 
@@ -151,10 +158,12 @@ func CloudStackClusterToCloudStackMachines(c client.Client, log logr.Logger) han
 			log.WithValues("machine", klog.KObj(&m))
 			if m.Spec.InfrastructureRef.GroupVersionKind().Kind != "CloudStackMachine" {
 				log.V(4).Info("Machine has an InfrastructureRef for a different type, will not add to reconciliation request.")
+
 				continue
 			}
 			if m.Spec.InfrastructureRef.Name == "" {
 				log.V(4).Info("Machine has an InfrastructureRef with an empty name, will not add to reconciliation request.")
+
 				continue
 			}
 			log.WithValues("cloudStackMachine", klog.KRef(m.Spec.InfrastructureRef.Namespace, m.Spec.InfrastructureRef.Name))
@@ -178,6 +187,7 @@ func CloudStackClusterToCloudStackIsolatedNetworks(c client.Client, obj client.O
 		csCluster, ok := o.(*infrav1.CloudStackCluster)
 		if !ok {
 			log.Error(fmt.Errorf("expected a CloudStackCluster but got a %T", o), "Error in CloudStackClusterToCloudStackIsolatedNetworks")
+
 			return nil
 		}
 
@@ -186,12 +196,14 @@ func CloudStackClusterToCloudStackIsolatedNetworks(c client.Client, obj client.O
 		// Don't handle deleted CloudStackClusters
 		if !csCluster.ObjectMeta.DeletionTimestamp.IsZero() {
 			log.V(4).Info("CloudStackCluster has a deletion timestamp, skipping mapping.")
+
 			return nil
 		}
 
 		clusterName, err := GetOwnerClusterName(csCluster.ObjectMeta)
 		if err != nil {
 			log.Error(err, "Failed to get owning cluster, skipping mapping.")
+
 			return nil
 		}
 
@@ -225,6 +237,7 @@ func CloudStackIsolatedNetworkToControlPlaneCloudStackMachines(c client.Client, 
 		csIsoNet, ok := o.(*infrav1.CloudStackIsolatedNetwork)
 		if !ok {
 			log.Error(fmt.Errorf("expected a CloudStackIsolatedNetwork but got a %T", o), "Error in CloudStackIsolatedNetworkToControlPlaneCloudStackMachines")
+
 			return nil
 		}
 
@@ -233,6 +246,7 @@ func CloudStackIsolatedNetworkToControlPlaneCloudStackMachines(c client.Client, 
 		// Don't handle deleted CloudStackIsolatedNetworks
 		if !csIsoNet.ObjectMeta.DeletionTimestamp.IsZero() {
 			log.V(4).Info("CloudStackIsolatedNetwork has a deletion timestamp, skipping mapping.")
+
 			return nil
 		}
 
@@ -249,6 +263,7 @@ func CloudStackIsolatedNetworkToControlPlaneCloudStackMachines(c client.Client, 
 		})
 		if err != nil {
 			log.Error(err, "Failed to get owned control plane Machines, skipping mapping.")
+
 			return nil
 		}
 
@@ -260,10 +275,12 @@ func CloudStackIsolatedNetworkToControlPlaneCloudStackMachines(c client.Client, 
 			log.WithValues("machine", klog.KObj(&m))
 			if m.Spec.InfrastructureRef.GroupVersionKind().Kind != "CloudStackMachine" {
 				log.V(4).Info("Machine has an InfrastructureRef for a different type, will not add to reconciliation request.")
+
 				continue
 			}
 			if m.Spec.InfrastructureRef.Name == "" {
 				log.V(4).Info("Machine has an InfrastructureRef with an empty name, will not add to reconciliation request.")
+
 				continue
 			}
 			log.WithValues("cloudStackMachine", klog.KRef(m.Spec.InfrastructureRef.Namespace, m.Spec.InfrastructureRef.Name))
@@ -275,7 +292,7 @@ func CloudStackIsolatedNetworkToControlPlaneCloudStackMachines(c client.Client, 
 	}
 }
 
-// DebugPredicate returns a predicate that logs the event that triggered the reconciliation
+// DebugPredicate returns a predicate that logs the event that triggered the reconciliation.
 func DebugPredicate(logger logr.Logger) predicate.Funcs {
 	return predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -287,6 +304,7 @@ func DebugPredicate(logger logr.Logger) predicate.Funcs {
 				log.V(4).Error(err, "error generating diff")
 			}
 			log.V(4).Info("Update diff", "diff", string(diff), "obj", obj, "kind", e.ObjectOld.GetObjectKind().GroupVersionKind().Kind)
+
 			return true
 		},
 		CreateFunc: func(e event.CreateEvent) bool {
@@ -297,6 +315,7 @@ func DebugPredicate(logger logr.Logger) predicate.Funcs {
 			if e.Object.GetObjectKind().GroupVersionKind().Kind == "" {
 				log.V(4).Info("Kind is empty. Here's the whole object", "object", e.Object)
 			}
+
 			return true
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
@@ -304,6 +323,7 @@ func DebugPredicate(logger logr.Logger) predicate.Funcs {
 
 			obj := fmt.Sprintf("%s/%s", e.Object.GetNamespace(), e.Object.GetName())
 			log.V(4).Info("Delete", "obj", obj, "kind", e.Object.GetObjectKind().GroupVersionKind().Kind)
+
 			return true
 		},
 		GenericFunc: func(e event.GenericEvent) bool {
@@ -311,6 +331,7 @@ func DebugPredicate(logger logr.Logger) predicate.Funcs {
 
 			obj := fmt.Sprintf("%s/%s", e.Object.GetNamespace(), e.Object.GetName())
 			log.V(4).Info("Delete", "obj", obj, "kind", e.Object.GetObjectKind().GroupVersionKind().Kind)
+
 			return true
 		},
 	}

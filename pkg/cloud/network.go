@@ -19,17 +19,17 @@ package cloud
 import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
+
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 )
 
 type NetworkIface interface {
-	ResolveNetwork(*infrav1.Network) error
-	RemoveClusterTagFromNetwork(*infrav1.CloudStackCluster, infrav1.Network) error
+	ResolveNetwork(net *infrav1.Network) error
+	RemoveClusterTagFromNetwork(csCluster *infrav1.CloudStackCluster, net infrav1.Network) error
 }
 
 const (
 	NetOffering         = "DefaultIsolatedNetworkOfferingWithSourceNatService"
-	K8sDefaultAPIPort   = 6443
 	NetworkTypeIsolated = "Isolated"
 	NetworkTypeShared   = "Shared"
 	NetworkProtocolTCP  = "tcp"
@@ -54,6 +54,7 @@ func (c *client) ResolveNetwork(net *infrav1.Network) (retErr error) {
 		net.Type = netDetails.Type
 		net.CIDR = netDetails.Cidr
 		net.Domain = netDetails.Networkdomain
+
 		return nil
 	}
 
@@ -63,6 +64,7 @@ func (c *client) ResolveNetwork(net *infrav1.Network) (retErr error) {
 		return multierror.Append(retErr, errors.Wrapf(err, "could not get Network by ID %s", net.ID))
 	} else if count != 1 {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
 		return multierror.Append(retErr, errors.Errorf("expected 1 Network with UUID %s, but got %d", net.ID, count))
 	}
 	net.Name = netDetails.Name
@@ -70,6 +72,7 @@ func (c *client) ResolveNetwork(net *infrav1.Network) (retErr error) {
 	net.Type = netDetails.Type
 	net.CIDR = netDetails.Cidr
 	net.Domain = netDetails.Networkdomain
+
 	return nil
 }
 
@@ -78,7 +81,7 @@ func generateNetworkTagName(csCluster *infrav1.CloudStackCluster) string {
 }
 
 // RemoveClusterTagFromNetwork the cluster in use tag from a network.
-func (c *client) RemoveClusterTagFromNetwork(csCluster *infrav1.CloudStackCluster, net infrav1.Network) (retError error) {
+func (c *client) RemoveClusterTagFromNetwork(csCluster *infrav1.CloudStackCluster, net infrav1.Network) error {
 	tags, err := c.GetTags(ResourceTypeNetwork, net.ID)
 	if err != nil {
 		return err

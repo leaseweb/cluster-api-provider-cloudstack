@@ -28,6 +28,7 @@ func EnsureFieldExists(value string, name string, allErrs field.ErrorList) field
 	if value == "" {
 		allErrs = append(allErrs, field.Required(field.NewPath("spec", name), name))
 	}
+
 	return allErrs
 }
 
@@ -35,33 +36,37 @@ func EnsureAtLeastOneFieldExists(value1 string, value2 string, name string, allE
 	if value1 == "" && value2 == "" {
 		allErrs = append(allErrs, field.Required(field.NewPath("spec", name), name))
 	}
+
 	return allErrs
 }
 
-func EnsureEqualStrings(new string, old string, name string, allErrs field.ErrorList) field.ErrorList {
-	if new != old {
+func EnsureEqualStrings(newStr string, oldStr string, name string, allErrs field.ErrorList) field.ErrorList {
+	if newStr != oldStr {
 		allErrs = append(allErrs, field.Forbidden(field.NewPath("spec", name), name))
 	}
+
 	return allErrs
 }
 
-func EnsureIntFieldsAreNotNegative(new int64, name string, allErrs field.ErrorList) field.ErrorList {
-	if new < 0 {
+func EnsureIntFieldsAreNotNegative(newInt int64, name string, allErrs field.ErrorList) field.ErrorList {
+	if newInt < 0 {
 		allErrs = append(allErrs, field.Forbidden(field.NewPath("spec", name), name))
 	}
+
 	return allErrs
 }
 
-func EnsureEqualMapStringString(new *map[string]string, old *map[string]string, name string, allErrs field.ErrorList) field.ErrorList {
-	if old == nil && new == nil {
+func EnsureEqualMapStringString(newMap map[string]string, oldMap map[string]string, name string, allErrs field.ErrorList) field.ErrorList {
+	if oldMap == nil && newMap == nil {
 		return allErrs
 	}
-	if new == nil || old == nil {
+	if newMap == nil || oldMap == nil {
 		allErrs = append(allErrs, field.Forbidden(field.NewPath("spec", name), name))
 	}
-	if !reflect.DeepEqual(old, new) {
+	if !reflect.DeepEqual(oldMap, newMap) {
 		allErrs = append(allErrs, field.Forbidden(field.NewPath("spec", name), name))
 	}
+
 	return allErrs
 }
 

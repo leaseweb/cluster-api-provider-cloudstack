@@ -26,7 +26,7 @@ const (
 	IsolatedNetworkFinalizer = "cloudstackisolatednetwork.infrastructure.cluster.x-k8s.io"
 )
 
-// CloudStackIsolatedNetworkSpec defines the desired state of CloudStackIsolatedNetwork
+// CloudStackIsolatedNetworkSpec defines the desired state of CloudStackIsolatedNetwork.
 type CloudStackIsolatedNetworkSpec struct {
 	// Name.
 	//+optional
@@ -40,7 +40,7 @@ type CloudStackIsolatedNetworkSpec struct {
 	ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint"`
 }
 
-// CloudStackIsolatedNetworkStatus defines the observed state of CloudStackIsolatedNetwork
+// CloudStackIsolatedNetworkStatus defines the observed state of CloudStackIsolatedNetwork.
 type CloudStackIsolatedNetworkStatus struct {
 	// The CS public IP ID to use for the k8s endpoint.
 	PublicIPID string `json:"publicIPID,omitempty"`
@@ -52,17 +52,18 @@ type CloudStackIsolatedNetworkStatus struct {
 	Ready bool `json:"ready"`
 }
 
-func (n *CloudStackIsolatedNetwork) Network() *Network {
+func (r *CloudStackIsolatedNetwork) Network() *Network {
 	return &Network{
-		Name: n.Spec.Name,
+		Name: r.Spec.Name,
 		Type: "IsolatedNetwork",
-		ID:   n.Spec.ID}
+		ID:   r.Spec.ID,
+	}
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// CloudStackIsolatedNetwork is the Schema for the cloudstackisolatednetworks API
+// CloudStackIsolatedNetwork is the Schema for the cloudstackisolatednetworks API.
 type CloudStackIsolatedNetwork struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -73,7 +74,7 @@ type CloudStackIsolatedNetwork struct {
 
 //+kubebuilder:object:root=true
 
-// CloudStackIsolatedNetworkList contains a list of CloudStackIsolatedNetwork
+// CloudStackIsolatedNetworkList contains a list of CloudStackIsolatedNetwork.
 type CloudStackIsolatedNetworkList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

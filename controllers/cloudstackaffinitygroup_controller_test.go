@@ -20,10 +20,11 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
-	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
+	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
 )
 
 var _ = Describe("CloudStackAffinityGroupReconciler", func() {
@@ -37,7 +38,7 @@ var _ = Describe("CloudStackAffinityGroupReconciler", func() {
 		// Modify failure domain name the same way the cluster controller would.
 		dummies.CSAffinityGroup.Spec.FailureDomainName = dummies.CSFailureDomain1.Spec.Name
 
-		Ω(k8sClient.Create(ctx, dummies.CSFailureDomain1))
+		Ω(k8sClient.Create(ctx, dummies.CSFailureDomain1)).Should(Succeed())
 		Ω(k8sClient.Create(ctx, dummies.CSAffinityGroup)).Should(Succeed())
 
 		mockCloudClient.EXPECT().GetOrCreateAffinityGroup(gomock.Any()).AnyTimes()
@@ -51,6 +52,7 @@ var _ = Describe("CloudStackAffinityGroupReconciler", func() {
 					return affinityGroups.Items[0].Status.Ready
 				}
 			}
+
 			return false
 		}, timeout).WithPolling(pollInterval).Should(BeTrue())
 	})
