@@ -17,7 +17,7 @@ spec:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: CloudStackZone is the Schema for the cloudstackzones API
+        description: CloudStackZone is the Schema for the cloudstackzones API.
         properties:
           apiVersion:
             description: |-
@@ -37,7 +37,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: CloudStackZoneSpec defines the desired state of CloudStackZone
+            description: CloudStackZoneSpec defines the desired state of CloudStackZone.
             properties:
               id:
                 description: ID.
@@ -62,7 +62,7 @@ spec:
             - network
             type: object
           status:
-            description: CloudStackZoneStatus defines the observed state of CloudStackZone
+            description: CloudStackZoneStatus defines the observed state of CloudStackZone.
             properties:
               ready:
                 description: Reflects the readiness of the CloudStack zone.

@@ -42,7 +42,7 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: CloudStackMachine is the Schema for the cloudstackmachines API
+        description: CloudStackMachine is the Schema for the cloudstackmachines API.
         properties:
           apiVersion:
             description: |-
@@ -62,7 +62,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: CloudStackMachineSpec defines the desired state of CloudStackMachine
+            description: CloudStackMachineSpec defines the desired state of CloudStackMachine.
             properties:
               affinity:
                 description: |-
@@ -169,7 +169,7 @@ spec:
                 properties:
                   kind:
                     description: |-
-                      Kind of the identity. Must be supported by the infrastructure provider
+                      Kind of the identity. Must be supported by the infrastructure provider,
                       and may be either cluster or namespace-scoped.
                     minLength: 1
                     type: string
@@ -292,7 +292,7 @@ spec:
     name: v1beta2
     schema:
       openAPIV3Schema:
-        description: CloudStackMachine is the Schema for the cloudstackmachines API
+        description: CloudStackMachine is the Schema for the cloudstackmachines API.
         properties:
           apiVersion:
             description: |-
@@ -312,7 +312,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: CloudStackMachineSpec defines the desired state of CloudStackMachine
+            description: CloudStackMachineSpec defines the desired state of CloudStackMachine.
             properties:
               affinity:
                 description: |-
@@ -530,7 +530,7 @@ spec:
     name: v1beta3
     schema:
       openAPIV3Schema:
-        description: CloudStackMachine is the Schema for the cloudstackmachines API
+        description: CloudStackMachine is the Schema for the cloudstackmachines API.
         properties:
           apiVersion:
             description: |-
@@ -550,7 +550,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: CloudStackMachineSpec defines the desired state of CloudStackMachine
+            description: CloudStackMachineSpec defines the desired state of CloudStackMachine.
             properties:
               affinity:
                 description: |-
@@ -622,17 +622,17 @@ spec:
                     format: int64
                     type: integer
                   device:
-                    description: device name of data disk, for example /dev/vdb
+                    description: device name of data disk, for example /dev/vdb.
                     type: string
                   filesystem:
                     description: filesystem used by data disk, for example, ext4,
-                      xfs
+                      xfs.
                     type: string
                   id:
                     description: Cloudstack resource ID.
                     type: string
                   label:
-                    description: label of data disk, used by mkfs as label parameter
+                    description: label of data disk, used by mkfs as label parameter.
                     type: string
                   mountPath:
                     description: mount point the data disk uses to mount. The actual
@@ -640,7 +640,7 @@ spec:
                       kubeadmConfig.
                     type: string
                   name:
-                    description: Cloudstack resource Name
+                    description: Cloudstack resource Name.
                     type: string
                 required:
                 - device
@@ -669,7 +669,7 @@ spec:
                     description: Cloudstack resource ID.
                     type: string
                   name:
-                    description: Cloudstack resource Name
+                    description: Cloudstack resource Name.
                     type: string
                 type: object
               providerID:
@@ -686,13 +686,13 @@ spec:
                     description: Cloudstack resource ID.
                     type: string
                   name:
-                    description: Cloudstack resource Name
+                    description: Cloudstack resource Name.
                     type: string
                 type: object
               uncompressedUserData:
                 description: |-
                   UncompressedUserData specifies whether the user data is gzip-compressed.
-                  cloud-init has built-in support for gzip-compressed user data, ignition does not
+                  cloud-init has built-in support for gzip-compressed user data, ignition does not.
                 type: boolean
             required:
             - offering
@@ -731,7 +731,7 @@ spec:
                 description: Ready indicates the readiness of the provider resource.
                 type: boolean
               reason:
-                description: Reason indicates the reason of status failure
+                description: Reason indicates the reason of status failure.
                 type: string
               status:
                 description: Status indicates the status of the provider resource.
