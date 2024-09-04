@@ -18,7 +18,7 @@ spec:
     schema:
       openAPIV3Schema:
         description: CloudStackAffinityGroup is the Schema for the cloudstackaffinitygroups
-          API
+          API.
         properties:
           apiVersion:
             description: |-
@@ -39,7 +39,7 @@ spec:
             type: object
           spec:
             description: CloudStackAffinityGroupSpec defines the desired state of
-              CloudStackAffinityGroup
+              CloudStackAffinityGroup.
             properties:
               id:
                 description: ID.
@@ -55,7 +55,7 @@ spec:
             type: object
           status:
             description: CloudStackAffinityGroupStatus defines the observed state
-              of CloudStackAffinityGroup
+              of CloudStackAffinityGroup.
             properties:
               ready:
                 description: Reflects the readiness of the CS Affinity Group.
@@ -72,7 +72,7 @@ spec:
     schema:
       openAPIV3Schema:
         description: CloudStackAffinityGroup is the Schema for the cloudstackaffinitygroups
-          API
+          API.
         properties:
           apiVersion:
             description: |-
@@ -93,7 +93,7 @@ spec:
             type: object
           spec:
             description: CloudStackAffinityGroupSpec defines the desired state of
-              CloudStackAffinityGroup
+              CloudStackAffinityGroup.
             properties:
               failureDomainName:
                 description: FailureDomainName -- the name of the FailureDomain the
@@ -113,7 +113,7 @@ spec:
             type: object
           status:
             description: CloudStackAffinityGroupStatus defines the observed state
-              of CloudStackAffinityGroup
+              of CloudStackAffinityGroup.
             properties:
               ready:
                 description: Reflects the readiness of the CS Affinity Group.
@@ -130,7 +130,7 @@ spec:
     schema:
       openAPIV3Schema:
         description: CloudStackAffinityGroup is the Schema for the cloudstackaffinitygroups
-          API
+          API.
         properties:
           apiVersion:
             description: |-
@@ -151,7 +151,7 @@ spec:
             type: object
           spec:
             description: CloudStackAffinityGroupSpec defines the desired state of
-              CloudStackAffinityGroup
+              CloudStackAffinityGroup.
             properties:
               failureDomainName:
                 description: FailureDomainName -- the name of the FailureDomain the
@@ -171,7 +171,7 @@ spec:
             type: object
           status:
             description: CloudStackAffinityGroupStatus defines the observed state
-              of CloudStackAffinityGroup
+              of CloudStackAffinityGroup.
             properties:
               ready:
                 description: Reflects the readiness of the CS Affinity Group.

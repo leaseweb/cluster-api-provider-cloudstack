@@ -17,7 +17,7 @@ spec:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: CloudStackCluster is the Schema for the cloudstackclusters API
+        description: CloudStackCluster is the Schema for the cloudstackclusters API.
         properties:
           apiVersion:
             description: |-
@@ -61,12 +61,12 @@ spec:
                 type: string
               identityRef:
                 description: |-
-                  CloudStackIdentityReference is a reference to an infrastructure
+                  CloudStackIdentityReference is a reference to an infrastructure.
                   provider identity to be used to provision cluster resources.
                 properties:
                   kind:
                     description: |-
-                      Kind of the identity. Must be supported by the infrastructure provider
+                      Kind of the identity. Must be supported by the infrastructure provider,
                       and may be either cluster or namespace-scoped.
                     minLength: 1
                     type: string
@@ -190,7 +190,7 @@ spec:
   - name: v1beta2
     schema:
       openAPIV3Schema:
-        description: CloudStackCluster is the Schema for the cloudstackclusters API
+        description: CloudStackCluster is the Schema for the cloudstackclusters API.
         properties:
           apiVersion:
             description: |-
@@ -229,7 +229,7 @@ spec:
               failureDomains:
                 items:
                   description: CloudStackFailureDomainSpec defines the desired state
-                    of CloudStackFailureDomain
+                    of CloudStackFailureDomain.
                   properties:
                     account:
                       description: CloudStack account.
@@ -331,7 +331,7 @@ spec:
   - name: v1beta3
     schema:
       openAPIV3Schema:
-        description: CloudStackCluster is the Schema for the cloudstackclusters API
+        description: CloudStackCluster is the Schema for the cloudstackclusters API.
         properties:
           apiVersion:
             description: |-
@@ -403,7 +403,7 @@ spec:
               failureDomains:
                 items:
                   description: CloudStackFailureDomainSpec defines the desired state
-                    of CloudStackFailureDomain
+                    of CloudStackFailureDomain.
                   properties:
                     account:
                       description: CloudStack account.

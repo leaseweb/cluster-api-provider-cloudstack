@@ -18,7 +18,7 @@ spec:
     schema:
       openAPIV3Schema:
         description: CloudStackIsolatedNetwork is the Schema for the cloudstackisolatednetworks
-          API
+          API.
         properties:
           apiVersion:
             description: |-
@@ -39,7 +39,7 @@ spec:
             type: object
           spec:
             description: CloudStackIsolatedNetworkSpec defines the desired state of
-              CloudStackIsolatedNetwork
+              CloudStackIsolatedNetwork.
             properties:
               controlPlaneEndpoint:
                 description: The kubernetes control plane endpoint.
@@ -66,7 +66,7 @@ spec:
             type: object
           status:
             description: CloudStackIsolatedNetworkStatus defines the observed state
-              of CloudStackIsolatedNetwork
+              of CloudStackIsolatedNetwork.
             properties:
               loadBalancerRuleID:
                 description: The ID of the lb rule used to assign VMs to the lb.
@@ -89,7 +89,7 @@ spec:
     schema:
       openAPIV3Schema:
         description: CloudStackIsolatedNetwork is the Schema for the cloudstackisolatednetworks
-          API
+          API.
         properties:
           apiVersion:
             description: |-
@@ -110,7 +110,7 @@ spec:
             type: object
           spec:
             description: CloudStackIsolatedNetworkSpec defines the desired state of
-              CloudStackIsolatedNetwork
+              CloudStackIsolatedNetwork.
             properties:
               controlPlaneEndpoint:
                 description: The kubernetes control plane endpoint.
@@ -142,7 +142,7 @@ spec:
             type: object
           status:
             description: CloudStackIsolatedNetworkStatus defines the observed state
-              of CloudStackIsolatedNetwork
+              of CloudStackIsolatedNetwork.
             properties:
               loadBalancerRuleID:
                 description: The ID of the lb rule used to assign VMs to the lb.
@@ -165,7 +165,7 @@ spec:
     schema:
       openAPIV3Schema:
         description: CloudStackIsolatedNetwork is the Schema for the cloudstackisolatednetworks
-          API
+          API.
         properties:
           apiVersion:
             description: |-
@@ -186,7 +186,7 @@ spec:
             type: object
           spec:
             description: CloudStackIsolatedNetworkSpec defines the desired state of
-              CloudStackIsolatedNetwork
+              CloudStackIsolatedNetwork.
             properties:
               cidr:
                 description: CIDR is the IP range of the isolated network.
@@ -225,7 +225,7 @@ spec:
             type: object
           status:
             description: CloudStackIsolatedNetworkStatus defines the observed state
-              of CloudStackIsolatedNetwork
+              of CloudStackIsolatedNetwork.
             properties:
               apiServerLoadBalancer:
                 description: APIServerLoadBalancer describes the api server load balancer
