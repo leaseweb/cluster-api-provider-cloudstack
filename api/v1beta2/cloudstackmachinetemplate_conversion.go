@@ -19,21 +19,22 @@ package v1beta2
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	machineryconversion "k8s.io/apimachinery/pkg/conversion"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	utilconversion "sigs.k8s.io/cluster-api/util/conversion"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
+
+	"sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 )
 
-func (src *CloudStackMachineTemplate) ConvertTo(dstRaw conversion.Hub) error { // nolint
+func (r *CloudStackMachineTemplate) ConvertTo(dstRaw conversion.Hub) error {
 	dst := dstRaw.(*v1beta3.CloudStackMachineTemplate)
-	if err := Convert_v1beta2_CloudStackMachineTemplate_To_v1beta3_CloudStackMachineTemplate(src, dst, nil); err != nil {
+	if err := Convert_v1beta2_CloudStackMachineTemplate_To_v1beta3_CloudStackMachineTemplate(r, dst, nil); err != nil {
 		return err
 	}
 
-	// Manually restore data
+	// Manually restore data.
 	restored := &v1beta3.CloudStackMachineTemplate{}
-	if ok, err := utilconversion.UnmarshalData(src, restored); err != nil || !ok {
+	if ok, err := utilconversion.UnmarshalData(r, restored); err != nil || !ok {
 		return err
 	}
 	if restored.Spec.Template.Spec.FailureDomainName != "" {
@@ -48,35 +49,38 @@ func (src *CloudStackMachineTemplate) ConvertTo(dstRaw conversion.Hub) error { /
 	return nil
 }
 
-func (dst *CloudStackMachineTemplate) ConvertFrom(srcRaw conversion.Hub) error { // nolint
+func (r *CloudStackMachineTemplate) ConvertFrom(srcRaw conversion.Hub) error {
 	src := srcRaw.(*v1beta3.CloudStackMachineTemplate)
-	return Convert_v1beta3_CloudStackMachineTemplate_To_v1beta2_CloudStackMachineTemplate(src, dst, nil)
+
+	return Convert_v1beta3_CloudStackMachineTemplate_To_v1beta2_CloudStackMachineTemplate(src, r, nil)
 }
 
-func Convert_v1beta2_CloudStackMachineTemplateSpec_To_v1beta3_CloudStackMachineTemplateSpec(in *CloudStackMachineTemplateSpec, out *v1beta3.CloudStackMachineTemplateSpec, s machineryconversion.Scope) error { // nolint
+func Convert_v1beta2_CloudStackMachineTemplateSpec_To_v1beta3_CloudStackMachineTemplateSpec(in *CloudStackMachineTemplateSpec, out *v1beta3.CloudStackMachineTemplateSpec, s machineryconversion.Scope) error {
 	return Convert_v1beta2_CloudStackMachineTemplateResource_To_v1beta3_CloudStackMachineTemplateResource(&in.Spec, &out.Template, s)
 }
 
-func Convert_v1beta3_CloudStackMachineTemplateSpec_To_v1beta2_CloudStackMachineTemplateSpec(in *v1beta3.CloudStackMachineTemplateSpec, out *CloudStackMachineTemplateSpec, s machineryconversion.Scope) error { // nolint
+func Convert_v1beta3_CloudStackMachineTemplateSpec_To_v1beta2_CloudStackMachineTemplateSpec(in *v1beta3.CloudStackMachineTemplateSpec, out *CloudStackMachineTemplateSpec, s machineryconversion.Scope) error {
 	return Convert_v1beta3_CloudStackMachineTemplateResource_To_v1beta2_CloudStackMachineTemplateResource(&in.Template, &out.Spec, s)
 }
 
-func Convert_v1beta1_ObjectMeta_To_v1_ObjectMeta(in *clusterv1.ObjectMeta, out *metav1.ObjectMeta, _ machineryconversion.Scope) error { // nolint
+func Convert_v1beta1_ObjectMeta_To_v1_ObjectMeta(in *clusterv1.ObjectMeta, out *metav1.ObjectMeta, _ machineryconversion.Scope) error {
 	if in.Annotations != nil {
 		out.Annotations = in.Annotations
 	}
 	if in.Labels != nil {
 		out.Labels = in.Labels
 	}
+
 	return nil
 }
 
-func Convert_v1_ObjectMeta_To_v1beta1_ObjectMeta(in *metav1.ObjectMeta, out *clusterv1.ObjectMeta, _ machineryconversion.Scope) error { // nolint
+func Convert_v1_ObjectMeta_To_v1beta1_ObjectMeta(in *metav1.ObjectMeta, out *clusterv1.ObjectMeta, _ machineryconversion.Scope) error {
 	if in.Annotations != nil {
 		out.Annotations = in.Annotations
 	}
 	if in.Labels != nil {
 		out.Labels = in.Labels
 	}
+
 	return nil
 }

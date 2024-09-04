@@ -24,12 +24,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/webhookutil"
 	"sigs.k8s.io/cluster-api/util/annotations"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
+	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/webhookutil"
 )
 
 // log is for logging in this package.
@@ -49,13 +50,13 @@ var (
 	_ webhook.Validator = &CloudStackCluster{}
 )
 
-// Default implements webhook.Defaulter so a webhook will be registered for the type
+// Default implements webhook.Defaulter so a webhook will be registered for the type.
 func (r *CloudStackCluster) Default() {
 	cloudstackclusterlog.V(1).Info("entered api default setting webhook", "api resource name", r.Name)
 	// No defaulted values supported yet.
 }
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
+// ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
 func (r *CloudStackCluster) ValidateCreate() (admission.Warnings, error) {
 	cloudstackclusterlog.V(1).Info("entered validate create webhook", "api resource name", r.Name)
 
@@ -83,7 +84,7 @@ func (r *CloudStackCluster) ValidateCreate() (admission.Warnings, error) {
 			if fdSpec.Zone.Network.CIDR != "" {
 				if _, errMsg := ValidateCIDR(fdSpec.Zone.Network.CIDR); errMsg != nil {
 					errorList = append(errorList, field.Invalid(
-						field.NewPath("spec", "failureDomains", "Zone", "Network"), fdSpec.Zone.Network.CIDR, fmt.Sprintf("must be valid CIDR: %s", errMsg.Error())))
+						field.NewPath("spec", "failureDomains", "Zone", "Network"), fdSpec.Zone.Network.CIDR, "must be valid CIDR: "+errMsg.Error()))
 				}
 			}
 			if fdSpec.Zone.Network.Domain != "" {
@@ -98,7 +99,7 @@ func (r *CloudStackCluster) ValidateCreate() (admission.Warnings, error) {
 	return nil, webhookutil.AggregateObjErrors(r.GroupVersionKind().GroupKind(), r.Name, errorList)
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
+// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
 func (r *CloudStackCluster) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	cloudstackclusterlog.V(1).Info("entered validate update webhook", "api resource name", r.Name)
 
@@ -134,7 +135,7 @@ func (r *CloudStackCluster) ValidateUpdate(old runtime.Object) (admission.Warnin
 	return nil, webhookutil.AggregateObjErrors(r.GroupVersionKind().GroupKind(), r.Name, errorList)
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
+// ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
 func (r *CloudStackCluster) ValidateDelete() (admission.Warnings, error) {
 	cloudstackclusterlog.V(1).Info("entered validate delete webhook", "api resource name", r.Name)
 	// No deletion validations.  Deletion webhook not enabled.
@@ -155,13 +156,14 @@ func ValidateFailureDomainUpdates(oldFDs, newFDs []CloudStackFailureDomainSpec) 
 			atLeastOneRemains = true
 			if !FailureDomainsEqual(newFD, oldFD) {
 				return field.Forbidden(field.NewPath("spec", "FailureDomains"),
-					fmt.Sprintf("Cannot change FailureDomain %s", oldFD.Name))
+					"Cannot change FailureDomain "+oldFD.Name)
 			}
 		}
 	}
 	if !atLeastOneRemains {
 		return field.Forbidden(field.NewPath("spec", "FailureDomains"), "At least one FailureDomain must be unchanged on update.")
 	}
+
 	return nil
 }
 
@@ -179,11 +181,12 @@ func FailureDomainsEqual(fd1, fd2 CloudStackFailureDomainSpec) bool {
 		fd1.Zone.Network.Domain == fd2.Zone.Network.Domain
 }
 
-// ValidateCIDR validates whether a CIDR matches the conventions expected by net.ParseCIDR
+// ValidateCIDR validates whether a CIDR matches the conventions expected by net.ParseCIDR.
 func ValidateCIDR(cidr string) (*net.IPNet, error) {
 	_, net, err := net.ParseCIDR(cidr)
 	if err != nil {
 		return nil, err
 	}
+
 	return net, nil
 }

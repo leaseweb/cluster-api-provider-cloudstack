@@ -19,7 +19,6 @@ package cloud_test
 import (
 	"bytes"
 	"compress/gzip"
-	"fmt"
 	"io"
 	"reflect"
 
@@ -47,7 +46,7 @@ func (p paramMatcher) String() string {
 	return "a gomega matcher to match, and said matcher should have panicked before this message was printed."
 }
 
-func (p paramMatcher) Matches(x interface{}) (retVal bool) {
+func (p paramMatcher) Matches(x interface{}) bool {
 	return Ω(x).Should(p.matcher)
 }
 
@@ -67,7 +66,6 @@ func FieldMatcherGenerator(fetchFunc string) func(string) types.GomegaMatcher {
 		return WithTransform(
 			func(x interface{}) string {
 				meth := reflect.ValueOf(x).MethodByName(fetchFunc)
-				fmt.Println(meth.Call(nil)[0])
 
 				return meth.Call(nil)[0].String()
 			}, Equal(expected))
@@ -85,5 +83,6 @@ func decompress(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return data, nil
 }

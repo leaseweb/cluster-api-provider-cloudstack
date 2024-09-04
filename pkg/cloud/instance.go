@@ -22,27 +22,42 @@ import (
 	"strconv"
 	"strings"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-
 	"github.com/apache/cloudstack-go/v2/cloudstack"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 )
 
+const (
+	// State of the virtual machine. Possible values are: Running, Stopped, Present, Destroyed, Expunged.
+	// Present is used for the state equal not destroyed.
+	VMStateRunning   = "Running"
+	VMStateStopped   = "Stopped"
+	VMStatePresent   = "Present"
+	VMStateDestroyed = "Destroyed"
+	VMStateExpunged  = "Expunged"
+	VMStateError     = "Error"
+
+	// LimitUnlimited is used in account/domain limit checks.
+	LimitUnlimited = "Unlimited"
+)
+
+var ErrNotFound = errors.New("not found")
+
 type VMIface interface {
-	GetOrCreateVMInstance(*infrav1.CloudStackMachine, *clusterv1.Machine, *infrav1.CloudStackFailureDomain, *infrav1.CloudStackAffinityGroup, string) error
-	ResolveVMInstanceDetails(*infrav1.CloudStackMachine) error
-	DestroyVMInstance(*infrav1.CloudStackMachine) error
+	GetOrCreateVMInstance(csMachine *infrav1.CloudStackMachine, capiMachine *clusterv1.Machine, fd *infrav1.CloudStackFailureDomain, affinity *infrav1.CloudStackAffinityGroup, userData string) error
+	ResolveVMInstanceDetails(csMachine *infrav1.CloudStackMachine) error
+	DestroyVMInstance(csMachine *infrav1.CloudStackMachine) error
 }
 
 // Set infrastructure spec and status from the CloudStack API's virtual machine metrics type.
 func setMachineDataFromVMMetrics(vmResponse *cloudstack.VirtualMachinesMetric, csMachine *infrav1.CloudStackMachine) {
-	csMachine.Spec.ProviderID = pointer.String(fmt.Sprintf("cloudstack:///%s", vmResponse.Id))
+	csMachine.Spec.ProviderID = pointer.String("cloudstack:///" + vmResponse.Id)
 	// InstanceID is later used as required parameter to destroy VM.
 	csMachine.Spec.InstanceID = pointer.String(vmResponse.Id)
 	csMachine.Status.Addresses = []corev1.NodeAddress{{Type: corev1.NodeInternalIP, Address: vmResponse.Ipaddress}}
@@ -61,11 +76,13 @@ func (c *client) ResolveVMInstanceDetails(csMachine *infrav1.CloudStackMachine) 
 		vmResp, count, err := c.cs.VirtualMachine.GetVirtualMachinesMetricByID(*csMachine.Spec.InstanceID)
 		if err != nil && !strings.Contains(strings.ToLower(err.Error()), "no match found") {
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
 			return err
 		} else if count > 1 {
 			return fmt.Errorf("found more than one VM Instance with ID %s", *csMachine.Spec.InstanceID)
 		} else if err == nil {
 			setMachineDataFromVMMetrics(vmResp, csMachine)
+
 			return nil
 		}
 	}
@@ -75,48 +92,57 @@ func (c *client) ResolveVMInstanceDetails(csMachine *infrav1.CloudStackMachine) 
 		vmResp, count, err := c.cs.VirtualMachine.GetVirtualMachinesMetricByName(csMachine.Name) // add opts usage
 		if err != nil && !strings.Contains(strings.ToLower(err.Error()), "no match") {
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
 			return err
 		} else if count > 1 {
 			return fmt.Errorf("found more than one VM Instance with name %s", csMachine.Name)
 		} else if err == nil {
 			setMachineDataFromVMMetrics(vmResp, csMachine)
+
 			return nil
 		}
 	}
+
 	return errors.New("no match found")
 }
 
-func (c *client) ResolveServiceOffering(csMachine *infrav1.CloudStackMachine, zoneID string) (offering cloudstack.ServiceOffering, retErr error) {
+// resolveServiceOffering attempts to look up the service offering of a CloudStackMachine by ID first and name second.
+func (c *client) resolveServiceOffering(csMachine *infrav1.CloudStackMachine, zoneID string) (offering *cloudstack.ServiceOffering, retErr error) {
 	if len(csMachine.Spec.Offering.ID) > 0 {
 		csOffering, count, err := c.cs.ServiceOffering.GetServiceOfferingByID(csMachine.Spec.Offering.ID)
 		if err != nil {
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
-			return cloudstack.ServiceOffering{}, multierror.Append(retErr, errors.Wrapf(
+
+			return nil, multierror.Append(retErr, errors.Wrapf(
 				err, "could not get Service Offering by ID %s", csMachine.Spec.Offering.ID))
 		} else if count != 1 {
-			return *csOffering, multierror.Append(retErr, errors.Errorf(
+			return csOffering, multierror.Append(retErr, errors.Errorf(
 				"expected 1 Service Offering with UUID %s, but got %d", csMachine.Spec.Offering.ID, count))
 		}
 
 		if len(csMachine.Spec.Offering.Name) > 0 && csMachine.Spec.Offering.Name != csOffering.Name {
-			return *csOffering, multierror.Append(retErr, errors.Errorf(
+			return csOffering, multierror.Append(retErr, errors.Errorf(
 				"offering name %s does not match name %s returned using UUID %s", csMachine.Spec.Offering.Name, csOffering.Name, csMachine.Spec.Offering.ID))
 		}
-		return *csOffering, nil
+
+		return csOffering, nil
 	}
 	csOffering, count, err := c.cs.ServiceOffering.GetServiceOfferingByName(csMachine.Spec.Offering.Name, cloudstack.WithZone(zoneID))
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
-		return cloudstack.ServiceOffering{}, multierror.Append(retErr, errors.Wrapf(
+
+		return nil, multierror.Append(retErr, errors.Wrapf(
 			err, "could not get Service Offering ID from %s in zone %s", csMachine.Spec.Offering.Name, zoneID))
 	} else if count != 1 {
-		return *csOffering, multierror.Append(retErr, errors.Errorf(
+		return csOffering, multierror.Append(retErr, errors.Errorf(
 			"expected 1 Service Offering with name %s in zone %s, but got %d", csMachine.Spec.Offering.Name, zoneID, count))
 	}
-	return *csOffering, nil
+
+	return csOffering, nil
 }
 
-func (c *client) ResolveTemplate(
+// resolveTemplate attempts to look up/verify the template ID of a CloudStackMachine by ID first and name second.
+func (c *client) resolveTemplate(
 	csMachine *infrav1.CloudStackMachine,
 	zoneID string,
 ) (templateID string, retErr error) {
@@ -124,6 +150,7 @@ func (c *client) ResolveTemplate(
 		csTemplate, count, err := c.cs.Template.GetTemplateByID(csMachine.Spec.Template.ID, "executable")
 		if err != nil {
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
 			return "", multierror.Append(retErr, errors.Wrapf(
 				err, "could not get Template by ID %s", csMachine.Spec.Template.ID))
 		} else if count != 1 {
@@ -135,6 +162,7 @@ func (c *client) ResolveTemplate(
 			return "", multierror.Append(retErr, errors.Errorf(
 				"template name %s does not match name %s returned using UUID %s", csMachine.Spec.Template.Name, csTemplate.Name, csMachine.Spec.Template.ID))
 		}
+
 		return csMachine.Spec.Template.ID, nil
 	}
 	templateID, count, err := c.cs.Template.GetTemplateID(csMachine.Spec.Template.Name, "executable", zoneID, func(cs *cloudstack.CloudStackClient, i interface{}) error {
@@ -148,19 +176,21 @@ func (c *client) ResolveTemplate(
 	})
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
 		return "", multierror.Append(retErr, errors.Wrapf(
 			err, "could not get Template ID from %s", csMachine.Spec.Template.Name))
 	} else if count != 1 {
 		return "", multierror.Append(retErr, errors.Errorf(
 			"expected 1 Template with name %s, but got %d", csMachine.Spec.Template.Name, count))
 	}
+
 	return templateID, nil
 }
 
-// ResolveDiskOffering Retrieves diskOffering by using disk offering ID if ID is provided and confirm returned
-// disk offering name matches name provided in spec.
-// If disk offering ID is not provided, the disk offering name is used to retrieve disk offering ID.
-func (c *client) ResolveDiskOffering(csMachine *infrav1.CloudStackMachine, zoneID string) (diskOfferingID string, retErr error) {
+// resolveDiskOffering retrieves a diskOffering by using disk offering ID if ID is provided, and checks if the returned
+// disk offering name matches the name provided in the machine spec.
+// If disk offering ID is not provided, the disk offering name is used to retrieve the disk offering ID.
+func (c *client) resolveDiskOffering(csMachine *infrav1.CloudStackMachine, zoneID string) (diskOfferingID string, retErr error) {
 	if csMachine.Spec.DiskOffering == nil {
 		return "", nil
 	}
@@ -169,6 +199,7 @@ func (c *client) ResolveDiskOffering(csMachine *infrav1.CloudStackMachine, zoneI
 		diskID, count, err := c.cs.DiskOffering.GetDiskOfferingID(csMachine.Spec.DiskOffering.Name, cloudstack.WithZone(zoneID))
 		if err != nil {
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
 			return "", multierror.Append(retErr, errors.Wrapf(
 				err, "could not get DiskOffering ID from %s", csMachine.Spec.DiskOffering.Name))
 		} else if count != 1 {
@@ -196,6 +227,7 @@ func verifyDiskoffering(csMachine *infrav1.CloudStackMachine, c *client, diskOff
 	csDiskOffering, count, err := c.cs.DiskOffering.GetDiskOfferingByID(diskOfferingID)
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
 		return "", multierror.Append(retErr, errors.Wrapf(
 			err, "could not get DiskOffering by ID %s", diskOfferingID))
 	} else if count != 1 {
@@ -214,69 +246,76 @@ func verifyDiskoffering(csMachine *infrav1.CloudStackMachine, c *client, diskOff
 			"diskOffering with UUID %s is not customized, disk size can not be specified",
 			diskOfferingID))
 	}
+
 	return diskOfferingID, nil
 }
 
-// CheckAccountLimits Checks the account's limit of VM, CPU & Memory
-func (c *client) CheckAccountLimits(offering *cloudstack.ServiceOffering) error {
-	if c.user.Account.CPUAvailable != "Unlimited" {
+// checkAccountLimits checks the account's limit of VM, CPU & Memory.
+func (c *client) checkAccountLimits(offering *cloudstack.ServiceOffering) error {
+	if c.user.Account.CPUAvailable != LimitUnlimited {
 		cpuAvailable, err := strconv.ParseInt(c.user.Account.CPUAvailable, 10, 0)
 		if err == nil && int64(offering.Cpunumber) > cpuAvailable {
 			return fmt.Errorf("CPU available (%d) in account can't fulfil the requirement: %d", cpuAvailable, offering.Cpunumber)
 		}
 	}
 
-	if c.user.Account.MemoryAvailable != "Unlimited" {
+	if c.user.Account.MemoryAvailable != LimitUnlimited {
 		memoryAvailable, err := strconv.ParseInt(c.user.Account.MemoryAvailable, 10, 0)
 		if err == nil && int64(offering.Memory) > memoryAvailable {
 			return fmt.Errorf("memory available (%d) in account can't fulfil the requirement: %d", memoryAvailable, offering.Memory)
 		}
 	}
 
-	if c.user.Account.VMAvailable != "Unlimited" {
+	if c.user.Account.VMAvailable != LimitUnlimited {
 		vmAvailable, err := strconv.ParseInt(c.user.Account.VMAvailable, 10, 0)
 		if err == nil && vmAvailable < 1 {
-			return fmt.Errorf("VM Limit in account has reached it's maximum value")
+			return errors.New("VM limit in account has reached its maximum value")
 		}
 	}
+
 	return nil
 }
 
-// CheckDomainLimits Checks the domain's limit of VM, CPU & Memory
-func (c *client) CheckDomainLimits(offering *cloudstack.ServiceOffering) error {
-	if c.user.Account.Domain.CPUAvailable != "Unlimited" {
+// checkDomainLimits checks the domain's limit of VM, CPU & Memory.
+func (c *client) checkDomainLimits(offering *cloudstack.ServiceOffering) error {
+	if c.user.Account.Domain.CPUAvailable != LimitUnlimited {
 		cpuAvailable, err := strconv.ParseInt(c.user.Account.Domain.CPUAvailable, 10, 0)
 		if err == nil && int64(offering.Cpunumber) > cpuAvailable {
 			return fmt.Errorf("CPU available (%d) in domain can't fulfil the requirement: %d", cpuAvailable, offering.Cpunumber)
 		}
 	}
 
-	if c.user.Account.Domain.MemoryAvailable != "Unlimited" {
+	if c.user.Account.Domain.MemoryAvailable != LimitUnlimited {
 		memoryAvailable, err := strconv.ParseInt(c.user.Account.Domain.MemoryAvailable, 10, 0)
 		if err == nil && int64(offering.Memory) > memoryAvailable {
 			return fmt.Errorf("memory available (%d) in domain can't fulfil the requirement: %d", memoryAvailable, offering.Memory)
 		}
 	}
 
-	if c.user.Account.Domain.VMAvailable != "Unlimited" {
+	if c.user.Account.Domain.VMAvailable != LimitUnlimited {
 		vmAvailable, err := strconv.ParseInt(c.user.Account.Domain.VMAvailable, 10, 0)
 		if err == nil && vmAvailable < 1 {
-			return fmt.Errorf("VM Limit in domain has reached it's maximum value")
+			return errors.New("VM limit in domain has reached its maximum value")
 		}
 	}
+
 	return nil
 }
 
-// CheckLimits will check the account & domain limits
-func (c *client) CheckLimits(
+// checkLimits will check the account & domain limits.
+func (c *client) checkLimits(
 	offering *cloudstack.ServiceOffering,
 ) error {
-	err := c.CheckAccountLimits(offering)
+	if offering == nil {
+		return errors.New("offering cannot be nil")
+	}
+
+	err := c.checkAccountLimits(offering)
 	if err != nil {
 		return err
 	}
 
-	err = c.CheckDomainLimits(offering)
+	err = c.checkDomainLimits(offering)
 	if err != nil {
 		return err
 	}
@@ -284,9 +323,8 @@ func (c *client) CheckLimits(
 	return nil
 }
 
-// DeployVM will create a VM instance,
-// and sets the infrastructure machine spec and status accordingly.
-func (c *client) DeployVM(
+// deployVM will create a VM instance, and sets the infrastructure machine spec and status accordingly.
+func (c *client) deployVM(
 	csMachine *infrav1.CloudStackMachine,
 	capiMachine *clusterv1.Machine,
 	fd *infrav1.CloudStackFailureDomain,
@@ -294,11 +332,11 @@ func (c *client) DeployVM(
 	offering *cloudstack.ServiceOffering,
 	userData string,
 ) error {
-	templateID, err := c.ResolveTemplate(csMachine, fd.Spec.Zone.ID)
+	templateID, err := c.resolveTemplate(csMachine, fd.Spec.Zone.ID)
 	if err != nil {
 		return err
 	}
-	diskOfferingID, err := c.ResolveDiskOffering(csMachine, fd.Spec.Zone.ID)
+	diskOfferingID, err := c.resolveDiskOffering(csMachine, fd.Spec.Zone.ID)
 	if err != nil {
 		return err
 	}
@@ -325,7 +363,7 @@ func (c *client) DeployVM(
 
 	if len(csMachine.Spec.AffinityGroupIDs) > 0 {
 		p.SetAffinitygroupids(csMachine.Spec.AffinityGroupIDs)
-	} else if strings.ToLower(csMachine.Spec.Affinity) != "no" && csMachine.Spec.Affinity != "" {
+	} else if !strings.EqualFold(csMachine.Spec.Affinity, "no") && csMachine.Spec.Affinity != "" {
 		p.SetAffinitygroupids([]string{affinity.Spec.ID})
 	}
 
@@ -342,13 +380,14 @@ func (c *client) DeployVM(
 		// clean up.
 		vm, findErr := findVirtualMachine(c.cs.VirtualMachine, templateID, fd, csMachine)
 		if findErr != nil {
-			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(findErr)
-			return fmt.Errorf("%v; find virtual machine: %v", err, findErr)
-		}
+			if errors.Is(findErr, ErrNotFound) {
+				// We didn't find a VM so return the original error.
+				return err
+			} else {
+				c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(findErr)
 
-		// We didn't find a VM so return the original error.
-		if vm == nil {
-			return err
+				return fmt.Errorf("%w; find virtual machine: %w", err, findErr)
+			}
 		}
 
 		csMachine.Spec.InstanceID = pointer.String(vm.Id)
@@ -363,8 +402,8 @@ func (c *client) DeployVM(
 	return nil
 }
 
-// GetOrCreateVMInstance CreateVMInstance will fetch or create a VM instance, and
-// sets the infrastructure machine spec and status accordingly.
+// GetOrCreateVMInstance will fetch or create a VM instance, and sets the infrastructure machine spec
+// and status accordingly.
 func (c *client) GetOrCreateVMInstance(
 	csMachine *infrav1.CloudStackMachine,
 	capiMachine *clusterv1.Machine,
@@ -378,27 +417,27 @@ func (c *client) GetOrCreateVMInstance(
 		return err
 	}
 
-	offering, err := c.ResolveServiceOffering(csMachine, fd.Spec.Zone.ID)
+	offering, err := c.resolveServiceOffering(csMachine, fd.Spec.Zone.ID)
 	if err != nil {
 		return err
 	}
 
-	err = c.CheckLimits(&offering)
+	err = c.checkLimits(offering)
 	if err != nil {
 		return err
 	}
 
-	if err := c.DeployVM(csMachine, capiMachine, fd, affinity, &offering, userData); err != nil {
+	if err := c.deployVM(csMachine, capiMachine, fd, affinity, offering, userData); err != nil {
 		return err
 	}
 
-	// Resolve uses a VM metrics request response to fill cloudstack machine status.
+	// ResolveVMInstanceDetails uses a VM metrics request response to fill the CloudStack machine status.
 	// The deployment response is insufficient.
 	return c.ResolveVMInstanceDetails(csMachine)
 }
 
 // findVirtualMachine retrieves a virtual machine by matching its expected name, template, failure
-// domain zone and failure domain network. If no virtual machine is found it returns nil, nil.
+// domain zone and failure domain network. If no virtual machine is found it returns nil, ErrNotFound.
 func findVirtualMachine(
 	client cloudstack.VirtualMachineServiceIface,
 	templateID string,
@@ -417,7 +456,7 @@ func findVirtualMachine(
 	}
 
 	if response.Count == 0 {
-		return nil, nil
+		return nil, ErrNotFound
 	}
 
 	return response.VirtualMachines[0], nil
@@ -442,6 +481,7 @@ func (c *client) DestroyVMInstance(csMachine *infrav1.CloudStackMachine) error {
 		return nil
 	} else if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
 		return err
 	}
 
@@ -454,12 +494,15 @@ func (c *client) DestroyVMInstance(csMachine *infrav1.CloudStackMachine) error {
 			// VM doesn't exist.  So the desired state is in effect.  Our work is done here.
 			return nil
 		}
+
 		return err
 	}
 
 	return errors.New("VM deletion in progress")
 }
 
+// listVMInstanceDatadiskVolumeIDs fetches a list of any data disks associated with the VM (that were created upon VM
+// creation). This tries to exclude any disks that were attached to the VM at a stage other than VM creation.
 func (c *client) listVMInstanceDatadiskVolumeIDs(instanceID string) ([]string, error) {
 	p := c.cs.Volume.NewListVolumesParams()
 	p.SetVirtualmachineid(instanceID)
@@ -477,14 +520,15 @@ func (c *client) listVMInstanceDatadiskVolumeIDs(instanceID string) ([]string, e
 	// - https://github.com/kubernetes-sigs/cluster-api-provider-cloudstack/issues/389
 	p.SetKeyword("DATA-")
 
-	listVOLResp, err := c.csAsync.Volume.ListVolumes(p)
+	listVolResp, err := c.csAsync.Volume.ListVolumes(p)
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
 		return nil, err
 	}
 
-	var ret []string
-	for _, vol := range listVOLResp.Volumes {
+	ret := make([]string, 0, len(listVolResp.Volumes))
+	for _, vol := range listVolResp.Volumes {
 		ret = append(ret, vol.Id)
 	}
 

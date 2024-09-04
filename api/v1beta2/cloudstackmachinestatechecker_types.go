@@ -18,13 +18,13 @@ package v1beta2
 
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-// CloudStackMachineStateCheckerSpec
+// CloudStackMachineStateCheckerSpec defines the desired state of CloudStackMachineStateChecker.
 type CloudStackMachineStateCheckerSpec struct {
-	// CloudStack machine instance ID
+	// CloudStack machine instance ID.
 	InstanceID string `json:"instanceID,omitempty"`
 }
 
-// CloudStackMachineStateCheckerStatus defines the observed state of CloudStackMachineStateChecker
+// CloudStackMachineStateCheckerStatus defines the observed state of CloudStackMachineStateChecker.
 type CloudStackMachineStateCheckerStatus struct {
 	// Reflects the readiness of the Machine State Checker.
 	Ready bool `json:"ready"`
@@ -33,7 +33,7 @@ type CloudStackMachineStateCheckerStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// CloudStackMachineStateChecker is the Schema for the cloudstackmachinestatecheckers API
+// CloudStackMachineStateChecker is the Schema for the cloudstackmachinestatecheckers API.
 type CloudStackMachineStateChecker struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -44,7 +44,7 @@ type CloudStackMachineStateChecker struct {
 
 //+kubebuilder:object:root=true
 
-// CloudStackMachineStateCheckerList contains a list of CloudStackMachineStateChecker
+// CloudStackMachineStateCheckerList contains a list of CloudStackMachineStateChecker.
 type CloudStackMachineStateCheckerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

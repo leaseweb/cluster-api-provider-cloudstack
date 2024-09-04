@@ -20,15 +20,15 @@ import (
 	"fmt"
 	"strings"
 
-	corev1 "k8s.io/api/core/v1"
-	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
-
 	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
+	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 )
 
 // CreateFailureDomain creates a specified CloudStackFailureDomain CRD owned by the ReconcilationSubject.
@@ -38,6 +38,7 @@ func (r *ReconciliationRunner) CreateFailureDomain(fdSpec infrav1.CloudStackFail
 		ObjectMeta: r.NewChildObjectMeta(metaHashName),
 		Spec:       fdSpec,
 	}
+
 	return errors.Wrap(r.K8sClient.Create(r.RequestCtx, csFD), "creating CloudStackFailureDomain")
 }
 
@@ -51,6 +52,7 @@ func (r *ReconciliationRunner) CreateFailureDomains(fdSpecs []infrav1.CloudStack
 				}
 			}
 		}
+
 		return ctrl.Result{}, nil
 	}
 }
@@ -67,6 +69,7 @@ func (r *ReconciliationRunner) GetFailureDomains(fds *infrav1.CloudStackFailureD
 		); err != nil {
 			return ctrl.Result{}, errors.Wrap(err, "failed to list failure domains")
 		}
+
 		return ctrl.Result{}, nil
 	}
 }
@@ -78,6 +81,7 @@ func (r *ReconciliationRunner) GetFailureDomainByName(nameFunc func() string, fd
 		if err := r.K8sClient.Get(r.RequestCtx, client.ObjectKey{Namespace: r.Request.Namespace, Name: metaHashName}, fd); err != nil {
 			return ctrl.Result{}, errors.Wrapf(err, "failed to get failure domain with name %s", nameFunc())
 		}
+
 		return ctrl.Result{}, nil
 	}
 }
@@ -102,6 +106,7 @@ func (r *ReconciliationRunner) RemoveExtraneousFailureDomains(fds *infrav1.Cloud
 				}
 			}
 		}
+
 		return ctrl.Result{}, nil
 	}
 }
@@ -114,13 +119,14 @@ func (r *ReconciliationRunner) GetFailureDomainsAndRequeueIfMissing(fds *infrav1
 		} else if len(fds.Items) < 1 {
 			return r.RequeueWithMessage("no failure domains found, requeueing")
 		}
+
 		return ctrl.Result{}, nil
 	}
 }
 
 type CloudClientExtension interface {
-	RegisterExtension(*ReconciliationRunner) CloudClientExtension
-	AsFailureDomainUser(*infrav1.CloudStackFailureDomainSpec) CloudStackReconcilerMethod
+	RegisterExtension(r *ReconciliationRunner) CloudClientExtension
+	AsFailureDomainUser(fdSpec *infrav1.CloudStackFailureDomainSpec) CloudStackReconcilerMethod
 }
 
 type CloudClientImplementation struct {
@@ -130,6 +136,7 @@ type CloudClientImplementation struct {
 
 func (c *CloudClientImplementation) RegisterExtension(r *ReconciliationRunner) CloudClientExtension {
 	c.ReconciliationRunner = r
+
 	return c
 }
 

@@ -18,55 +18,58 @@ package v1beta1
 
 import (
 	machineryconversion "k8s.io/apimachinery/pkg/conversion"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
-	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	utilconversion "sigs.k8s.io/cluster-api/util/conversion"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 )
 
-func (src *CloudStackIsolatedNetwork) ConvertTo(dstRaw conversion.Hub) error { // nolint
-	dst := dstRaw.(*v1beta3.CloudStackIsolatedNetwork)
-	if err := Convert_v1beta1_CloudStackIsolatedNetwork_To_v1beta3_CloudStackIsolatedNetwork(src, dst, nil); err != nil {
+func (r *CloudStackIsolatedNetwork) ConvertTo(dstRaw conversion.Hub) error {
+	dst := dstRaw.(*infrav1.CloudStackIsolatedNetwork)
+	if err := Convert_v1beta1_CloudStackIsolatedNetwork_To_v1beta3_CloudStackIsolatedNetwork(r, dst, nil); err != nil {
 		return err
 	}
 
-	// Manually restore data
-	restored := &v1beta3.CloudStackIsolatedNetwork{}
-	if ok, err := utilconversion.UnmarshalData(src, restored); err != nil || !ok {
+	// Manually restore data.
+	restored := &infrav1.CloudStackIsolatedNetwork{}
+	if ok, err := utilconversion.UnmarshalData(r, restored); err != nil || !ok {
 		return err
 	}
 	if restored.Spec.FailureDomainName != "" {
 		dst.Spec.FailureDomainName = restored.Spec.FailureDomainName
 	}
+
 	return nil
 }
 
-func (dst *CloudStackIsolatedNetwork) ConvertFrom(srcRaw conversion.Hub) error { // nolint
-	src := srcRaw.(*v1beta3.CloudStackIsolatedNetwork)
-	if err := Convert_v1beta3_CloudStackIsolatedNetwork_To_v1beta1_CloudStackIsolatedNetwork(src, dst, nil); err != nil {
+func (r *CloudStackIsolatedNetwork) ConvertFrom(srcRaw conversion.Hub) error {
+	src := srcRaw.(*infrav1.CloudStackIsolatedNetwork)
+	if err := Convert_v1beta3_CloudStackIsolatedNetwork_To_v1beta1_CloudStackIsolatedNetwork(src, r, nil); err != nil {
 		return err
 	}
 
-	// Preserve Hub data on down-conversion
-	return utilconversion.MarshalData(src, dst)
+	// Preserve Hub data on down-conversion.
+	return utilconversion.MarshalData(src, r)
 }
 
-func Convert_v1beta3_CloudStackIsolatedNetworkSpec_To_v1beta1_CloudStackIsolatedNetworkSpec(in *v1beta3.CloudStackIsolatedNetworkSpec, out *CloudStackIsolatedNetworkSpec, s machineryconversion.Scope) error { // nolint
+func Convert_v1beta3_CloudStackIsolatedNetworkSpec_To_v1beta1_CloudStackIsolatedNetworkSpec(in *infrav1.CloudStackIsolatedNetworkSpec, out *CloudStackIsolatedNetworkSpec, s machineryconversion.Scope) error {
 	return autoConvert_v1beta3_CloudStackIsolatedNetworkSpec_To_v1beta1_CloudStackIsolatedNetworkSpec(in, out, s)
 }
 
-func Convert_v1beta1_CloudStackIsolatedNetworkStatus_To_v1beta3_CloudStackIsolatedNetworkStatus(in *CloudStackIsolatedNetworkStatus, out *v1beta3.CloudStackIsolatedNetworkStatus, s machineryconversion.Scope) error {
+func Convert_v1beta1_CloudStackIsolatedNetworkStatus_To_v1beta3_CloudStackIsolatedNetworkStatus(in *CloudStackIsolatedNetworkStatus, out *infrav1.CloudStackIsolatedNetworkStatus, s machineryconversion.Scope) error {
 	out.PublicIPID = in.PublicIPID
 	out.LBRuleID = in.LBRuleID
 	out.APIServerLoadBalancer = &infrav1.LoadBalancer{}
 	out.LoadBalancerRuleIDs = []string{in.LBRuleID}
 	out.Ready = in.Ready
+
 	return nil
 }
 
-func Convert_v1beta3_CloudStackIsolatedNetworkStatus_To_v1beta1_CloudStackIsolatedNetworkStatus(in *v1beta3.CloudStackIsolatedNetworkStatus, out *CloudStackIsolatedNetworkStatus, s machineryconversion.Scope) error {
+func Convert_v1beta3_CloudStackIsolatedNetworkStatus_To_v1beta1_CloudStackIsolatedNetworkStatus(in *infrav1.CloudStackIsolatedNetworkStatus, out *CloudStackIsolatedNetworkStatus, s machineryconversion.Scope) error {
 	out.PublicIPID = in.PublicIPID
 	out.LBRuleID = in.LBRuleID
 	out.Ready = in.Ready
+
 	return nil
 }

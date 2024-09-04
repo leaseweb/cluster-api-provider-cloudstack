@@ -19,7 +19,6 @@ package controllers_test
 import (
 	"context"
 	"flag"
-	"fmt"
 	"go/build"
 	"os"
 	"path"
@@ -30,9 +29,6 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/test/fakes"
-
 	"github.com/apache/cloudstack-go/v2/cloudstack"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
@@ -41,7 +37,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -52,21 +51,17 @@ import (
 	csReconcilers "sigs.k8s.io/cluster-api-provider-cloudstack/controllers"
 	csCtrlrUtils "sigs.k8s.io/cluster-api-provider-cloudstack/controllers/utils"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/mocks"
-
 	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	"sigs.k8s.io/cluster-api/util/patch"
-	//+kubebuilder:scaffold:imports
+	"sigs.k8s.io/cluster-api-provider-cloudstack/test/fakes"
 )
 
-func TestAPIs(t *testing.T) {
+func TestControllers(t *testing.T) {
 	RegisterFailHandler(Fail)
+
 	RunSpecs(t, "Controller Suite")
 }
 
-var (
-	clusterAPIVersionRegex = regexp.MustCompile(`^(\W)sigs.k8s.io/cluster-api v(.+)`)
-)
+var clusterAPIVersionRegex = regexp.MustCompile(`^(\W)sigs.k8s.io/cluster-api v(.+)`)
 
 const (
 	timeout             = 10 * time.Second
@@ -78,6 +73,7 @@ func envOr(envKey, defaultValue string) string {
 	if value, ok := os.LookupEnv(envKey); ok {
 		return value
 	}
+
 	return defaultValue
 }
 
@@ -101,12 +97,13 @@ func getFilePathToCAPICRDs(root string) string {
 	}
 
 	gopath := envOr("GOPATH", build.Default.GOPATH)
+
 	return filepath.Join(gopath, "pkg", "mod", "sigs.k8s.io",
-		fmt.Sprintf("cluster-api@v%s", clusterAPIVersion), "config", "crd", "bases")
+		"cluster-api@v"+clusterAPIVersion, "config", "crd", "bases")
 }
 
 var (
-	// TestEnv vars...
+	// TestEnv vars.
 	testEnv        *envtest.Environment
 	k8sClient      client.Client
 	ctx            context.Context
@@ -122,7 +119,7 @@ var (
 	mockCloudClient *mocks.MockClient
 	mockCSAPIClient *cloudstack.CloudStackClient
 
-	// Reconcilers
+	// Reconcilers.
 	MachineReconciler       *csReconcilers.CloudStackMachineReconciler
 	ClusterReconciler       *csReconcilers.CloudStackClusterReconciler
 	FailureDomainReconciler *csReconcilers.CloudStackFailureDomainReconciler
@@ -154,7 +151,8 @@ type MockCtrlrCloudClientImplementation struct {
 // AsFailureDomainUser is a method used in the reconciliation runner to set up the CloudStack client. Using this here
 // just sets the CSClient to a mock client.
 func (m *MockCtrlrCloudClientImplementation) AsFailureDomainUser(
-	*infrav1.CloudStackFailureDomainSpec) csCtrlrUtils.CloudStackReconcilerMethod {
+	*infrav1.CloudStackFailureDomainSpec,
+) csCtrlrUtils.CloudStackReconcilerMethod {
 	return func() (ctrl.Result, error) {
 		m.CSUser = mockCloudClient
 
@@ -230,8 +228,7 @@ func SetupTestEnvironment() {
 
 	setupClusterCRDs()
 
-	// See reconciliation results. Left commented as it's noisy otherwise.
-	// TODO: find a way to see controller output without the additional setup output.
+	// See reconciliation results.
 	ctrl.SetLogger(logger)
 
 	DeferCleanup(func() {
@@ -313,13 +310,13 @@ func setClusterReady(client client.Client) {
 		ph, err := patch.NewHelper(dummies.CSCluster, client)
 		Ω(err).ShouldNot(HaveOccurred())
 		dummies.CSCluster.Status.Ready = true
+
 		return ph.Patch(ctx, dummies.CSCluster, patch.WithStatusObservedGeneration{})
 	}, timeout).Should(Succeed())
 }
 
 // setupClusterCRDs creates a CAPI and CloudStack cluster with an appropriate ownership ref between them.
 func setupClusterCRDs() {
-
 	//  Create them.
 	Ω(k8sClient.Create(ctx, dummies.CAPICluster)).Should(Succeed())
 	Ω(k8sClient.Create(ctx, dummies.CSCluster)).Should(Succeed())
@@ -340,6 +337,7 @@ func setupClusterCRDs() {
 			Name:       dummies.CAPICluster.Name,
 			UID:        "uniqueness",
 		})
+
 		return ph.Patch(ctx, dummies.CSCluster, patch.WithStatusObservedGeneration{})
 	}, timeout).Should(Succeed())
 }
@@ -366,6 +364,7 @@ func setupMachineCRDs() {
 			Name:       dummies.CAPIMachine.Name,
 			UID:        "uniqueness",
 		})
+
 		return ph.Patch(ctx, dummies.CSMachine1, patch.WithStatusObservedGeneration{})
 	}, timeout).Should(Succeed())
 }
@@ -382,26 +381,27 @@ func setCSMachineOwnerCRD(owner *fakes.CloudStackMachineOwner, specReplicas, sta
 		owner.Status.Ready = statusReady
 		owner.Status.Replicas = statusReplicas
 		owner.Status.ReadyReplicas = statusReadyReplicas
+
 		return k8sClient.Status().Update(ctx, owner)
 	}, timeout).Should(BeNil())
 }
 
 // setCAPIMachineAndCSMachineCRDs creates a CAPI and CloudStack machine with an appropriate ownership ref between them.
-func setCAPIMachineAndCSMachineCRDs(CSMachine *infrav1.CloudStackMachine, CAPIMachine *clusterv1.Machine) {
+func setCAPIMachineAndCSMachineCRDs(csMachine *infrav1.CloudStackMachine, capiMachine *clusterv1.Machine) {
 	//  Create them.
-	Ω(k8sClient.Create(ctx, CAPIMachine)).Should(Succeed())
-	Ω(k8sClient.Create(ctx, CSMachine)).Should(Succeed())
+	Ω(k8sClient.Create(ctx, capiMachine)).Should(Succeed())
+	Ω(k8sClient.Create(ctx, csMachine)).Should(Succeed())
 
 	// Fetch the CS Machine that was created.
-	key := client.ObjectKey{Namespace: dummies.CSCluster.Namespace, Name: CSMachine.Name}
+	key := client.ObjectKey{Namespace: dummies.CSCluster.Namespace, Name: csMachine.Name}
 	Eventually(func() error {
-		return k8sClient.Get(ctx, key, CSMachine)
+		return k8sClient.Get(ctx, key, csMachine)
 	}, timeout).Should(BeNil())
 
 	// Fetch the CAPI Machine that was created.
-	key = client.ObjectKey{Namespace: dummies.ClusterNameSpace, Name: CAPIMachine.Name}
+	key = client.ObjectKey{Namespace: dummies.ClusterNameSpace, Name: capiMachine.Name}
 	Eventually(func() error {
-		return k8sClient.Get(ctx, key, CAPIMachine)
+		return k8sClient.Get(ctx, key, capiMachine)
 	}, timeout).Should(BeNil())
 
 	// Set ownerReference to CAPI machine in CS machine and patch back the CS machine.
@@ -411,40 +411,43 @@ func setCAPIMachineAndCSMachineCRDs(CSMachine *infrav1.CloudStackMachine, CAPIMa
 		dummies.CSMachine1.OwnerReferences = append(dummies.CSMachine1.OwnerReferences, metav1.OwnerReference{
 			Kind:       "Machine",
 			APIVersion: clusterv1.GroupVersion.String(),
-			Name:       CAPIMachine.Name,
+			Name:       capiMachine.Name,
 			UID:        "uniqueness",
 		})
-		return ph.Patch(ctx, CSMachine, patch.WithStatusObservedGeneration{})
+
+		return ph.Patch(ctx, csMachine, patch.WithStatusObservedGeneration{})
 	}, timeout).Should(Succeed())
 }
 
-func setMachineOwnerReference(CSMachine *infrav1.CloudStackMachine, ownerRef metav1.OwnerReference) {
-	key := client.ObjectKey{Namespace: dummies.CSCluster.Namespace, Name: CSMachine.Name}
+func setMachineOwnerReference(csMachine *infrav1.CloudStackMachine, ownerRef metav1.OwnerReference) {
+	key := client.ObjectKey{Namespace: dummies.CSCluster.Namespace, Name: csMachine.Name}
 	Eventually(func() error {
-		return k8sClient.Get(ctx, key, CSMachine)
+		return k8sClient.Get(ctx, key, csMachine)
 	}, timeout).Should(BeNil())
 
 	// Set ownerReference to CAPI machine in CS machine and patch back the CS machine.
 	Eventually(func() error {
-		ph, err := patch.NewHelper(CSMachine, k8sClient)
+		ph, err := patch.NewHelper(csMachine, k8sClient)
 		Ω(err).ShouldNot(HaveOccurred())
-		CSMachine.OwnerReferences = append(CSMachine.OwnerReferences, ownerRef)
-		return ph.Patch(ctx, CSMachine, patch.WithStatusObservedGeneration{})
+		csMachine.OwnerReferences = append(csMachine.OwnerReferences, ownerRef)
+
+		return ph.Patch(ctx, csMachine, patch.WithStatusObservedGeneration{})
 	}, timeout).Should(Succeed())
 }
 
 // labelMachineFailuredomain add cloudstackfailuredomain info in the labels.
-func labelMachineFailuredomain(CSMachine *infrav1.CloudStackMachine, CSFailureDomain1 *infrav1.CloudStackFailureDomain) {
-	key := client.ObjectKey{Namespace: dummies.CSCluster.Namespace, Name: CSMachine.Name}
+func labelMachineFailuredomain(csMachine *infrav1.CloudStackMachine, csFailureDomain1 *infrav1.CloudStackFailureDomain) {
+	key := client.ObjectKey{Namespace: dummies.CSCluster.Namespace, Name: csMachine.Name}
 	Eventually(func() error {
-		return k8sClient.Get(ctx, key, CSMachine)
+		return k8sClient.Get(ctx, key, csMachine)
 	}, timeout).Should(BeNil())
 
 	// set cloudstack failuredomain in machine labels.
 	Eventually(func() error {
-		ph, err := patch.NewHelper(CSMachine, k8sClient)
+		ph, err := patch.NewHelper(csMachine, k8sClient)
 		Ω(err).ShouldNot(HaveOccurred())
-		CSMachine.Labels["cloudstackfailuredomain.infrastructure.cluster.x-k8s.io/name"] = CSFailureDomain1.Name
-		return ph.Patch(ctx, CSMachine, patch.WithStatusObservedGeneration{})
+		csMachine.Labels["cloudstackfailuredomain.infrastructure.cluster.x-k8s.io/name"] = csFailureDomain1.Name
+
+		return ph.Patch(ctx, csMachine, patch.WithStatusObservedGeneration{})
 	}, timeout).Should(Succeed())
 }

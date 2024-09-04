@@ -22,8 +22,6 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/client-go/tools/record"
-
 	"github.com/go-logr/logr"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -31,14 +29,16 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
+	"k8s.io/client-go/tools/record"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/annotations"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
+	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 )
 
 // ReconcilerBase is the base set of components we use in k8s reconcilers.
@@ -92,6 +92,7 @@ func NewRunner(concreteRunner ConcreteRunner, subject client.Object, kind string
 	r.Reconcile = concreteRunner.Reconcile
 	r.ReconcileDelete = concreteRunner.ReconcileDelete
 	r.ControllerKind = kind
+
 	return &r
 }
 
@@ -105,18 +106,21 @@ func (r *ReconciliationRunner) UsingBaseReconciler(base ReconcilerBase) *Reconci
 	} else {
 		r.CloudClientExtension = base.CloudClientExtension.RegisterExtension(r)
 	}
+
 	return r
 }
 
 // ForRequest sets the reconciliation request.
 func (r *ReconciliationRunner) ForRequest(req ctrl.Request) *ReconciliationRunner {
 	r.Request = req
+
 	return r
 }
 
 // WithRequestCtx sets the request context.
 func (r *ReconciliationRunner) WithRequestCtx(ctx context.Context) *ReconciliationRunner {
 	r.RequestCtx = ctx
+
 	return r
 }
 
@@ -124,14 +128,16 @@ func (r *ReconciliationRunner) WithRequestCtx(ctx context.Context) *Reconciliati
 // Reconcile() and ReconcileDelete().
 func (r *ReconciliationRunner) WithAdditionalCommonStages(fns ...CloudStackReconcilerMethod) *ReconciliationRunner {
 	r.additionalCommonStages = fns
+
 	return r
 }
 
 // SetupLogger sets up the reconciler's logger to log with name and namespace values.
-func (r *ReconciliationRunner) SetupLogger() (res ctrl.Result, retErr error) {
+func (r *ReconciliationRunner) SetupLogger() (ctrl.Result, error) {
 	log := ctrl.LoggerFrom(r.RequestCtx).WithName("controllers")
 	r.Log = log.WithName(r.ControllerKind)
 	r.Log.V(1).Info("Logger setup complete.")
+
 	return ctrl.Result{}, nil
 }
 
@@ -147,6 +153,7 @@ func (r *ReconciliationRunner) RunIf(conditional func() bool, fn CloudStackRecon
 		if placeholder {
 			return fn()
 		}
+
 		return ctrl.Result{}, nil
 	}
 }
@@ -157,6 +164,7 @@ func (r *ReconciliationRunner) Else(fn CloudStackReconcilerMethod) CloudStackRec
 		if !r.ConditionalResult {
 			return fn()
 		}
+
 		return ctrl.Result{}, nil
 	}
 }
@@ -168,6 +176,7 @@ func (r *ReconciliationRunner) GetCAPICluster() (ctrl.Result, error) {
 	if name == "" {
 		r.Log.V(1).Info("Reconciliation Subject is missing cluster label or cluster does not exist. Skipping CAPI Cluster fetch.",
 			"SubjectKind", r.ReconciliationSubject.GetObjectKind().GroupVersionKind().Kind)
+
 		return ctrl.Result{}, nil
 	}
 	r.CAPICluster = &clusterv1.Cluster{}
@@ -180,6 +189,7 @@ func (r *ReconciliationRunner) GetCAPICluster() (ctrl.Result, error) {
 	} else if r.CAPICluster.Name == "" {
 		return r.RequeueWithMessage("Cluster not fetched.")
 	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -190,6 +200,7 @@ func (r *ReconciliationRunner) GetCSCluster() (ctrl.Result, error) {
 	if name == "" {
 		r.Log.V(1).Info("Reconciliation Subject is missing cluster label or cluster does not exist. Skipping CloudStackCluster fetch.",
 			"SubjectKind", r.ReconciliationSubject.GetObjectKind().GroupVersionKind().Kind)
+
 		return ctrl.Result{}, nil
 	}
 	r.CSCluster = &infrav1.CloudStackCluster{}
@@ -198,11 +209,12 @@ func (r *ReconciliationRunner) GetCSCluster() (ctrl.Result, error) {
 		Name:      name,
 	}
 	err := r.K8sClient.Get(r.RequestCtx, key, r.CSCluster)
+
 	return ctrl.Result{}, errors.Wrapf(client.IgnoreNotFound(err), "getting CAPI Cluster %s", name)
 }
 
 // CheckOwnedCRDsForReadiness queries for the readiness of CRDs of GroupVersionKind passed.
-func (r *ReconciliationRunner) CheckOwnedCRDsForReadiness(gvks ...schema.GroupVersionKind) CloudStackReconcilerMethod {
+func (r *ReconciliationRunner) CheckOwnedCRDsForReadiness(gvks ...schema.GroupVersionKind) CloudStackReconcilerMethod { //nolint:gocognit
 	return func() (ctrl.Result, error) {
 		// For each GroupVersionKind...
 		for _, gvk := range gvks {
@@ -224,7 +236,6 @@ func (r *ReconciliationRunner) CheckOwnedCRDsForReadiness(gvks ...schema.GroupVe
 						ownedObjs = append(ownedObjs, pOwned)
 					}
 				}
-
 			}
 
 			// Check that found objects are ready.
@@ -242,11 +253,13 @@ func (r *ReconciliationRunner) CheckOwnedCRDsForReadiness(gvks ...schema.GroupVe
 								owned.GetName()))
 					} else {
 						r.Log.Info(fmt.Sprintf("Owned object %s of kind %s not ready, requeuing", name, gvk.Kind))
+
 						return ctrl.Result{RequeueAfter: RequeueTimeout}, nil
 					}
 				}
 			}
 		}
+
 		return ctrl.Result{}, nil
 	}
 }
@@ -278,6 +291,7 @@ func (r *ReconciliationRunner) DeleteOwnedObjects(gvks ...schema.GroupVersionKin
 				}
 			}
 		}
+
 		return ctrl.Result{}, nil
 	}
 }
@@ -307,6 +321,7 @@ func (r *ReconciliationRunner) CheckOwnedObjectsDeleted(gvks ...schema.GroupVers
 				}
 			}
 		}
+
 		return ctrl.Result{}, nil
 	}
 }
@@ -315,26 +330,31 @@ func (r *ReconciliationRunner) CheckOwnedObjectsDeleted(gvks ...schema.GroupVers
 func (r *ReconciliationRunner) RequeueIfCloudStackClusterNotReady() (ctrl.Result, error) {
 	if r.CSCluster.DeletionTimestamp.IsZero() && !r.CSCluster.Status.Ready {
 		r.Log.Info("CloudStackCluster not ready. Requeuing.")
+
 		return ctrl.Result{RequeueAfter: RequeueTimeout}, nil
 	}
+
 	return ctrl.Result{}, nil
 }
 
 // SetupPatcher initializes the patcher with the ReconciliationSubject.
 // This must be done before changes to the ReconciliationSubject for changes to be patched back later.
-func (r *ReconciliationRunner) SetupPatcher() (res ctrl.Result, retErr error) {
+func (r *ReconciliationRunner) SetupPatcher() (ctrl.Result, error) {
+	var err error
 	r.Log.V(1).Info("Setting up patcher.")
-	r.Patcher, retErr = patch.NewHelper(r.ReconciliationSubject, r.K8sClient)
-	return res, errors.Wrapf(retErr, "setting up patcher")
+	r.Patcher, err = patch.NewHelper(r.ReconciliationSubject, r.K8sClient)
+
+	return ctrl.Result{}, errors.Wrapf(err, "setting up patcher")
 }
 
 // RequeueWithMessage is a convenience method to log requeue message and then return a result with RequeueAfter set.
 func (r *ReconciliationRunner) RequeueWithMessage(msg string, keysAndValues ...interface{}) (ctrl.Result, error) {
 	// Add requeuing to message if not present. Might turn this into a lint check later.
 	if !strings.Contains(strings.ToLower(msg), "requeu") {
-		msg = msg + " Requeuing."
+		msg += " Requeuing."
 	}
 	r.Log.Info(msg, keysAndValues...)
+
 	return ctrl.Result{RequeueAfter: RequeueTimeout}, nil
 }
 
@@ -355,6 +375,7 @@ func (r *ReconciliationRunner) ShouldReturn(rslt ctrl.Result, err error) bool {
 	} else if rslt.Requeue || rslt.RequeueAfter != time.Duration(0) {
 		return true
 	}
+
 	return false
 }
 
@@ -374,9 +395,9 @@ func (r *ReconciliationRunner) RunReconciliationStages(fns ...CloudStackReconcil
 	return ctrl.Result{}, nil
 }
 
-// RunBaseReconciliationStages runs the base reconciliation stages which are to setup the logger, get the reconciliation
+// RunBaseReconciliationStages runs the base reconciliation stages which are to set up the logger, get the reconciliation
 // subject, get CAPI and CloudStackClusters, and call either r.Reconcile or r.ReconcileDelete.
-func (r *ReconciliationRunner) RunBaseReconciliationStages() (res ctrl.Result, retErr error) {
+func (r *ReconciliationRunner) RunBaseReconciliationStages() (res ctrl.Result, retErr error) { //nolint:nonamedreturns
 	defer func() {
 		if r.Patcher != nil {
 			if err := r.Patcher.Patch(r.RequestCtx, r.ReconciliationSubject); err != nil {
@@ -396,7 +417,8 @@ func (r *ReconciliationRunner) RunBaseReconciliationStages() (res ctrl.Result, r
 		r.GetCAPICluster,
 		r.GetCSCluster,
 		r.RunIf(func() bool { return r.ReconciliationSubject.GetDeletionTimestamp().IsZero() }, r.RequeueIfMissingBaseCRs),
-		r.CheckIfPaused}
+		r.CheckIfPaused,
+	}
 	baseStages = append(
 		append(baseStages, r.additionalCommonStages...),
 		r.RunIf(func() bool { return r.ReconciliationSubject.GetDeletionTimestamp().IsZero() }, r.Reconcile),
@@ -411,6 +433,7 @@ func (r *ReconciliationRunner) CheckIfPaused() (ctrl.Result, error) {
 	if annotations.IsPaused(r.CAPICluster, r.ReconciliationSubject) {
 		return r.RequeueWithMessage("Cluster is paused. Refusing to reconcile.")
 	}
+
 	return reconcile.Result{}, nil
 }
 
@@ -422,7 +445,7 @@ func (r *ReconciliationRunner) SetReturnEarly() {
 
 // GetReconciliationSubject gets the reconciliation subject of type defined by the concrete reconciler. It also sets up
 // a patch helper at this point.
-func (r *ReconciliationRunner) GetReconciliationSubject() (res ctrl.Result, reterr error) {
+func (r *ReconciliationRunner) GetReconciliationSubject() (ctrl.Result, error) {
 	r.Log.V(1).Info("Getting reconciliation subject.")
 	err := client.IgnoreNotFound(r.K8sClient.Get(r.RequestCtx, r.Request.NamespacedName, r.ReconciliationSubject))
 	if r.ReconciliationSubject.GetName() == "" { // Resource does not exist. No need to reconcile.
@@ -432,6 +455,7 @@ func (r *ReconciliationRunner) GetReconciliationSubject() (res ctrl.Result, rete
 	if err != nil {
 		return ctrl.Result{}, errors.Wrap(err, "fetching reconciliation subject")
 	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -439,6 +463,7 @@ func (r *ReconciliationRunner) GetReconciliationSubject() (res ctrl.Result, rete
 func (r *ReconciliationRunner) SetReconciliationSubjectToConcreteSubject(subject client.Object) CloudStackReconcilerMethod {
 	return func() (ctrl.Result, error) {
 		r.ReconciliationSubject = subject
+
 		return ctrl.Result{}, nil
 	}
 }
@@ -447,6 +472,7 @@ func (r *ReconciliationRunner) SetReconciliationSubjectToConcreteSubject(subject
 func (r *ReconciliationRunner) GetParent(child client.Object, parent client.Object) CloudStackReconcilerMethod {
 	return func() (ctrl.Result, error) {
 		err := GetOwnerOfKind(r.RequestCtx, r.K8sClient, child, parent)
+
 		return ctrl.Result{}, err
 	}
 }
@@ -455,6 +481,7 @@ func (r *ReconciliationRunner) GetParent(child client.Object, parent client.Obje
 func (r *ReconciliationRunner) GetOwnerOfKind(owner client.Object) CloudStackReconcilerMethod {
 	return func() (ctrl.Result, error) {
 		err := GetOwnerOfKind(r.RequestCtx, r.K8sClient, r.ReconciliationSubject, owner)
+
 		return ctrl.Result{}, err
 	}
 }
@@ -462,6 +489,7 @@ func (r *ReconciliationRunner) GetOwnerOfKind(owner client.Object) CloudStackRec
 // NewChildObjectMeta creates a meta object with ownership reference and labels matching the current cluster.
 func (r *ReconciliationRunner) NewChildObjectMeta(name string) metav1.ObjectMeta {
 	ownerGVK := r.ReconciliationSubject.GetObjectKind().GroupVersionKind()
+
 	return metav1.ObjectMeta{
 		Name:      strings.ToLower(name),
 		Namespace: r.Request.Namespace,
@@ -481,6 +509,7 @@ func (r *ReconciliationRunner) RequeueIfMissingBaseCRs() (ctrl.Result, error) {
 	} else if r.CAPICluster.GetName() == "" {
 		return r.RequeueWithMessage("CAPI Cluster wasn't found. Requeuing.")
 	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -492,6 +521,7 @@ func (r *ReconciliationRunner) GetObjectByName(name string, target client.Object
 			name = nameGetter[0]()
 		}
 		objectKey := client.ObjectKey{Name: strings.ToLower(name), Namespace: r.Request.Namespace}
+
 		return r.ReturnWrappedError(
 			client.IgnoreNotFound(r.K8sClient.Get(r.RequestCtx, objectKey, target)), "failed to get object")
 	}
@@ -502,9 +532,10 @@ func (r *ReconciliationRunner) CheckPresent(objs map[string]client.Object) Cloud
 	return func() (ctrl.Result, error) {
 		for kind, obj := range objs {
 			if obj.GetName() == "" {
-				return r.RequeueWithMessage(fmt.Sprintf("missing dependent object of kind %s", kind))
+				return r.RequeueWithMessage("missing dependent object of kind " + kind)
 			}
 		}
+
 		return ctrl.Result{}, nil
 	}
 }

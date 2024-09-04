@@ -17,16 +17,19 @@ limitations under the License.
 package v1beta1
 
 import (
-	"sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
+
+	"sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 )
 
-func (src *CloudStackMachineStateChecker) ConvertTo(dstRaw conversion.Hub) error { // nolint
+func (r *CloudStackMachineStateChecker) ConvertTo(dstRaw conversion.Hub) error {
 	dst := dstRaw.(*v1beta3.CloudStackMachineStateChecker)
-	return Convert_v1beta1_CloudStackMachineStateChecker_To_v1beta3_CloudStackMachineStateChecker(src, dst, nil)
+
+	return Convert_v1beta1_CloudStackMachineStateChecker_To_v1beta3_CloudStackMachineStateChecker(r, dst, nil)
 }
 
-func (dst *CloudStackMachineStateChecker) ConvertFrom(srcRaw conversion.Hub) error { // nolint
+func (r *CloudStackMachineStateChecker) ConvertFrom(srcRaw conversion.Hub) error {
 	src := srcRaw.(*v1beta3.CloudStackMachineStateChecker)
-	return Convert_v1beta3_CloudStackMachineStateChecker_To_v1beta1_CloudStackMachineStateChecker(src, dst, nil)
+
+	return Convert_v1beta3_CloudStackMachineStateChecker_To_v1beta1_CloudStackMachineStateChecker(src, r, nil)
 }

@@ -22,13 +22,14 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/utils/pointer"
-	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
-	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
+	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
+	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
 )
 
 var _ = Describe("CloudStackFailureDomainReconciler", func() {
@@ -40,8 +41,8 @@ var _ = Describe("CloudStackFailureDomainReconciler", func() {
 			// Modify failure domain name the same way the cluster controller would.
 			dummies.CSFailureDomain1.Name = dummies.CSFailureDomain1.Name + "-" + dummies.CSCluster.Name
 
-			Ω(k8sClient.Create(ctx, dummies.ACSEndpointSecret1))
-			Ω(k8sClient.Create(ctx, dummies.CSFailureDomain1))
+			Ω(k8sClient.Create(ctx, dummies.ACSEndpointSecret1)).Should(Succeed())
+			Ω(k8sClient.Create(ctx, dummies.CSFailureDomain1)).Should(Succeed())
 
 			mockCloudClient.EXPECT().ResolveZone(gomock.Any()).MinTimes(1)
 
@@ -57,7 +58,7 @@ var _ = Describe("CloudStackFailureDomainReconciler", func() {
 				return getFailuredomainStatus(dummies.CSFailureDomain1)
 			}, timeout).WithPolling(pollInterval).Should(BeTrue())
 
-			Ω(k8sClient.Delete(ctx, dummies.CSFailureDomain1))
+			Ω(k8sClient.Delete(ctx, dummies.CSFailureDomain1)).Should(Succeed())
 
 			tempfd := &infrav1.CloudStackFailureDomain{}
 			Eventually(func() bool {
@@ -65,6 +66,7 @@ var _ = Describe("CloudStackFailureDomainReconciler", func() {
 				if err := k8sClient.Get(ctx, key, tempfd); err != nil {
 					return errors.IsNotFound(err)
 				}
+
 				return false
 			}, timeout).WithPolling(pollInterval).Should(BeTrue())
 		})
@@ -90,11 +92,12 @@ var _ = Describe("CloudStackFailureDomainReconciler", func() {
 								Status: "False",
 							},
 						}
+
 						return ph.Patch(ctx, dummies.CAPICluster, patch.WithStatusObservedGeneration{})
 					}, timeout).Should(Succeed())
 				}
 
-				Ω(k8sClient.Delete(ctx, dummies.CSFailureDomain1))
+				Ω(k8sClient.Delete(ctx, dummies.CSFailureDomain1)).Should(Succeed())
 
 				CAPIMachine := &clusterv1.Machine{}
 				if shouldDeleteVM {
@@ -103,6 +106,7 @@ var _ = Describe("CloudStackFailureDomainReconciler", func() {
 						if err := k8sClient.Get(ctx, key, CAPIMachine); err != nil {
 							return errors.IsNotFound(err)
 						}
+
 						return false
 					}, timeout).WithPolling(pollInterval).Should(BeTrue())
 				} else {
@@ -111,10 +115,10 @@ var _ = Describe("CloudStackFailureDomainReconciler", func() {
 						if err := k8sClient.Get(ctx, key, CAPIMachine); err == nil {
 							return CAPIMachine.DeletionTimestamp.IsZero()
 						}
+
 						return false
 					}, timeout).WithPolling(pollInterval).Should(BeTrue())
 				}
-
 			},
 			// should delete - simulate owner is kubeadmcontrolplane
 			Entry("Should delete machine if spec.replicas > 1", true, pointer.Int32(2), pointer.Int32(2), pointer.Int32(2), pointer.Bool(true), true),
@@ -138,5 +142,6 @@ func getFailuredomainStatus(failureDomain *infrav1.CloudStackFailureDomain) bool
 	if err := k8sClient.Get(ctx, key, tempfd); err == nil {
 		return tempfd.Status.Ready
 	}
+
 	return false
 }

@@ -20,26 +20,23 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"k8s.io/klog/v2"
 	"net/http"
 	"os"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/version"
 	"time"
 
 	"github.com/spf13/pflag"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	cgrecord "k8s.io/client-go/tools/record"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
 	logsv1 "k8s.io/component-base/logs/api/v1"
+	"k8s.io/klog/v2"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/flags"
-
-	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -53,7 +50,7 @@ import (
 	infrav1b3 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/controllers"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/controllers/utils"
-	//+kubebuilder:scaffold:imports
+	"sigs.k8s.io/cluster-api-provider-cloudstack/version"
 )
 
 var (

@@ -24,11 +24,12 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/webhookutil"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
+	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/webhookutil"
 )
 
 // log is for logging in this package.
@@ -48,19 +49,19 @@ var (
 	_ webhook.Validator = &CloudStackMachineTemplate{}
 )
 
-// Default implements webhook.Defaulter so a webhook will be registered for the type
+// Default implements webhook.Defaulter so a webhook will be registered for the type.
 func (r *CloudStackMachineTemplate) Default() {
 	cloudstackmachinetemplatelog.V(1).Info("entered default setting webhook", "api resource name", r.Name)
 	// No defaulted values supported yet.
 }
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
+// ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
 func (r *CloudStackMachineTemplate) ValidateCreate() (admission.Warnings, error) {
 	cloudstackmachinetemplatelog.V(1).Info("entered validate create webhook", "api resource name", r.Name)
 
 	var errorList field.ErrorList
 
-	// CloudStackMachineTemplateSpec.CloudStackMachineSpec
+	// CloudStackMachineTemplateSpec.CloudStackMachineSpec.
 	spec := r.Spec.Template.Spec
 
 	affinity := strings.ToLower(spec.Affinity)
@@ -79,7 +80,7 @@ func (r *CloudStackMachineTemplate) ValidateCreate() (admission.Warnings, error)
 	return nil, webhookutil.AggregateObjErrors(r.GroupVersionKind().GroupKind(), r.Name, errorList)
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
+// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
 func (r *CloudStackMachineTemplate) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	cloudstackmachinetemplatelog.V(1).Info("entered validate update webhook", "api resource name", r.Name)
 
@@ -88,7 +89,7 @@ func (r *CloudStackMachineTemplate) ValidateUpdate(old runtime.Object) (admissio
 		return nil, errors.NewBadRequest(fmt.Sprintf("expected a CloudStackMachineTemplate but got a %T", old))
 	}
 
-	// CloudStackMachineTemplateSpec.CloudStackMachineTemplateResource.CloudStackMachineSpec
+	// CloudStackMachineTemplateSpec.CloudStackMachineTemplateResource.CloudStackMachineSpec.
 	spec := r.Spec.Template.Spec
 	oldSpec := oldMachineTemplate.Spec.Template.Spec
 
@@ -102,7 +103,7 @@ func (r *CloudStackMachineTemplate) ValidateUpdate(old runtime.Object) (admissio
 	errorList = webhookutil.EnsureEqualStrings(spec.SSHKey, oldSpec.SSHKey, "sshkey", errorList)
 	errorList = webhookutil.EnsureEqualStrings(spec.Template.ID, oldSpec.Template.ID, "template", errorList)
 	errorList = webhookutil.EnsureEqualStrings(spec.Template.Name, oldSpec.Template.Name, "template", errorList)
-	errorList = webhookutil.EnsureEqualMapStringString(&spec.Details, &oldSpec.Details, "details", errorList)
+	errorList = webhookutil.EnsureEqualMapStringString(spec.Details, oldSpec.Details, "details", errorList)
 	errorList = webhookutil.EnsureEqualStrings(spec.Affinity, oldSpec.Affinity, "affinity", errorList)
 
 	if !reflect.DeepEqual(spec.AffinityGroupIDs, oldSpec.AffinityGroupIDs) { // Equivalent to other Ensure funcs.
@@ -112,7 +113,7 @@ func (r *CloudStackMachineTemplate) ValidateUpdate(old runtime.Object) (admissio
 	return nil, webhookutil.AggregateObjErrors(r.GroupVersionKind().GroupKind(), r.Name, errorList)
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
+// ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
 func (r *CloudStackMachineTemplate) ValidateDelete() (admission.Warnings, error) {
 	cloudstackmachinetemplatelog.V(1).Info("entered validate delete webhook", "api resource name", r.Name)
 	// No deletion validations.  Deletion webhook not enabled.

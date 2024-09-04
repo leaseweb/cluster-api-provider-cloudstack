@@ -18,5 +18,7 @@ package utils
 
 import "time"
 
-const RequeueTimeout = 5 * time.Second
-const DestroyVMRequeueInterval = 10 * time.Second
+const (
+	RequeueTimeout           = 5 * time.Second
+	DestroyVMRequeueInterval = 10 * time.Second
+)

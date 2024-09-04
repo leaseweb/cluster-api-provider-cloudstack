@@ -20,11 +20,12 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/controllers"
 	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 )
 
 var _ = Describe("CloudStackClusterReconciler", func() {
@@ -44,6 +45,7 @@ var _ = Describe("CloudStackClusterReconciler", func() {
 				if err := k8sClient.Get(ctx, key, tempfd); err != nil {
 					return true
 				}
+
 				return false
 			}, timeout).WithPolling(pollInterval).Should(BeTrue())
 		})

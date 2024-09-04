@@ -1,4 +1,35 @@
 linters-settings:
+  cyclop:
+    max-complexity: 20
+  gci:
+    sections:
+      - standard
+      - default
+      - prefix(sigs.k8s.io/cluster-api-provider-cloudstack)
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - performance
+    disabled-checks:
+      - appendAssign
+      - dupImport # https://github.com/go-critic/go-critic/issues/845
+      - emptyStringTest
+      - evalOrder
+      - ifElseChain
+      - octalLiteral
+      - regexpSimplify
+      - sloppyReassign
+      - truncateCmp
+      - typeDefFirst
+      - unnamedResult
+      - unnecessaryDefer
+      - whyNoLint
+      - wrapperFunc
+      - rangeValCopy
+      - hugeParam
+  gocyclo:
+    min-complexity: 15
   goheader:
     values:
       const:
@@ -19,8 +50,11 @@ linters-settings:
       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
       See the License for the specific language governing permissions and
       limitations under the License.
-  gocyclo:
-    min-complexity: 15
+  goimports:
+    local-prefixes: sigs.k8s.io/cluster-api-provider-cloudstack
+  nestif:
+    # minimal complexity of if statements to report, 5 by default
+    min-complexity: 8
   revive:
     rules:
       - name: dot-imports
@@ -31,18 +65,36 @@ linters-settings:
             - "github.com/onsi/gomega"
 
 linters:
-  enable:
-    - gocyclo
-    - goheader
-    - gosec
-    - misspell
-    - revive
-    - staticcheck
+  disable:
+    - containedctx
+    - depguard
+    - err113
+    - execinquery
+    - exhaustruct
+    - forcetypeassert
+    - funlen
+    - gochecknoglobals
+    - gochecknoinits
+    - godox
+    - gomnd
+    - interfacebloat
+    - ireturn
+    - lll
+    - mnd
+    - nonamedreturns
+    - paralleltest
+    - tagliatelle
+    - varnamelen
+    - wrapcheck
+    - wsl
+  enable-all: true
 
 run:
   issues-exit-code: 1
 
 issues:
+  max-same-issues: 0
+  max-issues-per-linter: 0
   # Excluding configuration per-path, per-linter, per-text and per-source
   exclude-dirs:
     - pkg/mocks
@@ -51,7 +103,22 @@ issues:
     # Exclude some linters from running on tests files.
     - path: _test\.go
       linters:
+        - dupl
         - gosec
     - text: "SA1019: .+LBRuleID is deprecated"
       linters:
         - staticcheck
+    - path: api/v1beta3/webhook_suite_test.go
+      linters:
+        - goimports
+    - linters:
+        - revive
+        - stylecheck
+      path: (test)/.*.go
+      text: should not use dot imports
+    - linters:
+        - stylecheck
+      text: "ST1003: should not use underscores in Go names;"
+      path: api\/.*\/.*conversion.*\.go$
+  exclude-files:
+    - "zz_generated.*\\.go$"

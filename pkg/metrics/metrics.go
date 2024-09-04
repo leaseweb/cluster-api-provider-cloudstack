@@ -18,8 +18,10 @@ limitations under the License.
 package metrics
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
 	"regexp"
+
+	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	crtlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
@@ -34,13 +36,14 @@ func NewCustomMetrics() ACSCustomMetrics {
 	customMetrics := ACSCustomMetrics{}
 	customMetrics.acsReconciliationErrorCount = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "acs_reconciliation_errors",
+			Name: "acs_reconciliation_errors_total",
 			Help: "Count of reconciliation errors caused by ACS issues, bucketed by error code",
 		},
 		[]string{"acs_error_code"},
 	)
 	if err := crtlmetrics.Registry.Register(customMetrics.acsReconciliationErrorCount); err != nil {
-		if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+		are := prometheus.AlreadyRegisteredError{}
+		if errors.As(err, &are) {
 			customMetrics.acsReconciliationErrorCount = are.ExistingCollector.(*prometheus.CounterVec)
 		} else {
 			// Something else went wrong!
@@ -49,8 +52,8 @@ func NewCustomMetrics() ACSCustomMetrics {
 	}
 
 	// ACS standard error messages of the form "CloudStack API error 431 (CSExceptionErrorCode: 9999):..."
-	//  This regexp is used to extract CSExceptionCodes from the message.
-	customMetrics.errorCodeRegexp, _ = regexp.Compile(".+CSExceptionErrorCode: ([0-9]+).+")
+	// This regexp is used to extract CSExceptionCodes from the message.
+	customMetrics.errorCodeRegexp = regexp.MustCompile(".+CSExceptionErrorCode: ([0-9]+).+")
 
 	return customMetrics
 }

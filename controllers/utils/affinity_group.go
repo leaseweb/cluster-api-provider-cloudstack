@@ -20,15 +20,15 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-
-	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 )
 
 // GetOrCreateAffinityGroup of the passed name that's owned by the failure domain of the reconciliation subject and
@@ -37,8 +37,8 @@ func (r *ReconciliationRunner) GetOrCreateAffinityGroup(
 	name string,
 	affinityType string,
 	ag *infrav1.CloudStackAffinityGroup,
-	fd *infrav1.CloudStackFailureDomain) CloudStackReconcilerMethod {
-
+	fd *infrav1.CloudStackFailureDomain,
+) CloudStackReconcilerMethod {
 	return func() (ctrl.Result, error) {
 		// Start by attempting a fetch.
 		lowerName := strings.ToLower(name)
@@ -51,15 +51,16 @@ func (r *ReconciliationRunner) GetOrCreateAffinityGroup(
 		} // Didn't find a group, so create instead.
 
 		// Set affinity group type.
-		if affinityType == infrav1.ProAffinity {
+		switch affinityType {
+		case infrav1.AffinityTypePro:
 			ag.Spec.Type = "host affinity"
-		} else if affinityType == infrav1.AntiAffinity {
+		case infrav1.AffinityTypeAnti:
 			ag.Spec.Type = "host anti-affinity"
-		} else if affinityType == infrav1.SoftProAffinity {
+		case infrav1.AffinityTypeSoftPro:
 			ag.Spec.Type = "non-strict host affinity"
-		} else if affinityType == infrav1.SoftAntiAffinity {
+		case infrav1.AffinityTypeSoftAnti:
 			ag.Spec.Type = "non-strict host anti-affinity"
-		} else {
+		default:
 			return ctrl.Result{}, errors.Errorf("unrecognized affinity type %s", affinityType)
 		}
 
@@ -74,6 +75,7 @@ func (r *ReconciliationRunner) GetOrCreateAffinityGroup(
 				strings.EqualFold(ref.Kind, "KubeadmControlPlane") ||
 				strings.EqualFold(ref.Kind, "MachineSet") {
 				ag.OwnerReferences = []metav1.OwnerReference{ref}
+
 				break
 			}
 		}
@@ -88,6 +90,7 @@ func (r *ReconciliationRunner) GetOrCreateAffinityGroup(
 		if err := r.K8sClient.Create(r.RequestCtx, ag); err != nil && !ContainsAlreadyExistsSubstring(err) {
 			return r.ReturnWrappedError(err, "creating affinity group CRD")
 		}
+
 		return ctrl.Result{}, nil
 	}
 }
@@ -106,6 +109,7 @@ func GenerateAffinityGroupName(csm infrav1.CloudStackMachine, capiMachine *clust
 		return fmt.Sprintf("%s-%s-%sAffinity-%s-%s",
 			capiCluster.Name, capiCluster.UID, titleCaser.String(csm.Spec.Affinity), managerOwnerRef.Kind, csm.Spec.FailureDomainName), nil
 	}
+
 	return fmt.Sprintf("%s-%s-%sAffinity-%s-%s-%s",
 		capiCluster.Name, capiCluster.UID, titleCaser.String(csm.Spec.Affinity), managerOwnerRef.Name, managerOwnerRef.UID, csm.Spec.FailureDomainName), nil
 }

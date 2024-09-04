@@ -28,11 +28,11 @@ const (
 )
 
 type UserCredIFace interface {
-	ResolveDomain(*Domain) error
-	ResolveAccount(*Account) error
-	ResolveUser(*User) error
-	ResolveUserKeys(*User) error
-	GetUserWithKeys(*User) (bool, error)
+	ResolveDomain(domain *Domain) error
+	ResolveAccount(account *Account) error
+	ResolveUser(user *User) error
+	ResolveUserKeys(user *User) error
+	GetUserWithKeys(user *User) (bool, error)
 }
 
 // Domain contains specifications that identify a domain.
@@ -98,6 +98,7 @@ func (c *client) ResolveDomain(domain *Domain) error {
 	resp, retErr := c.cs.Domain.ListDomains(p)
 	if retErr != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(retErr)
+
 		return retErr
 	}
 
@@ -114,6 +115,7 @@ func (c *client) ResolveDomain(domain *Domain) error {
 		domain.CPUAvailable = resp.Domains[0].Cpuavailable
 		domain.MemoryAvailable = resp.Domains[0].Memoryavailable
 		domain.VMAvailable = resp.Domains[0].Vmavailable
+
 		return nil
 	}
 
@@ -127,13 +129,15 @@ func (c *client) ResolveDomain(domain *Domain) error {
 
 	// Finally, search for the domain by Path.
 	for _, possibleDomain := range resp.Domains {
-		if possibleDomain.Path == domain.Path {
-			domain.ID = possibleDomain.Id
-			domain.CPUAvailable = possibleDomain.Cpuavailable
-			domain.MemoryAvailable = possibleDomain.Memoryavailable
-			domain.VMAvailable = possibleDomain.Vmavailable
-			return nil
+		if possibleDomain.Path != domain.Path {
+			continue
 		}
+		domain.ID = possibleDomain.Id
+		domain.CPUAvailable = possibleDomain.Cpuavailable
+		domain.MemoryAvailable = possibleDomain.Memoryavailable
+		domain.VMAvailable = possibleDomain.Vmavailable
+
+		return nil
 	}
 
 	return errors.Errorf("domain not found for domain path %s", domain.Path)
@@ -153,6 +157,7 @@ func (c *client) ResolveAccount(account *Account) error {
 	resp, retErr := c.cs.Account.ListAccounts(p)
 	if retErr != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(retErr)
+
 		return retErr
 	} else if resp.Count == 0 {
 		return errors.Errorf("could not find account %s", account.Name)
@@ -165,6 +170,7 @@ func (c *client) ResolveAccount(account *Account) error {
 	account.CPUAvailable = resp.Accounts[0].Cpuavailable
 	account.MemoryAvailable = resp.Accounts[0].Memoryavailable
 	account.VMAvailable = resp.Accounts[0].Vmavailable
+
 	return nil
 }
 
@@ -183,6 +189,7 @@ func (c *client) ResolveUser(user *User) error {
 	resp, err := c.cs.User.ListUsers(p)
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
 		return err
 	} else if resp.Count != 1 {
 		return errors.Errorf("expected 1 User with username %s but got %d", user.Name, resp.Count)
@@ -205,10 +212,12 @@ func (c *client) ResolveUserKeys(user *User) error {
 	resp, err := c.cs.User.GetUserKeys(p)
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
 		return errors.Errorf("error encountered when resolving user api keys for user %s", user.Name)
 	}
 	user.APIKey = resp.Apikey
 	user.SecretKey = resp.Secretkey
+
 	return nil
 }
 
@@ -228,6 +237,7 @@ func (c *client) GetUserWithKeys(user *User) (bool, error) {
 	resp, err := c.cs.User.ListUsers(p)
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
 		return false, err
 	}
 
@@ -239,5 +249,6 @@ func (c *client) GetUserWithKeys(user *User) (bool, error) {
 		}
 	}
 	user.ID = ""
+
 	return false, nil
 }

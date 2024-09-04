@@ -30,10 +30,10 @@ const (
 	NetworkTypeShared          = "Shared"
 )
 
-// CloudStackIdentityReference is a reference to an infrastructure
+// CloudStackIdentityReference is a reference to an infrastructure.
 // provider identity to be used to provision cluster resources.
 type CloudStackIdentityReference struct {
-	// Kind of the identity. Must be supported by the infrastructure provider
+	// Kind of the identity. Must be supported by the infrastructure provider,
 	// and may be either cluster or namespace-scoped.
 	// +kubebuilder:validation:MinLength=1
 	Kind string `json:"kind"`
@@ -78,6 +78,7 @@ func (z *Zone) MetaName() string {
 	if s == "" {
 		s = z.ID
 	}
+
 	return strings.ToLower(s)
 }
 
@@ -104,7 +105,6 @@ type CloudStackClusterSpec struct {
 // +k8s:conversion-gen=false
 // The status of the abstract CS k8s (not an actual Cloudstack Cluster) cluster.
 type CloudStackClusterStatus struct {
-
 	// The status of the cluster's ACS Zones.
 	// +optional
 	Zones ZoneStatusMap `json:"zones,omitempty"`
@@ -133,7 +133,7 @@ type CloudStackClusterStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +k8s:conversion-gen=false
-// CloudStackCluster is the Schema for the cloudstackclusters API
+// CloudStackCluster is the Schema for the cloudstackclusters API.
 type CloudStackCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -146,7 +146,7 @@ type CloudStackCluster struct {
 
 // +kubebuilder:object:root=true
 // +k8s:conversion-gen=false
-// CloudStackClusterList contains a list of CloudStackCluster
+// CloudStackClusterList contains a list of CloudStackCluster.
 type CloudStackClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

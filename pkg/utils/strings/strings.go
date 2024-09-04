@@ -23,6 +23,7 @@ import (
 
 func Canonicalize[S ~[]E, E cmp.Ordered](s S) S {
 	slices.Sort(s)
+
 	return slices.Compact(s)
 }
 
@@ -50,5 +51,6 @@ func SliceDiff[T ~[]E, E comparable](list1 T, list2 T) (ret1 T, ret2 T) {
 			ret2 = append(ret2, v)
 		}
 	}
+
 	return ret1, ret2
 }

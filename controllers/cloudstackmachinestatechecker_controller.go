@@ -21,13 +21,14 @@ import (
 	"strings"
 	"time"
 
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util/predicates"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	csCtrlrUtils "sigs.k8s.io/cluster-api-provider-cloudstack/controllers/utils"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	"sigs.k8s.io/cluster-api/util/predicates"
+	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 )
 
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=cloudstackmachinestatecheckers,verbs=get;list;watch;create;update;patch;delete
@@ -45,7 +46,7 @@ type CloudStackMachineStateCheckerReconciliationRunner struct {
 	CSMachine             *infrav1.CloudStackMachine
 }
 
-// CloudStackMachineStateCheckerReconciler reconciles a CloudStackMachineStateChecker object
+// CloudStackMachineStateCheckerReconciler reconciles a CloudStackMachineStateChecker object.
 type CloudStackMachineStateCheckerReconciler struct {
 	csCtrlrUtils.ReconcilerBase
 }
@@ -59,6 +60,7 @@ func NewCSMachineStateCheckerReconciliationRunner() *CloudStackMachineStateCheck
 	runner.FailureDomain = &infrav1.CloudStackFailureDomain{}
 	// Setup the base runner. Initializes pointers and links reconciliation methods.
 	runner.ReconciliationRunner = csCtrlrUtils.NewRunner(runner, runner.ReconciliationSubject, "CloudStackMachineStateChecker")
+
 	return runner
 }
 
@@ -86,7 +88,7 @@ func (r *CloudStackMachineStateCheckerReconciliationRunner) Reconcile() (ctrl.Re
 
 			// capiTimeout indicates that a new VM is running, but it isn't reachable.
 			// The cluster may not recover if the machine isn't replaced.
-			csRunning := r.CSMachine.Status.InstanceState == "Running"
+			csRunning := r.CSMachine.Status.InstanceState == cloud.VMStateRunning
 			csTimeInState := r.CSMachine.Status.TimeSinceLastStateChange()
 			capiRunning := r.CAPIMachine.Status.Phase == "Running"
 			capiTimeout := csRunning && !capiRunning && csTimeInState > 5*time.Minute

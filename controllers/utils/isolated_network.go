@@ -21,14 +21,16 @@ import (
 	"regexp"
 	"strings"
 
-	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	ctrl "sigs.k8s.io/controller-runtime"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 )
 
 var metaNameRegex = regexp.MustCompile(`[^a-z0-9-]+`)
 
 func (r *ReconciliationRunner) IsoNetMetaName(name string) string {
 	str := metaNameRegex.ReplaceAllString(fmt.Sprintf("%s-%s", r.CSCluster.Name, strings.ToLower(name)), "-")
+
 	return strings.TrimSuffix(str, "-")
 }
 
@@ -53,6 +55,7 @@ func (r *ReconciliationRunner) GenerateIsolatedNetwork(network infrav1.Network, 
 		if err := r.K8sClient.Create(r.RequestCtx, csIsoNet); err != nil && !ContainsAlreadyExistsSubstring(err) {
 			return r.ReturnWrappedError(err, "creating isolated network CRD")
 		}
+
 		return ctrl.Result{}, nil
 	}
 }

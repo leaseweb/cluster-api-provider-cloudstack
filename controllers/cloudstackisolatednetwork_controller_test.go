@@ -22,10 +22,12 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/types"
-	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
-	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
+	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
+	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
 )
 
 var _ = Describe("CloudStackIsolatedNetworkReconciler", func() {
@@ -59,6 +61,36 @@ var _ = Describe("CloudStackIsolatedNetworkReconciler", func() {
 						return true
 					}
 				}
+
+				return false
+			}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		})
+
+		It("Should succeed if API load balancer is disabled.", func() {
+			dummies.CSCluster.Spec.APIServerLoadBalancer.Enabled = pointer.Bool(false)
+			mockCloudClient.EXPECT().GetOrCreateIsolatedNetwork(g.Any(), g.Any(), g.Any()).AnyTimes()
+			mockCloudClient.EXPECT().AddClusterTag(g.Any(), g.Any(), g.Any()).AnyTimes()
+			mockCloudClient.EXPECT().AssociatePublicIPAddress(g.Any(), g.Any(), g.Any()).AnyTimes().Return(&cloudstack.PublicIpAddress{
+				Id:                  dummies.PublicIPID,
+				Associatednetworkid: dummies.ISONet1.ID,
+				Ipaddress:           dummies.CSCluster.Spec.ControlPlaneEndpoint.Host,
+			}, nil)
+			mockCloudClient.EXPECT().ReconcileLoadBalancer(g.Any(), g.Any(), g.Any()).AnyTimes()
+
+			// We use CSFailureDomain2 here because CSFailureDomain1 has an empty Spec.Zone.ID
+			dummies.CSISONet1.Spec.FailureDomainName = dummies.CSFailureDomain2.Spec.Name
+			Ω(k8sClient.Create(ctx, dummies.CSFailureDomain2)).Should(Succeed())
+			Ω(k8sClient.Create(ctx, dummies.CSISONet1)).Should(Succeed())
+
+			Eventually(func() bool {
+				tempIsoNet := &infrav1.CloudStackIsolatedNetwork{}
+				key := client.ObjectKeyFromObject(dummies.CSISONet1)
+				if err := k8sClient.Get(ctx, key, tempIsoNet); err == nil {
+					if tempIsoNet.Status.Ready == true {
+						return true
+					}
+				}
+
 				return false
 			}, timeout).WithPolling(pollInterval).Should(BeTrue())
 		})

@@ -27,7 +27,7 @@ type CloudStackMachineTemplateResource struct {
 	Spec       CloudStackMachineSpec `json:"spec"`
 }
 
-// CloudStackMachineTemplateSpec defines the desired state of CloudStackMachineTemplate
+// CloudStackMachineTemplateSpec defines the desired state of CloudStackMachineTemplate.
 type CloudStackMachineTemplateSpec struct {
 	Spec CloudStackMachineTemplateResource `json:"template"`
 }
@@ -35,7 +35,7 @@ type CloudStackMachineTemplateSpec struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// CloudStackMachineTemplate is the Schema for the cloudstackmachinetemplates API
+// CloudStackMachineTemplate is the Schema for the cloudstackmachinetemplates API.
 type CloudStackMachineTemplate struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -45,7 +45,7 @@ type CloudStackMachineTemplate struct {
 
 //+kubebuilder:object:root=true
 
-// CloudStackMachineTemplateList contains a list of CloudStackMachineTemplate
+// CloudStackMachineTemplateList contains a list of CloudStackMachineTemplate.
 type CloudStackMachineTemplateList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

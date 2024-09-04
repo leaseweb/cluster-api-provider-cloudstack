@@ -24,14 +24,13 @@ import (
 	"sync"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
-
-	"gopkg.in/yaml.v3"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/metrics"
-
 	"github.com/apache/cloudstack-go/v2/cloudstack"
 	"github.com/jellydator/ttlcache/v3"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v3"
+	corev1 "k8s.io/api/core/v1"
+
+	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/metrics"
 )
 
 //go:generate ../../hack/tools/bin/mockgen -destination=../mocks/mock_client.go -package=mocks sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud Client
@@ -44,7 +43,7 @@ type Client interface {
 	ZoneIFace
 	IsoNetworkIface
 	UserCredIFace
-	NewClientInDomainAndAccount(string, string) (Client, error)
+	NewClientInDomainAndAccount(domain string, account string) (Client, error)
 }
 
 // cloud-config ini structure.
@@ -71,16 +70,22 @@ type SecretConfig struct {
 	StringData Config            `yaml:"stringData"`
 }
 
-var clientCache *ttlcache.Cache[string, *client]
-var cacheMutex sync.Mutex
+var (
+	clientCache *ttlcache.Cache[string, *client]
+	cacheMutex  sync.Mutex
+)
 
-var NewAsyncClient = cloudstack.NewAsyncClient
-var NewClient = cloudstack.NewClient
+var (
+	NewAsyncClient = cloudstack.NewAsyncClient
+	NewClient      = cloudstack.NewClient
+)
 
-const ClientConfigMapName = "capc-client-config"
-const ClientConfigMapNamespace = "capc-system"
-const ClientCacheTTLKey = "client-cache-ttl"
-const DefaultClientCacheTTL = time.Duration(1 * time.Hour)
+const (
+	ClientConfigMapName      = "capc-client-config"
+	ClientConfigMapNamespace = "capc-system"
+	ClientCacheTTLKey        = "client-cache-ttl"
+	DefaultClientCacheTTL    = 1 * time.Hour
+)
 
 // UnmarshalAllSecretConfigs parses a yaml document for each secret.
 func UnmarshalAllSecretConfigs(in []byte, out *[]SecretConfig) error {
@@ -90,17 +95,19 @@ func UnmarshalAllSecretConfigs(in []byte, out *[]SecretConfig) error {
 		var conf SecretConfig
 		if err := decoder.Decode(&conf); err != nil {
 			// Break when there are no more documents to decode
-			if err != io.EOF {
+			if errors.Is(err, io.EOF) {
 				return err
 			}
+
 			break
 		}
 		*out = append(*out, conf)
 	}
+
 	return nil
 }
 
-// NewClientFromK8sSecret returns a client from a k8s secret
+// NewClientFromK8sSecret returns a client from a k8s secret.
 func NewClientFromK8sSecret(endpointSecret *corev1.Secret, clientConfig *corev1.ConfigMap) (Client, error) {
 	endpointSecretStrings := map[string]string{}
 	for k, v := range endpointSecret.Data {
@@ -110,6 +117,7 @@ func NewClientFromK8sSecret(endpointSecret *corev1.Secret, clientConfig *corev1.
 	if err != nil {
 		return nil, err
 	}
+
 	return NewClientFromBytesConfig(bytes, clientConfig)
 }
 
@@ -139,6 +147,7 @@ func NewClientFromYamlPath(confPath string, secretName string) (Client, error) {
 	for _, config := range *configs {
 		if config.Metadata["name"] == secretName {
 			conf = config.StringData
+
 			break
 		}
 	}
@@ -242,15 +251,16 @@ func NewClientFromCSAPIClient(cs *cloudstack.CloudStackClient, user *User) Clien
 		customMetrics: metrics.NewCustomMetrics(),
 		user:          user,
 	}
+
 	return c
 }
 
-// generateClientCacheKey generates a cache key from a Config
+// generateClientCacheKey generates a cache key from a Config.
 func generateClientCacheKey(conf Config) string {
 	return fmt.Sprintf("%+v", conf)
 }
 
-// newClientCache returns a new instance of client cache
+// newClientCache returns a new instance of client cache.
 func newClientCache(clientConfig *corev1.ConfigMap) *ttlcache.Cache[string, *client] {
 	cache := ttlcache.New[string, *client](
 		ttlcache.WithTTL[string, *client](GetClientCacheTTL(clientConfig)),
@@ -262,7 +272,7 @@ func newClientCache(clientConfig *corev1.ConfigMap) *ttlcache.Cache[string, *cli
 	return cache
 }
 
-// GetClientCacheTTL returns a client cache TTL duration from the passed config map
+// GetClientCacheTTL returns a client cache TTL duration from the passed config map.
 func GetClientCacheTTL(clientConfig *corev1.ConfigMap) time.Duration {
 	var cacheTTL time.Duration
 	if clientConfig != nil {
@@ -273,5 +283,6 @@ func GetClientCacheTTL(clientConfig *corev1.ConfigMap) time.Duration {
 	if cacheTTL == 0 {
 		cacheTTL = DefaultClientCacheTTL
 	}
+
 	return cacheTTL
 }

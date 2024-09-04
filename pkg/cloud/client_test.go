@@ -20,19 +20,18 @@ import (
 	"os"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/apache/cloudstack-go/v2/cloudstack"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
+
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/test/helpers"
 )
 
 var _ = Describe("Client", func() {
-
 	var (
 		mockCtrl   *gomock.Controller
 		mockClient *cloudstack.CloudStackClient
@@ -59,12 +58,12 @@ var _ = Describe("Client", func() {
 			// abilities to parse said schema.
 			Skip("Dev test suite.")
 			// Create a real cloud client.
-			var connectionErr error
-			_, connectionErr = helpers.NewCSClient()
-			Ω(connectionErr).ShouldNot(HaveOccurred())
+			var errConnect error
+			_, errConnect = helpers.NewCSClient()
+			Ω(errConnect).ShouldNot(HaveOccurred())
 
-			_, connectionErr = cloud.NewClientFromYamlPath(os.Getenv("REPO_ROOT")+"/cloud-config.yaml", "myendpoint")
-			Ω(connectionErr).ShouldNot(HaveOccurred())
+			_, errConnect = cloud.NewClientFromYamlPath(os.Getenv("REPO_ROOT")+"/cloud-config.yaml", "myendpoint")
+			Ω(errConnect).ShouldNot(HaveOccurred())
 		})
 	})
 
@@ -149,7 +148,6 @@ var _ = Describe("Client", func() {
 				Apikey:    dummies.Apikey,
 				Secretkey: dummies.SecretKey,
 			}, nil).AnyTimes()
-
 		})
 
 		It("Returns a new client", func() {

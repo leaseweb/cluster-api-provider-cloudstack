@@ -27,14 +27,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
-	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
-	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
+	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
+	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
 )
 
 var _ = Describe("CloudStackMachineReconciler", func() {
@@ -62,7 +64,7 @@ var _ = Describe("CloudStackMachineReconciler", func() {
 				gomock.Any(), gomock.Any(), gomock.Any(),
 				gomock.Any(), gomock.Any()).Do(
 				func(arg1, _, _, _, _ interface{}) {
-					arg1.(*infrav1.CloudStackMachine).Status.InstanceState = "Running"
+					arg1.(*infrav1.CloudStackMachine).Status.InstanceState = cloud.VMStateRunning
 				}).AnyTimes()
 
 			// Have to do this here or the reconcile call to GetOrCreateVMInstance may happen too early.
@@ -77,6 +79,7 @@ var _ = Describe("CloudStackMachineReconciler", func() {
 						return len(tempMachine.ObjectMeta.Finalizers) > 0
 					}
 				}
+
 				return false
 			}, timeout).WithPolling(pollInterval).Should(BeTrue())
 		})
@@ -87,7 +90,7 @@ var _ = Describe("CloudStackMachineReconciler", func() {
 				gomock.Any(), gomock.Any(), gomock.Any(),
 				gomock.Any(), gomock.Any()).Do(
 				func(arg1, _, _, _, _ interface{}) {
-					arg1.(*infrav1.CloudStackMachine).Status.InstanceState = "Running"
+					arg1.(*infrav1.CloudStackMachine).Status.InstanceState = cloud.VMStateRunning
 					controllerutil.AddFinalizer(arg1.(*infrav1.CloudStackMachine), infrav1.MachineFinalizer)
 				}).AnyTimes()
 
@@ -104,6 +107,7 @@ var _ = Describe("CloudStackMachineReconciler", func() {
 						return true
 					}
 				}
+
 				return false
 			}, timeout).WithPolling(pollInterval).Should(BeTrue())
 
@@ -115,9 +119,9 @@ var _ = Describe("CloudStackMachineReconciler", func() {
 				if err := k8sClient.Get(ctx, key, tempMachine); err != nil {
 					return errors.IsNotFound(err)
 				}
+
 				return false
 			}, timeout).WithPolling(pollInterval).Should(BeTrue())
-
 		})
 
 		It("Should call ResolveVMInstanceDetails when CS machine without instanceID deleted", func() {
@@ -127,7 +131,7 @@ var _ = Describe("CloudStackMachineReconciler", func() {
 				gomock.Any(), gomock.Any(), gomock.Any(),
 				gomock.Any(), gomock.Any()).Do(
 				func(arg1, _, _, _, _ interface{}) {
-					arg1.(*infrav1.CloudStackMachine).Status.InstanceState = "Running"
+					arg1.(*infrav1.CloudStackMachine).Status.InstanceState = cloud.VMStateRunning
 					controllerutil.AddFinalizer(arg1.(*infrav1.CloudStackMachine), infrav1.MachineFinalizer)
 				}).AnyTimes()
 
@@ -149,6 +153,7 @@ var _ = Describe("CloudStackMachineReconciler", func() {
 						return true
 					}
 				}
+
 				return false
 			}, timeout).WithPolling(pollInterval).Should(BeTrue())
 
@@ -165,9 +170,9 @@ var _ = Describe("CloudStackMachineReconciler", func() {
 				if err := k8sClient.Get(ctx, key, tempMachine); err != nil {
 					return errors.IsNotFound(err)
 				}
+
 				return false
 			}, timeout).WithPolling(pollInterval).Should(BeTrue())
-
 		})
 
 		It("Should replace ds.meta_data.xxx with proper values.", func() {
@@ -177,8 +182,8 @@ var _ = Describe("CloudStackMachineReconciler", func() {
 				gomock.Any(), gomock.Any()).Do(
 				func(arg1, _, _, _, userdata interface{}) {
 					expectedUserdata := fmt.Sprintf("%s{{%s}}", dummies.CAPIMachine.Name, dummies.CSMachine1.Spec.FailureDomainName)
-					Ω(userdata == expectedUserdata).Should(BeTrue())
-					arg1.(*infrav1.CloudStackMachine).Status.InstanceState = "Running"
+					Ω(userdata).Should(BeIdenticalTo(expectedUserdata))
+					arg1.(*infrav1.CloudStackMachine).Status.InstanceState = cloud.VMStateRunning
 				}).AnyTimes()
 
 			// Have to do this here or the reconcile call to GetOrCreateVMInstance may happen too early.
@@ -193,6 +198,7 @@ var _ = Describe("CloudStackMachineReconciler", func() {
 						return true
 					}
 				}
+
 				return false
 			}, timeout).WithPolling(pollInterval).Should(BeTrue())
 		})
@@ -238,7 +244,7 @@ var _ = Describe("CloudStackMachineReconciler", func() {
 				gomock.Any(), gomock.Any(), gomock.Any(),
 				gomock.Any(), gomock.Any()).Do(
 				func(arg1, _, _, _, _ interface{}) {
-					arg1.(*infrav1.CloudStackMachine).Status.InstanceState = "Running"
+					arg1.(*infrav1.CloudStackMachine).Status.InstanceState = cloud.VMStateRunning
 				}).AnyTimes()
 			Ω(fakeCtrlClient.Get(ctx, key, dummies.CSCluster)).Should(Succeed())
 			Ω(fakeCtrlClient.Create(ctx, dummies.CAPIMachine)).Should(Succeed())
@@ -261,6 +267,7 @@ var _ = Describe("CloudStackMachineReconciler", func() {
 						strings.Contains(event, "Normal Running Machine instance is Running...") ||
 						strings.Contains(event, "Normal Machine State Checker CloudStackMachineStateChecker created")
 				}
+
 				return false
 			}, timeout).Should(BeTrue())
 		})

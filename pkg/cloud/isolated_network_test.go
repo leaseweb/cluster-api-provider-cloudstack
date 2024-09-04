@@ -17,7 +17,6 @@ limitations under the License.
 package cloud_test
 
 import (
-	"k8s.io/utils/pointer"
 	"strconv"
 
 	csapi "github.com/apache/cloudstack-go/v2/cloudstack"
@@ -25,12 +24,13 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+	"k8s.io/utils/pointer"
+
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
 )
 
 var _ = Describe("Network", func() {
-
 	const (
 		ipAddress    = "192.168.1.14"
 		errorMessage = "Error"
@@ -82,10 +82,11 @@ var _ = Describe("Network", func() {
 			fs.EXPECT().NewCreateEgressFirewallRuleParams(dummies.ISONet1.ID, gomock.Any()).
 				DoAndReturn(func(networkid string, protocol string) *csapi.CreateEgressFirewallRuleParams {
 					p := &csapi.CreateEgressFirewallRuleParams{}
-					if protocol == "icmp" {
+					if protocol == cloud.NetworkProtocolICMP {
 						p.SetIcmptype(-1)
 						p.SetIcmpcode(-1)
 					}
+
 					return p
 				}).Times(3)
 
@@ -115,10 +116,11 @@ var _ = Describe("Network", func() {
 			fs.EXPECT().NewCreateEgressFirewallRuleParams(dummies.ISONet1.ID, gomock.Any()).
 				DoAndReturn(func(networkid string, protocol string) *csapi.CreateEgressFirewallRuleParams {
 					p := &csapi.CreateEgressFirewallRuleParams{}
-					if protocol == "icmp" {
+					if protocol == cloud.NetworkProtocolICMP {
 						p.SetIcmptype(-1)
 						p.SetIcmpcode(-1)
 					}
+
 					return p
 				}).Times(3)
 
@@ -152,10 +154,11 @@ var _ = Describe("Network", func() {
 			fs.EXPECT().NewCreateEgressFirewallRuleParams(dummies.ISONet1.ID, gomock.Any()).
 				DoAndReturn(func(networkid string, protocol string) *csapi.CreateEgressFirewallRuleParams {
 					p := &csapi.CreateEgressFirewallRuleParams{}
-					if protocol == "icmp" {
+					if protocol == cloud.NetworkProtocolICMP {
 						p.SetIcmptype(-1)
 						p.SetIcmpcode(-1)
 					}
+
 					return p
 				}).Times(3)
 
@@ -179,10 +182,11 @@ var _ = Describe("Network", func() {
 			fs.EXPECT().NewCreateEgressFirewallRuleParams(dummies.ISONet1.ID, gomock.Any()).
 				DoAndReturn(func(networkid string, protocol string) *csapi.CreateEgressFirewallRuleParams {
 					p := &csapi.CreateEgressFirewallRuleParams{}
-					if protocol == "icmp" {
+					if protocol == cloud.NetworkProtocolICMP {
 						p.SetIcmptype(-1)
 						p.SetIcmpcode(-1)
 					}
+
 					return p
 				}).Times(3)
 
@@ -232,16 +236,18 @@ var _ = Describe("Network", func() {
 			as.EXPECT().ListPublicIpAddresses(gomock.Any()).
 				Return(&csapi.ListPublicIpAddressesResponse{
 					Count: 2,
-					PublicIpAddresses: []*csapi.PublicIpAddress{{
-						State:               "Allocated",
-						Allocated:           "true",
-						Associatednetworkid: "1",
-					},
+					PublicIpAddresses: []*csapi.PublicIpAddress{
 						{
 							State:               "Allocated",
 							Allocated:           "true",
 							Associatednetworkid: "1",
-						}},
+						},
+						{
+							State:               "Allocated",
+							Allocated:           "true",
+							Associatednetworkid: "1",
+						},
+					},
 				}, nil)
 			publicIPAddress, err := client.GetPublicIP(dummies.CSFailureDomain1, dummies.CSCluster.Spec.ControlPlaneEndpoint.Host)
 			Ω(publicIPAddress).Should(BeNil())
@@ -367,6 +373,7 @@ var _ = Describe("Network", func() {
 			fs.EXPECT().NewDeleteFirewallRuleParams(dummies.FWRuleID).DoAndReturn(func(ruleid string) *csapi.DeleteFirewallRuleParams {
 				p := &csapi.DeleteFirewallRuleParams{}
 				p.SetId(ruleid)
+
 				return p
 			})
 			fs.EXPECT().DeleteFirewallRule(gomock.Any()).Return(&csapi.DeleteFirewallRuleResponse{Success: true}, nil).Times(1)
@@ -528,7 +535,8 @@ var _ = Describe("Network", func() {
 			lbs.EXPECT().NewListLoadBalancerRulesParams().Return(&csapi.ListLoadBalancerRulesParams{})
 			lbs.EXPECT().ListLoadBalancerRules(gomock.Any()).
 				Return(&csapi.ListLoadBalancerRulesResponse{
-					LoadBalancerRules: []*csapi.LoadBalancerRule{}}, nil)
+					LoadBalancerRules: []*csapi.LoadBalancerRule{},
+				}, nil)
 			lbs.EXPECT().NewCreateLoadBalancerRuleParams(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(&csapi.CreateLoadBalancerRuleParams{})
 			lbs.EXPECT().CreateLoadBalancerRule(gomock.Any()).
@@ -628,7 +636,8 @@ var _ = Describe("Network", func() {
 			lbs.EXPECT().NewListLoadBalancerRulesParams().Return(&csapi.ListLoadBalancerRulesParams{})
 			lbs.EXPECT().ListLoadBalancerRules(gomock.Any()).
 				Return(&csapi.ListLoadBalancerRulesResponse{
-					LoadBalancerRules: []*csapi.LoadBalancerRule{{Publicport: "7443", Id: dummies.LBRuleID}}}, nil)
+					LoadBalancerRules: []*csapi.LoadBalancerRule{{Publicport: "7443", Id: dummies.LBRuleID}},
+				}, nil)
 			lbs.EXPECT().NewCreateLoadBalancerRuleParams(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(&csapi.CreateLoadBalancerRuleParams{})
 			lbs.EXPECT().CreateLoadBalancerRule(gomock.Any()).
@@ -685,6 +694,7 @@ var _ = Describe("Network", func() {
 			fs.EXPECT().NewDeleteFirewallRuleParams("FakeFWRuleID2").DoAndReturn(func(ruleid string) *csapi.DeleteFirewallRuleParams {
 				p := &csapi.DeleteFirewallRuleParams{}
 				p.SetId(ruleid)
+
 				return p
 			})
 			fs.EXPECT().DeleteFirewallRule(gomock.Any()).Return(&csapi.DeleteFirewallRuleResponse{Success: true}, nil).Times(1)
@@ -728,6 +738,7 @@ var _ = Describe("Network", func() {
 			fs.EXPECT().NewDeleteFirewallRuleParams("FakeFWRuleID2").DoAndReturn(func(ruleid string) *csapi.DeleteFirewallRuleParams {
 				p := &csapi.DeleteFirewallRuleParams{}
 				p.SetId(ruleid)
+
 				return p
 			})
 			fs.EXPECT().DeleteFirewallRule(gomock.Any()).Return(&csapi.DeleteFirewallRuleResponse{Success: true}, nil).Times(1)
@@ -760,6 +771,7 @@ var _ = Describe("Network", func() {
 				p.SetStartport(int(dummies.EndPointPort))
 				p.SetEndport(int(dummies.EndPointPort))
 				p.SetProtocol(proto)
+
 				return p
 			}).Times(1)
 			fs.EXPECT().CreateFirewallRule(gomock.Any()).Return(&csapi.CreateFirewallRuleResponse{}, nil).Times(1)
@@ -789,6 +801,7 @@ var _ = Describe("Network", func() {
 			fs.EXPECT().NewDeleteFirewallRuleParams("FakeFWRuleID2").DoAndReturn(func(ruleid string) *csapi.DeleteFirewallRuleParams {
 				p := &csapi.DeleteFirewallRuleParams{}
 				p.SetId(ruleid)
+
 				return p
 			}).Times(1)
 			fs.EXPECT().DeleteFirewallRule(gomock.Any()).Return(&csapi.DeleteFirewallRuleResponse{Success: true}, nil).Times(1)
@@ -798,6 +811,7 @@ var _ = Describe("Network", func() {
 				p.SetStartport(int(dummies.EndPointPort))
 				p.SetEndport(int(dummies.EndPointPort))
 				p.SetProtocol(proto)
+
 				return p
 			}).Times(1)
 			fs.EXPECT().CreateFirewallRule(gomock.Any()).Return(&csapi.CreateFirewallRuleResponse{}, nil).Times(1)
@@ -831,6 +845,7 @@ var _ = Describe("Network", func() {
 					p.SetStartport(int(dummies.EndPointPort))
 					p.SetEndport(int(dummies.EndPointPort))
 					p.SetProtocol(proto)
+
 					return p
 				}).Times(1),
 				fs.EXPECT().CreateFirewallRule(gomock.Any()).Return(&csapi.CreateFirewallRuleResponse{}, nil).Times(1),
@@ -840,6 +855,7 @@ var _ = Describe("Network", func() {
 					p.SetStartport(456)
 					p.SetEndport(456)
 					p.SetProtocol(proto)
+
 					return p
 				}).Times(1),
 				fs.EXPECT().CreateFirewallRule(gomock.Any()).Return(&csapi.CreateFirewallRuleResponse{}, nil).Times(1),
@@ -872,6 +888,7 @@ var _ = Describe("Network", func() {
 					p.SetStartport(int(dummies.EndPointPort))
 					p.SetEndport(int(dummies.EndPointPort))
 					p.SetProtocol(proto)
+
 					return p
 				}).Times(1),
 				fs.EXPECT().CreateFirewallRule(gomock.Any()).Return(&csapi.CreateFirewallRuleResponse{}, nil).Times(1),
@@ -882,6 +899,7 @@ var _ = Describe("Network", func() {
 					p.SetStartport(int(dummies.EndPointPort))
 					p.SetEndport(int(dummies.EndPointPort))
 					p.SetProtocol(proto)
+
 					return p
 				}).Times(1),
 				fs.EXPECT().CreateFirewallRule(gomock.Any()).Return(&csapi.CreateFirewallRuleResponse{}, nil).Times(1),
@@ -892,6 +910,7 @@ var _ = Describe("Network", func() {
 					p.SetStartport(int(dummies.EndPointPort))
 					p.SetEndport(int(dummies.EndPointPort))
 					p.SetProtocol(proto)
+
 					return p
 				}).Times(1),
 				fs.EXPECT().CreateFirewallRule(gomock.Any()).Return(&csapi.CreateFirewallRuleResponse{}, nil).Times(1),
@@ -952,12 +971,14 @@ var _ = Describe("Network", func() {
 				fs.EXPECT().NewDeleteFirewallRuleParams("FakeFWRuleID1").DoAndReturn(func(ruleid string) *csapi.DeleteFirewallRuleParams {
 					p := &csapi.DeleteFirewallRuleParams{}
 					p.SetId(ruleid)
+
 					return p
 				}),
 				fs.EXPECT().DeleteFirewallRule(gomock.Any()).Return(&csapi.DeleteFirewallRuleResponse{Success: true}, nil).Times(1),
 				fs.EXPECT().NewDeleteFirewallRuleParams("FakeFWRuleID2").DoAndReturn(func(ruleid string) *csapi.DeleteFirewallRuleParams {
 					p := &csapi.DeleteFirewallRuleParams{}
 					p.SetId(ruleid)
+
 					return p
 				}),
 				fs.EXPECT().DeleteFirewallRule(gomock.Any()).Return(&csapi.DeleteFirewallRuleResponse{Success: true}, nil).Times(1),
@@ -1002,7 +1023,7 @@ var _ = Describe("Network", func() {
 
 	Context("Dispose or cleanup isolate network resources", func() {
 		It("delete all isolated network resources when not managed by CAPC", func() {
-			dummies.CSISONet1.Status.PublicIPID = "publicIpId"
+			dummies.CSISONet1.Status.PublicIPID = dummies.PublicIPID
 			rtlp := &csapi.ListTagsParams{}
 			rs.EXPECT().NewListTagsParams().Return(rtlp).Times(4)
 			rs.EXPECT().ListTags(rtlp).Return(&csapi.ListTagsResponse{}, nil).Times(4)
@@ -1012,7 +1033,7 @@ var _ = Describe("Network", func() {
 		})
 
 		It("delete all isolated network resources when managed by CAPC", func() {
-			dummies.CSISONet1.Status.PublicIPID = "publicIpId"
+			dummies.CSISONet1.Status.PublicIPID = dummies.PublicIPID
 			rtdp := &csapi.DeleteTagsParams{}
 			rtlp := &csapi.ListTagsParams{}
 			dap := &csapi.DisassociateIpAddressParams{}
@@ -1030,7 +1051,7 @@ var _ = Describe("Network", func() {
 		})
 
 		It("disassociate IP address fails due to failure in deleting a resource i.e., disassociate Public IP", func() {
-			dummies.CSISONet1.Status.PublicIPID = "publicIpId"
+			dummies.CSISONet1.Status.PublicIPID = dummies.PublicIPID
 			rtdp := &csapi.DeleteTagsParams{}
 			rtlp := &csapi.ListTagsParams{}
 			dap := &csapi.DisassociateIpAddressParams{}
@@ -1045,7 +1066,6 @@ var _ = Describe("Network", func() {
 
 			Ω(client.DisposeIsoNetResources(dummies.CSISONet1, dummies.CSCluster)).ShouldNot(Succeed())
 		})
-
 	})
 
 	Context("Networking Integ Tests", Label("integ"), func() {

@@ -17,11 +17,11 @@ limitations under the License.
 package v1beta2_test
 
 import (
-	"k8s.io/utils/pointer"
-	capcv1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta2"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/utils/pointer"
+
+	capcv1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta2"
 )
 
 var _ = Describe("CloudStackMachineConfig_CompressUserdata", func() {
@@ -58,10 +58,10 @@ var _ = Describe("CloudStackMachineConfig_CompressUserdata", func() {
 			Expect: true,
 		},
 	} {
-		tc := tc
-		It(tc.Name, func() {
-			result := tc.Machine.CompressUserdata()
-			Expect(result).To(Equal(tc.Expect))
+		tcc := tc
+		It(tcc.Name, func() {
+			result := tcc.Machine.CompressUserdata()
+			Expect(result).To(Equal(tcc.Expect))
 		})
 	}
 })

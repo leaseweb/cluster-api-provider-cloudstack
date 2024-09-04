@@ -23,11 +23,11 @@ import (
 	csapi "github.com/apache/cloudstack-go/v2/cloudstack"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/test/helpers"
-
-	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("User Credentials", func() {
@@ -143,7 +143,6 @@ var _ = Describe("User Credentials", func() {
 			}}}, nil)
 
 			Ω(client.ResolveAccount(&dummies.Account)).Should(Succeed())
-
 		})
 
 		It("no account found in CloudStack for the provided Account name", func() {
@@ -334,7 +333,6 @@ var _ = Describe("User Credentials", func() {
 			err := client.ResolveUserKeys(&dummies.User)
 			Ω(err).ShouldNot(Succeed())
 			Ω(err.Error()).Should(ContainSubstring("error encountered when resolving user details"))
-
 		})
 
 		It("get user keys fils when resolving user keys", func() {

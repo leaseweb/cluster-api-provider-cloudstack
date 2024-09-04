@@ -57,7 +57,7 @@ type CloudStackClusterStatus struct {
 //+kubebuilder:subresource:status
 //+kubebuilder:storageversion
 
-// CloudStackCluster is the Schema for the cloudstackclusters API
+// CloudStackCluster is the Schema for the cloudstackclusters API.
 type CloudStackCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -70,7 +70,7 @@ type CloudStackCluster struct {
 
 //+kubebuilder:object:root=true
 
-// CloudStackClusterList contains a list of CloudStackCluster
+// CloudStackClusterList contains a list of CloudStackCluster.
 type CloudStackClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

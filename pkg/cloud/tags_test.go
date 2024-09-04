@@ -22,6 +22,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
 )
@@ -102,7 +103,7 @@ var _ = Describe("Tag Unit Tests", func() {
 
 			// Verify tags
 			tags, err := client.GetTags(cloud.ResourceTypeNetwork, dummies.CSISONet1.Spec.ID)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 			Ω(tags[cloud.CreatedByCAPCTagName]).Should(Equal(""))
 			Ω(tags[dummies.CSClusterTagKey]).Should(Equal(""))
 		})
@@ -129,14 +130,14 @@ var _ = Describe("Tag Unit Tests", func() {
 
 		It("does not allow a resource to be deleted when there are no tags", func() {
 			tagsAllowDisposal, err := client.DoClusterTagsAllowDisposal(cloud.ResourceTypeNetwork, dummies.CSISONet1.Spec.ID)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 			Ω(tagsAllowDisposal).Should(BeFalse())
 		})
 
 		It("does not allow a resource to be deleted when there is a cluster tag", func() {
 			Ω(client.AddClusterTag(cloud.ResourceTypeNetwork, dummies.CSISONet1.Spec.ID, dummies.CSCluster)).Should(Succeed())
 			tagsAllowDisposal, err := client.DoClusterTagsAllowDisposal(cloud.ResourceTypeNetwork, dummies.CSISONet1.Spec.ID)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 			Ω(tagsAllowDisposal).Should(BeFalse())
 		})
 
@@ -146,7 +147,7 @@ var _ = Describe("Tag Unit Tests", func() {
 			Ω(client.DeleteClusterTag(cloud.ResourceTypeNetwork, dummies.CSISONet1.Spec.ID, dummies.CSCluster)).Should(Succeed())
 
 			tagsAllowDisposal, err := client.DoClusterTagsAllowDisposal(cloud.ResourceTypeNetwork, dummies.CSISONet1.Spec.ID)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 			Ω(tagsAllowDisposal).Should(BeTrue())
 		})
 	})
