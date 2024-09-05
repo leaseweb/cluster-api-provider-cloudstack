@@ -71,6 +71,7 @@ linters:
     - err113
     - execinquery
     - exhaustruct
+    - exportloopref
     - forcetypeassert
     - funlen
     - gochecknoglobals
@@ -90,7 +91,12 @@ linters:
   enable-all: true
 
 run:
-  issues-exit-code: 1
+  timeout: 10m
+  go: "1.22"
+  build-tags:
+    - tools
+    - e2e
+  allow-parallel-runners: true
 
 issues:
   max-same-issues: 0
