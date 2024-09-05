@@ -88,7 +88,7 @@ func (r *CloudStackIsoNetReconciliationRunner) Reconcile() (ctrl.Result, error) 
 		return r.RequeueWithMessage("Zone ID not resolved yet.")
 	}
 
-	if err := r.CSUser.GetOrCreateIsolatedNetwork(r.FailureDomain, r.ReconciliationSubject, r.CSCluster); err != nil {
+	if err := r.CSUser.GetOrCreateIsolatedNetwork(r.FailureDomain, r.ReconciliationSubject); err != nil {
 		return ctrl.Result{}, err
 	}
 	// Tag the created network.

@@ -39,7 +39,7 @@ var _ = Describe("CloudStackIsolatedNetworkReconciler", func() {
 		})
 
 		It("Should set itself to ready if there are no errors in calls to CloudStack methods.", func() {
-			mockCloudClient.EXPECT().GetOrCreateIsolatedNetwork(g.Any(), g.Any(), g.Any()).AnyTimes()
+			mockCloudClient.EXPECT().GetOrCreateIsolatedNetwork(g.Any(), g.Any()).AnyTimes()
 			mockCloudClient.EXPECT().AddClusterTag(g.Any(), g.Any(), g.Any()).AnyTimes()
 			mockCloudClient.EXPECT().AssociatePublicIPAddress(g.Any(), g.Any(), g.Any()).AnyTimes().Return(&cloudstack.PublicIpAddress{
 				Id:                  dummies.PublicIPID,
@@ -57,7 +57,7 @@ var _ = Describe("CloudStackIsolatedNetworkReconciler", func() {
 				tempIsoNet := &infrav1.CloudStackIsolatedNetwork{}
 				key := client.ObjectKeyFromObject(dummies.CSISONet1)
 				if err := k8sClient.Get(ctx, key, tempIsoNet); err == nil {
-					if tempIsoNet.Status.Ready == true {
+					if tempIsoNet.Status.Ready {
 						return true
 					}
 				}
@@ -68,7 +68,7 @@ var _ = Describe("CloudStackIsolatedNetworkReconciler", func() {
 
 		It("Should succeed if API load balancer is disabled.", func() {
 			dummies.CSCluster.Spec.APIServerLoadBalancer.Enabled = ptr.To(false)
-			mockCloudClient.EXPECT().GetOrCreateIsolatedNetwork(g.Any(), g.Any(), g.Any()).AnyTimes()
+			mockCloudClient.EXPECT().GetOrCreateIsolatedNetwork(g.Any(), g.Any()).AnyTimes()
 			mockCloudClient.EXPECT().AddClusterTag(g.Any(), g.Any(), g.Any()).AnyTimes()
 			mockCloudClient.EXPECT().AssociatePublicIPAddress(g.Any(), g.Any(), g.Any()).AnyTimes().Return(&cloudstack.PublicIpAddress{
 				Id:                  dummies.PublicIPID,
@@ -86,7 +86,7 @@ var _ = Describe("CloudStackIsolatedNetworkReconciler", func() {
 				tempIsoNet := &infrav1.CloudStackIsolatedNetwork{}
 				key := client.ObjectKeyFromObject(dummies.CSISONet1)
 				if err := k8sClient.Get(ctx, key, tempIsoNet); err == nil {
-					if tempIsoNet.Status.Ready == true {
+					if tempIsoNet.Status.Ready {
 						return true
 					}
 				}

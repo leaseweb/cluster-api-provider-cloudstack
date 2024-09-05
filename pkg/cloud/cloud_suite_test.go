@@ -95,5 +95,5 @@ func FetchIntegTestResources() {
 	dummies.CSMachine1.Spec.DiskOffering.Name = ""
 	dummies.CSCluster.Spec.ControlPlaneEndpoint.Host = ""
 	Ω(realCloudClient.GetOrCreateIsolatedNetwork(
-		dummies.CSFailureDomain1, dummies.CSISONet1, dummies.CSCluster)).Should(Succeed())
+		dummies.CSFailureDomain1, dummies.CSISONet1)).Should(Succeed())
 }

@@ -80,7 +80,7 @@ var _ = Describe("Network", func() {
 			ns.EXPECT().CreateNetwork(gomock.Any()).Return(&csapi.CreateNetworkResponse{Id: dummies.ISONet1.ID}, nil)
 
 			fs.EXPECT().NewCreateEgressFirewallRuleParams(dummies.ISONet1.ID, gomock.Any()).
-				DoAndReturn(func(networkid string, protocol string) *csapi.CreateEgressFirewallRuleParams {
+				DoAndReturn(func(_ string, protocol string) *csapi.CreateEgressFirewallRuleParams {
 					p := &csapi.CreateEgressFirewallRuleParams{}
 					if protocol == cloud.NetworkProtocolICMP {
 						p.SetIcmptype(-1)
@@ -104,7 +104,7 @@ var _ = Describe("Network", func() {
 				Return(&csapi.CreateTagsParams{})
 			rs.EXPECT().CreateTags(gomock.Any()).Return(&csapi.CreateTagsResponse{}, nil)
 
-			Ω(client.GetOrCreateIsolatedNetwork(dummies.CSFailureDomain1, dummies.CSISONet1, dummies.CSCluster)).Should(Succeed())
+			Ω(client.GetOrCreateIsolatedNetwork(dummies.CSFailureDomain1, dummies.CSISONet1)).Should(Succeed())
 			Ω(dummies.CSISONet1.Spec.ID).ShouldNot(BeEmpty())
 		})
 
@@ -114,7 +114,7 @@ var _ = Describe("Network", func() {
 			ns.EXPECT().GetNetworkByName(dummies.ISONet1.Name).Return(dummies.CAPCNetToCSAPINet(&dummies.ISONet1), 1, nil)
 
 			fs.EXPECT().NewCreateEgressFirewallRuleParams(dummies.ISONet1.ID, gomock.Any()).
-				DoAndReturn(func(networkid string, protocol string) *csapi.CreateEgressFirewallRuleParams {
+				DoAndReturn(func(_ string, protocol string) *csapi.CreateEgressFirewallRuleParams {
 					p := &csapi.CreateEgressFirewallRuleParams{}
 					if protocol == cloud.NetworkProtocolICMP {
 						p.SetIcmptype(-1)
@@ -133,7 +133,7 @@ var _ = Describe("Network", func() {
 				fs.EXPECT().CreateEgressFirewallRule(ruleParamsICMP).
 					Return(&csapi.CreateEgressFirewallRuleResponse{}, nil))
 
-			Ω(client.GetOrCreateIsolatedNetwork(dummies.CSFailureDomain1, dummies.CSISONet1, dummies.CSCluster)).Should(Succeed())
+			Ω(client.GetOrCreateIsolatedNetwork(dummies.CSFailureDomain1, dummies.CSISONet1)).Should(Succeed())
 			Ω(dummies.CSISONet1.Spec.ID).ShouldNot(BeEmpty())
 		})
 
@@ -142,7 +142,7 @@ var _ = Describe("Network", func() {
 			ns.EXPECT().GetNetworkByID(dummies.ISONet1.ID).Return(nil, 0, nil)
 			nos.EXPECT().GetNetworkOfferingID(gomock.Any()).Return("", -1, fakeError)
 
-			err := client.GetOrCreateIsolatedNetwork(dummies.CSFailureDomain1, dummies.CSISONet1, dummies.CSCluster)
+			err := client.GetOrCreateIsolatedNetwork(dummies.CSFailureDomain1, dummies.CSISONet1)
 			Ω(err).ShouldNot(Succeed())
 			Ω(err.Error()).Should(ContainSubstring("creating a new isolated network"))
 		})
@@ -152,7 +152,7 @@ var _ = Describe("Network", func() {
 		It("CreateEgressFirewallRules asks CloudStack to open the egress firewall", func() {
 			dummies.Zone1.Network = dummies.ISONet1
 			fs.EXPECT().NewCreateEgressFirewallRuleParams(dummies.ISONet1.ID, gomock.Any()).
-				DoAndReturn(func(networkid string, protocol string) *csapi.CreateEgressFirewallRuleParams {
+				DoAndReturn(func(_ string, protocol string) *csapi.CreateEgressFirewallRuleParams {
 					p := &csapi.CreateEgressFirewallRuleParams{}
 					if protocol == cloud.NetworkProtocolICMP {
 						p.SetIcmptype(-1)
@@ -180,7 +180,7 @@ var _ = Describe("Network", func() {
 			dummies.Zone1.Network = dummies.ISONet1
 
 			fs.EXPECT().NewCreateEgressFirewallRuleParams(dummies.ISONet1.ID, gomock.Any()).
-				DoAndReturn(func(networkid string, protocol string) *csapi.CreateEgressFirewallRuleParams {
+				DoAndReturn(func(_ string, protocol string) *csapi.CreateEgressFirewallRuleParams {
 					p := &csapi.CreateEgressFirewallRuleParams{}
 					if protocol == cloud.NetworkProtocolICMP {
 						p.SetIcmptype(-1)
@@ -1110,14 +1110,14 @@ var _ = Describe("Network", func() {
 		})
 
 		It("adds an isolated network and doesn't fail when asked to GetOrCreateIsolatedNetwork multiple times", func() {
-			Ω(client.GetOrCreateIsolatedNetwork(dummies.CSFailureDomain1, dummies.CSISONet1, dummies.CSCluster)).Should(Succeed())
-			Ω(client.GetOrCreateIsolatedNetwork(dummies.CSFailureDomain1, dummies.CSISONet1, dummies.CSCluster)).Should(Succeed())
+			Ω(client.GetOrCreateIsolatedNetwork(dummies.CSFailureDomain1, dummies.CSISONet1)).Should(Succeed())
+			Ω(client.GetOrCreateIsolatedNetwork(dummies.CSFailureDomain1, dummies.CSISONet1)).Should(Succeed())
 
 			// Network should now exist if it didn't at the start.
 			Ω(client.ResolveNetwork(&dummies.ISONet1)).Should(Succeed())
 
 			// Do once more.
-			Ω(client.GetOrCreateIsolatedNetwork(dummies.CSFailureDomain1, dummies.CSISONet1, dummies.CSCluster)).Should(Succeed())
+			Ω(client.GetOrCreateIsolatedNetwork(dummies.CSFailureDomain1, dummies.CSISONet1)).Should(Succeed())
 		})
 	})
 })

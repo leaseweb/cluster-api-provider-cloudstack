@@ -34,7 +34,7 @@ import (
 )
 
 type IsoNetworkIface interface {
-	GetOrCreateIsolatedNetwork(fd *infrav1.CloudStackFailureDomain, isoNet *infrav1.CloudStackIsolatedNetwork, csCluster *infrav1.CloudStackCluster) error
+	GetOrCreateIsolatedNetwork(fd *infrav1.CloudStackFailureDomain, isoNet *infrav1.CloudStackIsolatedNetwork) error
 	ReconcileLoadBalancer(fd *infrav1.CloudStackFailureDomain, isoNet *infrav1.CloudStackIsolatedNetwork, csCluster *infrav1.CloudStackCluster) error
 
 	AssociatePublicIPAddress(fd *infrav1.CloudStackFailureDomain, isoNet *infrav1.CloudStackIsolatedNetwork, desiredIP string) (*cloudstack.PublicIpAddress, error)
@@ -703,7 +703,6 @@ func getCanonicalAllowedCIDRs(isoNet *infrav1.CloudStackIsolatedNetwork, csClust
 func (c *client) GetOrCreateIsolatedNetwork(
 	fd *infrav1.CloudStackFailureDomain,
 	isoNet *infrav1.CloudStackIsolatedNetwork,
-	csCluster *infrav1.CloudStackCluster,
 ) error {
 	// Get or create the isolated network itself and resolve details into passed custom resources.
 	network := isoNet.Network()
@@ -723,7 +722,7 @@ func (c *client) GetOrCreateIsolatedNetwork(
 
 // ReconcileLoadBalancer configures the API server load balancer.
 func (c *client) ReconcileLoadBalancer(
-	fd *infrav1.CloudStackFailureDomain,
+	_ *infrav1.CloudStackFailureDomain,
 	isoNet *infrav1.CloudStackIsolatedNetwork,
 	csCluster *infrav1.CloudStackCluster,
 ) error {

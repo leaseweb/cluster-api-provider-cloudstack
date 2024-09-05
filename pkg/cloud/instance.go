@@ -165,7 +165,7 @@ func (c *client) resolveTemplate(
 
 		return csMachine.Spec.Template.ID, nil
 	}
-	templateID, count, err := c.cs.Template.GetTemplateID(csMachine.Spec.Template.Name, "executable", zoneID, func(cs *cloudstack.CloudStackClient, i interface{}) error {
+	templateID, count, err := c.cs.Template.GetTemplateID(csMachine.Spec.Template.Name, "executable", zoneID, func(_ *cloudstack.CloudStackClient, i interface{}) error {
 		v, ok := i.(*cloudstack.ListTemplatesParams)
 		if !ok {
 			return fmt.Errorf("expected a cloudstack.ListTemplatesParams but got a %T", i)
@@ -383,11 +383,10 @@ func (c *client) deployVM(
 			if errors.Is(findErr, ErrNotFound) {
 				// We didn't find a VM so return the original error.
 				return err
-			} else {
-				c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(findErr)
-
-				return fmt.Errorf("%w; find virtual machine: %w", err, findErr)
 			}
+			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(findErr)
+
+			return fmt.Errorf("%w; find virtual machine: %w", err, findErr)
 		}
 
 		csMachine.Spec.InstanceID = ptr.To(vm.Id)

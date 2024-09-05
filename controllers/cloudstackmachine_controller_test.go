@@ -75,7 +75,7 @@ var _ = Describe("CloudStackMachineReconciler", func() {
 				tempMachine := &infrav1.CloudStackMachine{}
 				key := client.ObjectKey{Namespace: dummies.ClusterNameSpace, Name: dummies.CSMachine1.Name}
 				if err := k8sClient.Get(ctx, key, tempMachine); err == nil {
-					if tempMachine.Status.Ready == true {
+					if tempMachine.Status.Ready {
 						return len(tempMachine.ObjectMeta.Finalizers) > 0
 					}
 				}
@@ -103,7 +103,7 @@ var _ = Describe("CloudStackMachineReconciler", func() {
 				tempMachine := &infrav1.CloudStackMachine{}
 				key := client.ObjectKey{Namespace: dummies.ClusterNameSpace, Name: dummies.CSMachine1.Name}
 				if err := k8sClient.Get(ctx, key, tempMachine); err == nil {
-					if tempMachine.Status.Ready == true {
+					if tempMachine.Status.Ready {
 						return true
 					}
 				}
@@ -149,7 +149,7 @@ var _ = Describe("CloudStackMachineReconciler", func() {
 				tempMachine := &infrav1.CloudStackMachine{}
 				key := client.ObjectKey{Namespace: dummies.ClusterNameSpace, Name: dummies.CSMachine1.Name}
 				if err := k8sClient.Get(ctx, key, tempMachine); err == nil {
-					if tempMachine.Status.Ready == true {
+					if tempMachine.Status.Ready {
 						return true
 					}
 				}
@@ -194,7 +194,7 @@ var _ = Describe("CloudStackMachineReconciler", func() {
 				tempMachine := &infrav1.CloudStackMachine{}
 				key := client.ObjectKey{Namespace: dummies.ClusterNameSpace, Name: dummies.CSMachine1.Name}
 				if err := k8sClient.Get(ctx, key, tempMachine); err == nil {
-					if tempMachine.Status.Ready == true {
+					if tempMachine.Status.Ready {
 						return true
 					}
 				}
