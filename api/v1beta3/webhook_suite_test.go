@@ -34,6 +34,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
@@ -96,8 +97,8 @@ var _ = BeforeSuite(func() {
 			Port:    webhookInstallOptions.LocalServingPort,
 			CertDir: webhookInstallOptions.LocalServingCertDir,
 		}),
-		LeaderElection:     false,
-		MetricsBindAddress: "0",
+		LeaderElection: false,
+		Metrics:        metricsserver.Options{BindAddress: "0"},
 	})
 	Expect(err).NotTo(HaveOccurred())
 
