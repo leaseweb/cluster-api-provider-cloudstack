@@ -22,7 +22,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -67,7 +67,7 @@ var _ = Describe("CloudStackIsolatedNetworkReconciler", func() {
 		})
 
 		It("Should succeed if API load balancer is disabled.", func() {
-			dummies.CSCluster.Spec.APIServerLoadBalancer.Enabled = pointer.Bool(false)
+			dummies.CSCluster.Spec.APIServerLoadBalancer.Enabled = ptr.To(false)
 			mockCloudClient.EXPECT().GetOrCreateIsolatedNetwork(g.Any(), g.Any(), g.Any()).AnyTimes()
 			mockCloudClient.EXPECT().AddClusterTag(g.Any(), g.Any(), g.Any()).AnyTimes()
 			mockCloudClient.EXPECT().AssociatePublicIPAddress(g.Any(), g.Any(), g.Any()).AnyTimes().Return(&cloudstack.PublicIpAddress{

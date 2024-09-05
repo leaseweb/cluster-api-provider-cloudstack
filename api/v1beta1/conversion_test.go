@@ -21,7 +21,7 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
 	v1beta1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta1"
@@ -106,7 +106,7 @@ var _ = Describe("Conversion", func() {
 						Port: 443,
 					},
 					APIServerLoadBalancer: &v1beta3.APIServerLoadBalancer{
-						Enabled:         pointer.Bool(true),
+						Enabled:         ptr.To(true),
 						AdditionalPorts: []int{},
 						AllowedCIDRs:    []string{},
 					},

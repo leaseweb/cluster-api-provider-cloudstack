@@ -26,7 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -125,7 +125,7 @@ var _ = Describe("CloudStackMachineReconciler", func() {
 		})
 
 		It("Should call ResolveVMInstanceDetails when CS machine without instanceID deleted", func() {
-			instanceID := pointer.String("instance-id-123")
+			instanceID := ptr.To("instance-id-123")
 			// Mock a call to GetOrCreateVMInstance and set the machine to running.
 			mockCloudClient.EXPECT().GetOrCreateVMInstance(
 				gomock.Any(), gomock.Any(), gomock.Any(),

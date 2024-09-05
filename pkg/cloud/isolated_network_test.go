@@ -24,7 +24,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
@@ -929,7 +929,7 @@ var _ = Describe("Network", func() {
 			dummies.CSCluster.Spec.APIServerLoadBalancer.AllowedCIDRs = append(dummies.CSCluster.Spec.APIServerLoadBalancer.AllowedCIDRs,
 				"192.168.1.0/24",
 				"192.168.2.0/24")
-			dummies.CSCluster.Spec.APIServerLoadBalancer.Enabled = pointer.Bool(false)
+			dummies.CSCluster.Spec.APIServerLoadBalancer.Enabled = ptr.To(false)
 			dummies.CSISONet1.Status.PublicIPID = dummies.PublicIPID
 			dummies.CSISONet1.Status.APIServerLoadBalancer.IPAddressID = dummies.LoadBalancerIPID
 
