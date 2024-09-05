@@ -2,8 +2,6 @@ module sigs.k8s.io/cluster-api-provider-cloudstack-staging/test/e2e
 
 go 1.22.1
 
-toolchain go1.23.0
-
 require (
 	github.com/Shopify/toxiproxy/v2 v2.9.0
 	github.com/apache/cloudstack-go/v2 v2.16.1

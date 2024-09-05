@@ -2,8 +2,6 @@ module sigs.k8s.io/cluster-api-provider-cloudstack
 
 go 1.22.0
 
-toolchain go1.23.0
-
 require (
 	github.com/apache/cloudstack-go/v2 v2.16.1
 	github.com/go-logr/logr v1.4.2
