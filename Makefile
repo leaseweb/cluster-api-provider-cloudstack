@@ -390,7 +390,7 @@ $(RELEASE_DIR)/%: $(RELEASE_MANIFEST_INPUTS)
 
 .PHONY: release-manifests-metrics-port
 release-manifests-metrics-port:
-	make release-manifests RELEASE_MANIFEST_SOURCE_BASE=config/default-with-metrics-port
+	make release-manifests RELEASE_MANIFEST_SOURCE_BASE=config/default
 
 .PHONY: release-staging
 release-staging: ## Builds and push container images and manifests to the staging bucket.

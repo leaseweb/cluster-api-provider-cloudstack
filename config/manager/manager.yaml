@@ -24,18 +24,22 @@ spec:
         - /manager
         args:
         - "--leader-elect"
-        - "--diagnostics-address=127.0.0.1:8080"
-        - "--insecure-diagnostics=true"
+        - "--v=${CAPC_LOGLEVEL:=0}"
+        - "--diagnostics-address=${CAPC_DIAGNOSTICS_ADDRESS:=:8443}"
+        - "--insecure-diagnostics=${CAPC_INSECURE_DIAGNOSTICS:=false}"
+        - "--cloudstackcluster-concurrency=${CAPC_CLOUDSTACKCLUSTER_CONCURRENCY:=10}"
+        - "--cloudstackmachine-concurrency=${CAPC_CLOUDSTACKMACHINE_CONCURRENCY:=10}"
+        - "--cloudstackaffinitygroup-concurrency=${CAPC_CLOUDSTACKAFFINITYGROUP_CONCURRENCY:=5}"
+        - "--cloudstackfailuredomain-concurrency=${CAPC_CLOUDSTACKFAILUREDOMAIN_CONCURRENCY:=5}"
         image: controller:latest
         name: manager
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-          privileged: false
-          runAsUser: 65532
-          runAsGroup: 65532
+        ports:
+          - containerPort: 9440
+            name: healthz
+            protocol: TCP
+          - containerPort: 8443
+            name: metrics
+            protocol: TCP
         livenessProbe:
           httpGet:
             path: /healthz
@@ -48,6 +52,14 @@ spec:
             port: 9440
           initialDelaySeconds: 5
           periodSeconds: 10
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          runAsUser: 65532
+          runAsGroup: 65532
         resources:
           limits:
             cpu: 100m
