@@ -35,7 +35,7 @@ func (r *CloudStackIsolatedNetwork) ConvertFrom(srcRaw conversion.Hub) error {
 	return Convert_v1beta3_CloudStackIsolatedNetwork_To_v1beta2_CloudStackIsolatedNetwork(src, r, nil)
 }
 
-func Convert_v1beta2_CloudStackIsolatedNetworkStatus_To_v1beta3_CloudStackIsolatedNetworkStatus(in *CloudStackIsolatedNetworkStatus, out *v1beta3.CloudStackIsolatedNetworkStatus, s machineryconversion.Scope) error {
+func Convert_v1beta2_CloudStackIsolatedNetworkStatus_To_v1beta3_CloudStackIsolatedNetworkStatus(in *CloudStackIsolatedNetworkStatus, out *v1beta3.CloudStackIsolatedNetworkStatus, _ machineryconversion.Scope) error {
 	out.PublicIPID = in.PublicIPID
 	out.LBRuleID = in.LBRuleID
 	out.LoadBalancerRuleIDs = []string{in.LBRuleID}
@@ -44,7 +44,7 @@ func Convert_v1beta2_CloudStackIsolatedNetworkStatus_To_v1beta3_CloudStackIsolat
 	return nil
 }
 
-func Convert_v1beta3_CloudStackIsolatedNetworkStatus_To_v1beta2_CloudStackIsolatedNetworkStatus(in *v1beta3.CloudStackIsolatedNetworkStatus, out *CloudStackIsolatedNetworkStatus, s machineryconversion.Scope) error {
+func Convert_v1beta3_CloudStackIsolatedNetworkStatus_To_v1beta2_CloudStackIsolatedNetworkStatus(in *v1beta3.CloudStackIsolatedNetworkStatus, out *CloudStackIsolatedNetworkStatus, _ machineryconversion.Scope) error {
 	out.PublicIPID = in.PublicIPID
 	out.LBRuleID = in.LBRuleID
 	out.Ready = in.Ready

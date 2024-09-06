@@ -23,17 +23,9 @@ import (
 )
 
 func Convert_v1beta3_Network_To_v1beta2_Network(in *infrav1.Network, out *Network, s machineryconversion.Scope) error {
-	if err := autoConvert_v1beta3_Network_To_v1beta2_Network(in, out, s); err != nil {
-		return err
-	}
-
-	return nil
+	return autoConvert_v1beta3_Network_To_v1beta2_Network(in, out, s)
 }
 
 func Convert_v1beta3_CloudStackIsolatedNetworkSpec_To_v1beta2_CloudStackIsolatedNetworkSpec(in *infrav1.CloudStackIsolatedNetworkSpec, out *CloudStackIsolatedNetworkSpec, s machineryconversion.Scope) error {
-	if err := autoConvert_v1beta3_CloudStackIsolatedNetworkSpec_To_v1beta2_CloudStackIsolatedNetworkSpec(in, out, s); err != nil {
-		return err
-	}
-
-	return nil
+	return autoConvert_v1beta3_CloudStackIsolatedNetworkSpec_To_v1beta2_CloudStackIsolatedNetworkSpec(in, out, s)
 }

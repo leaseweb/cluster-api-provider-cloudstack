@@ -24,7 +24,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
@@ -90,8 +90,8 @@ var _ = Describe("Instance", func() {
 			vmsResp := &cloudstack.VirtualMachinesMetric{Id: *dummies.CSMachine1.Spec.InstanceID}
 			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID).Return(vmsResp, 1, nil)
 			Ω(client.ResolveVMInstanceDetails(dummies.CSMachine1)).Should(Succeed())
-			Ω(dummies.CSMachine1.Spec.ProviderID).Should(Equal(pointer.String("cloudstack:///" + vmsResp.Id)))
-			Ω(dummies.CSMachine1.Spec.InstanceID).Should(Equal(pointer.String(vmsResp.Id)))
+			Ω(dummies.CSMachine1.Spec.ProviderID).Should(Equal(ptr.To("cloudstack:///" + vmsResp.Id)))
+			Ω(dummies.CSMachine1.Spec.InstanceID).Should(Equal(ptr.To(vmsResp.Id)))
 		})
 
 		It("handles an unknown error when fetching by name", func() {
@@ -116,8 +116,8 @@ var _ = Describe("Instance", func() {
 
 			Ω(client.ResolveVMInstanceDetails(dummies.CSMachine1)).Should(Succeed())
 			Ω(dummies.CSMachine1.Spec.ProviderID).Should(Equal(
-				pointer.String("cloudstack:///" + *dummies.CSMachine1.Spec.InstanceID)))
-			Ω(dummies.CSMachine1.Spec.InstanceID).Should(Equal(pointer.String(*dummies.CSMachine1.Spec.InstanceID)))
+				ptr.To("cloudstack:///" + *dummies.CSMachine1.Spec.InstanceID)))
+			Ω(dummies.CSMachine1.Spec.InstanceID).Should(Equal(ptr.To(*dummies.CSMachine1.Spec.InstanceID)))
 		})
 	})
 
@@ -671,7 +671,7 @@ var _ = Describe("Instance", func() {
 			dummies.CSMachine1.Spec.Template.ID = ""
 			dummies.CSMachine1.Spec.Offering.Name = offeringName
 			dummies.CSMachine1.Spec.Template.Name = templateName
-			dummies.CSMachine1.Spec.UncompressedUserData = pointer.Bool(true)
+			dummies.CSMachine1.Spec.UncompressedUserData = ptr.To(true)
 
 			vms.EXPECT().
 				GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID).

@@ -612,7 +612,7 @@ func autoConvert_v1beta1_CloudStackMachineSpec_To_v1beta3_CloudStackMachineSpec(
 	if err := Convert_v1beta1_CloudStackResourceIdentifier_To_v1beta3_CloudStackResourceIdentifier(&in.Template, &out.Template, s); err != nil {
 		return err
 	}
-	// WARNING: in.DiskOffering requires manual conversion: inconvertible types (./api/v1beta1.CloudStackResourceDiskOffering vs *sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3.CloudStackResourceDiskOffering)
+	// WARNING: in.DiskOffering requires manual conversion: inconvertible types (sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta1.CloudStackResourceDiskOffering vs *sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3.CloudStackResourceDiskOffering)
 	out.SSHKey = in.SSHKey
 	out.Details = *(*map[string]string)(unsafe.Pointer(&in.Details))
 	out.AffinityGroupIDs = *(*[]string)(unsafe.Pointer(&in.AffinityGroupIDs))
@@ -635,7 +635,7 @@ func autoConvert_v1beta3_CloudStackMachineSpec_To_v1beta1_CloudStackMachineSpec(
 	if err := Convert_v1beta3_CloudStackResourceIdentifier_To_v1beta1_CloudStackResourceIdentifier(&in.Template, &out.Template, s); err != nil {
 		return err
 	}
-	// WARNING: in.DiskOffering requires manual conversion: inconvertible types (*sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3.CloudStackResourceDiskOffering vs ./api/v1beta1.CloudStackResourceDiskOffering)
+	// WARNING: in.DiskOffering requires manual conversion: inconvertible types (*sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3.CloudStackResourceDiskOffering vs sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta1.CloudStackResourceDiskOffering)
 	out.SSHKey = in.SSHKey
 	out.Details = *(*map[string]string)(unsafe.Pointer(&in.Details))
 	out.AffinityGroupIDs = *(*[]string)(unsafe.Pointer(&in.AffinityGroupIDs))

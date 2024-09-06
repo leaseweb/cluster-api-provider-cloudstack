@@ -18,7 +18,7 @@ package v1beta2
 
 import (
 	machineryconversion "k8s.io/apimachinery/pkg/conversion"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
 
 	"sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
@@ -52,7 +52,7 @@ func Convert_v1beta2_CloudStackClusterSpec_To_v1beta3_CloudStackClusterSpec(in *
 	}
 
 	out.APIServerLoadBalancer = &v1beta3.APIServerLoadBalancer{
-		Enabled: pointer.Bool(true),
+		Enabled: ptr.To(true),
 	}
 
 	return nil
