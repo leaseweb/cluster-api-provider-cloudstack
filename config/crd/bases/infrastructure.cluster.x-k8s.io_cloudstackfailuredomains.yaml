@@ -63,14 +63,17 @@ spec:
               name:
                 description: The failure domain unique name.
                 type: string
+              project:
+                description: CloudStack project.
+                type: string
               zone:
                 description: The ACS Zone for this failure domain.
                 properties:
                   id:
-                    description: ID.
+                    description: Zone ID.
                     type: string
                   name:
-                    description: Name.
+                    description: Zone Name.
                     type: string
                   network:
                     description: The network within the Zone to use.
@@ -163,14 +166,17 @@ spec:
               name:
                 description: The failure domain unique name.
                 type: string
+              project:
+                description: CloudStack project.
+                type: string
               zone:
                 description: The ACS Zone for this failure domain.
                 properties:
                   id:
-                    description: ID.
+                    description: Zone ID.
                     type: string
                   name:
-                    description: Name.
+                    description: Zone Name.
                     type: string
                   network:
                     description: The network within the Zone to use.

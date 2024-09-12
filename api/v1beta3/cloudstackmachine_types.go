@@ -97,16 +97,6 @@ func (r *CloudStackMachine) CompressUserdata() bool {
 	return r.Spec.UncompressedUserData == nil || !*r.Spec.UncompressedUserData
 }
 
-type CloudStackResourceIdentifier struct {
-	// Cloudstack resource ID.
-	//+optional
-	ID string `json:"id,omitempty"`
-
-	// Cloudstack resource Name.
-	//+optional
-	Name string `json:"name,omitempty"`
-}
-
 type CloudStackResourceDiskOffering struct {
 	CloudStackResourceIdentifier `json:",inline"`
 	// Desired disk size. Used if disk offering is customizable as indicated by the ACS field 'Custom Disk Size'.

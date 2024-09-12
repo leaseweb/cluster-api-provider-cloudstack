@@ -89,6 +89,7 @@ func (c *client) AssociatePublicIPAddress(
 	p := c.cs.Address.NewAssociateIpAddressParams()
 	p.SetIpaddress(publicAddress.Ipaddress)
 	p.SetNetworkid(isoNet.Spec.ID)
+	setIfNotEmpty(c.user.Project.ID, p.SetProjectid)
 	if _, err := c.cs.Address.AssociateIpAddress(p); err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
@@ -113,9 +114,8 @@ func (c *client) CreateIsolatedNetwork(fd *infrav1.CloudStackFailureDomain, isoN
 	// Do isolated network creation.
 	p := c.cs.Network.NewCreateNetworkParams(isoNet.Spec.Name, offeringID, fd.Spec.Zone.ID)
 	p.SetDisplaytext(isoNet.Spec.Name)
-	if isoNet.Spec.Domain != "" {
-		p.SetNetworkdomain(isoNet.Spec.Domain)
-	}
+	setIfNotEmpty(c.user.Project.ID, p.SetProjectid)
+	setIfNotEmpty(isoNet.Spec.Domain, p.SetNetworkdomain)
 	if isoNet.Spec.CIDR != "" {
 		m, err := parseCIDR(isoNet.Spec.CIDR)
 		if err != nil {
@@ -174,6 +174,7 @@ func (c *client) GetPublicIP(
 	p.SetAllocatedonly(false)
 	p.SetZoneid(fd.Spec.Zone.ID)
 	setIfNotEmpty(desiredIP, p.SetIpaddress)
+	setIfNotEmpty(c.user.Project.ID, p.SetProjectid)
 	publicAddresses, err := c.cs.Address.ListPublicIpAddresses(p)
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
@@ -199,7 +200,7 @@ func (c *client) GetPublicIP(
 
 // GetIsolatedNetwork gets an isolated network in the relevant Zone.
 func (c *client) GetIsolatedNetwork(isoNet *infrav1.CloudStackIsolatedNetwork) (retErr error) {
-	netDetails, count, err := c.cs.Network.GetNetworkByName(isoNet.Spec.Name)
+	netDetails, count, err := c.cs.Network.GetNetworkByName(isoNet.Spec.Name, cloudstack.WithProject(c.user.Project.ID))
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 		retErr = multierror.Append(retErr, errors.Wrapf(err, "could not get Network ID from %s", isoNet.Spec.Name))
@@ -213,7 +214,7 @@ func (c *client) GetIsolatedNetwork(isoNet *infrav1.CloudStackIsolatedNetwork) (
 		return nil
 	}
 
-	netDetails, count, err = c.cs.Network.GetNetworkByID(isoNet.Spec.ID)
+	netDetails, count, err = c.cs.Network.GetNetworkByID(isoNet.Spec.ID, cloudstack.WithProject(c.user.Project.ID))
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
@@ -231,6 +232,7 @@ func (c *client) GetIsolatedNetwork(isoNet *infrav1.CloudStackIsolatedNetwork) (
 func (c *client) GetLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNetwork) ([]*cloudstack.LoadBalancerRule, error) {
 	p := c.cs.LoadBalancer.NewListLoadBalancerRulesParams()
 	p.SetPublicipid(isoNet.Status.APIServerLoadBalancer.IPAddressID)
+	setIfNotEmpty(c.user.Project.ID, p.SetProjectid)
 	loadBalancerRules, err := c.cs.LoadBalancer.ListLoadBalancerRules(p)
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
@@ -440,6 +442,7 @@ func (c *client) GetFirewallRules(isoNet *infrav1.CloudStackIsolatedNetwork) ([]
 	p := c.cs.Firewall.NewListFirewallRulesParams()
 	p.SetIpaddressid(isoNet.Status.APIServerLoadBalancer.IPAddressID)
 	p.SetNetworkid(isoNet.Spec.ID)
+	setIfNotEmpty(c.user.Project.ID, p.SetProjectid)
 	fwRules, err := c.cs.Firewall.ListFirewallRules(p)
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
@@ -883,7 +886,7 @@ func (c *client) DisassociatePublicIPAddressIfNotInUse(ipAddressID string) (bool
 	}
 	if tagsAllowDisposal, err := c.DoClusterTagsAllowDisposal(ResourceTypeIPAddress, ipAddressID); err != nil {
 		return false, err
-	} else if publicIP, _, err := c.cs.Address.GetPublicIpAddressByID(ipAddressID); err != nil {
+	} else if publicIP, _, err := c.cs.Address.GetPublicIpAddressByID(ipAddressID, cloudstack.WithProject(c.user.Project.ID)); err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
 		return false, err

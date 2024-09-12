@@ -681,6 +681,7 @@ func autoConvert_v1beta2_CloudStackFailureDomainSpec_To_v1beta3_CloudStackFailur
 	}
 	out.Account = in.Account
 	out.Domain = in.Domain
+	out.Project = in.Project
 	out.ACSEndpoint = in.ACSEndpoint
 	return nil
 }
@@ -697,6 +698,7 @@ func autoConvert_v1beta3_CloudStackFailureDomainSpec_To_v1beta2_CloudStackFailur
 	}
 	out.Account = in.Account
 	out.Domain = in.Domain
+	out.Project = in.Project
 	out.ACSEndpoint = in.ACSEndpoint
 	return nil
 }
@@ -1247,8 +1249,8 @@ func Convert_v1beta3_CloudStackResourceIdentifier_To_v1beta2_CloudStackResourceI
 }
 
 func autoConvert_v1beta2_CloudStackZoneSpec_To_v1beta3_CloudStackZoneSpec(in *CloudStackZoneSpec, out *v1beta3.CloudStackZoneSpec, s conversion.Scope) error {
-	out.Name = in.Name
 	out.ID = in.ID
+	out.Name = in.Name
 	if err := Convert_v1beta2_Network_To_v1beta3_Network(&in.Network, &out.Network, s); err != nil {
 		return err
 	}
@@ -1261,8 +1263,8 @@ func Convert_v1beta2_CloudStackZoneSpec_To_v1beta3_CloudStackZoneSpec(in *CloudS
 }
 
 func autoConvert_v1beta3_CloudStackZoneSpec_To_v1beta2_CloudStackZoneSpec(in *v1beta3.CloudStackZoneSpec, out *CloudStackZoneSpec, s conversion.Scope) error {
-	out.Name = in.Name
 	out.ID = in.ID
+	out.Name = in.Name
 	if err := Convert_v1beta3_Network_To_v1beta2_Network(&in.Network, &out.Network, s); err != nil {
 		return err
 	}
@@ -1276,8 +1278,8 @@ func Convert_v1beta3_CloudStackZoneSpec_To_v1beta2_CloudStackZoneSpec(in *v1beta
 
 func autoConvert_v1beta2_Network_To_v1beta3_Network(in *Network, out *v1beta3.Network, s conversion.Scope) error {
 	out.ID = in.ID
-	out.Type = in.Type
 	out.Name = in.Name
+	out.Type = in.Type
 	return nil
 }
 
@@ -1288,8 +1290,8 @@ func Convert_v1beta2_Network_To_v1beta3_Network(in *Network, out *v1beta3.Networ
 
 func autoConvert_v1beta3_Network_To_v1beta2_Network(in *v1beta3.Network, out *Network, s conversion.Scope) error {
 	out.ID = in.ID
-	out.Type = in.Type
 	out.Name = in.Name
+	out.Type = in.Type
 	// WARNING: in.CIDR requires manual conversion: does not exist in peer-type
 	// WARNING: in.Domain requires manual conversion: does not exist in peer-type
 	return nil

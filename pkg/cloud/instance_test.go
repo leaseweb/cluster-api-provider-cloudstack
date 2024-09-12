@@ -76,42 +76,42 @@ var _ = Describe("Instance", func() {
 
 	Context("when fetching a VM instance", func() {
 		It("Handles an unknown error when fetching by ID", func() {
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID).Return(nil, -1, unknownError)
+			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).Return(nil, -1, unknownError)
 			Ω(client.ResolveVMInstanceDetails(dummies.CSMachine1)).To(MatchError(unknownErrorMessage))
 		})
 
 		It("Handles finding more than one VM instance by ID", func() {
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID).Return(nil, 2, nil)
+			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).Return(nil, 2, nil)
 			Ω(client.ResolveVMInstanceDetails(dummies.CSMachine1)).
 				Should(MatchError("found more than one VM Instance with ID " + *dummies.CSMachine1.Spec.InstanceID))
 		})
 
 		It("sets dummies.CSMachine1 spec and status values when VM instance found by ID", func() {
 			vmsResp := &cloudstack.VirtualMachinesMetric{Id: *dummies.CSMachine1.Spec.InstanceID}
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID).Return(vmsResp, 1, nil)
+			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).Return(vmsResp, 1, nil)
 			Ω(client.ResolveVMInstanceDetails(dummies.CSMachine1)).Should(Succeed())
 			Ω(dummies.CSMachine1.Spec.ProviderID).Should(Equal(ptr.To("cloudstack:///" + vmsResp.Id)))
 			Ω(dummies.CSMachine1.Spec.InstanceID).Should(Equal(ptr.To(vmsResp.Id)))
 		})
 
 		It("handles an unknown error when fetching by name", func() {
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID).Return(nil, -1, notFoundError)
-			vms.EXPECT().GetVirtualMachinesMetricByName(dummies.CSMachine1.Name).Return(nil, -1, unknownError)
+			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).Return(nil, -1, notFoundError)
+			vms.EXPECT().GetVirtualMachinesMetricByName(dummies.CSMachine1.Name, gomock.Any()).Return(nil, -1, unknownError)
 
 			Ω(client.ResolveVMInstanceDetails(dummies.CSMachine1)).Should(MatchError(unknownErrorMessage))
 		})
 
 		It("handles finding more than one VM instance by Name", func() {
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID).Return(nil, -1, notFoundError)
-			vms.EXPECT().GetVirtualMachinesMetricByName(dummies.CSMachine1.Name).Return(nil, 2, nil)
+			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).Return(nil, -1, notFoundError)
+			vms.EXPECT().GetVirtualMachinesMetricByName(dummies.CSMachine1.Name, gomock.Any()).Return(nil, 2, nil)
 
 			Ω(client.ResolveVMInstanceDetails(dummies.CSMachine1)).Should(
 				MatchError("found more than one VM Instance with name " + dummies.CSMachine1.Name))
 		})
 
 		It("sets dummies.CSMachine1 spec and status values when VM instance found by Name", func() {
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID).Return(nil, -1, notFoundError)
-			vms.EXPECT().GetVirtualMachinesMetricByName(dummies.CSMachine1.Name).
+			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).Return(nil, -1, notFoundError)
+			vms.EXPECT().GetVirtualMachinesMetricByName(dummies.CSMachine1.Name, gomock.Any()).
 				Return(&cloudstack.VirtualMachinesMetric{Id: *dummies.CSMachine1.Spec.InstanceID}, -1, nil)
 
 			Ω(client.ResolveVMInstanceDetails(dummies.CSMachine1)).Should(Succeed())
@@ -125,19 +125,19 @@ var _ = Describe("Instance", func() {
 		vmMetricResp := &cloudstack.VirtualMachinesMetric{}
 
 		expectVMNotFound := func() {
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID).Return(nil, -1, notFoundError)
-			vms.EXPECT().GetVirtualMachinesMetricByName(dummies.CSMachine1.Name).Return(nil, -1, notFoundError)
+			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).Return(nil, -1, notFoundError)
+			vms.EXPECT().GetVirtualMachinesMetricByName(dummies.CSMachine1.Name, gomock.Any()).Return(nil, -1, notFoundError)
 		}
 
 		It("doesn't re-create if one already exists.", func() {
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID).Return(vmMetricResp, -1, nil)
+			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).Return(vmMetricResp, -1, nil)
 			Ω(client.GetOrCreateVMInstance(
 				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
 				Should(Succeed())
 		})
 
 		It("returns unknown error while fetching VM instance", func() {
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID).Return(nil, -1, unknownError)
+			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).Return(nil, -1, unknownError)
 			Ω(client.GetOrCreateVMInstance(
 				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
 				Should(MatchError(unknownErrorMessage))
@@ -170,7 +170,7 @@ var _ = Describe("Instance", func() {
 					Id:   dummies.CSMachine1.Spec.Offering.ID,
 					Name: dummies.CSMachine1.Spec.Offering.Name,
 				}, 1, nil)
-			ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any()).
+			ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).
 				Return("", -1, unknownError)
 			Ω(client.GetOrCreateVMInstance(
 				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
@@ -185,7 +185,7 @@ var _ = Describe("Instance", func() {
 					Id:   dummies.CSMachine1.Spec.Offering.ID,
 					Name: dummies.CSMachine1.Spec.Offering.Name,
 				}, 1, nil)
-			ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any()).Return("", 2, nil)
+			ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).Return("", 2, nil)
 			Ω(client.GetOrCreateVMInstance(
 				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
 				ShouldNot(Succeed())
@@ -199,7 +199,7 @@ var _ = Describe("Instance", func() {
 					Id:   dummies.CSMachine1.Spec.Offering.ID,
 					Name: dummies.CSMachine1.Spec.Offering.Name,
 				}, 1, nil)
-			ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any()).Return(dummies.CSMachine1.Spec.Template.ID, 1, nil)
+			ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).Return(dummies.CSMachine1.Spec.Template.ID, 1, nil)
 			dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).Return(diskOfferingFakeID, 2, nil)
 			Ω(client.GetOrCreateVMInstance(
 				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
@@ -213,9 +213,9 @@ var _ = Describe("Instance", func() {
 					Id:   dummies.CSMachine1.Spec.Offering.ID,
 					Name: dummies.CSMachine1.Spec.Offering.Name,
 				}, 1, nil)
-			ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any()).Return(dummies.CSMachine1.Spec.Template.ID, 1, nil)
+			ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).Return(dummies.CSMachine1.Spec.Template.ID, 1, nil)
 			dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).Return(diskOfferingFakeID, 1, nil)
-			dos.EXPECT().GetDiskOfferingByID(diskOfferingFakeID).Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, unknownError)
+			dos.EXPECT().GetDiskOfferingByID(diskOfferingFakeID, gomock.Any()).Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, unknownError)
 			Ω(client.GetOrCreateVMInstance(
 				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
 				ShouldNot(Succeed())
@@ -229,9 +229,9 @@ var _ = Describe("Instance", func() {
 					Id:   dummies.CSMachine1.Spec.Offering.ID,
 					Name: dummies.CSMachine1.Spec.Offering.Name,
 				}, 1, nil)
-			ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any()).Return(dummies.CSMachine1.Spec.Template.ID, 1, nil)
+			ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).Return(dummies.CSMachine1.Spec.Template.ID, 1, nil)
 			dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).Return(diskOfferingFakeID, 1, nil)
-			dos.EXPECT().GetDiskOfferingByID(diskOfferingFakeID).Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, nil)
+			dos.EXPECT().GetDiskOfferingByID(diskOfferingFakeID, gomock.Any()).Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, nil)
 			Ω(client.GetOrCreateVMInstance(
 				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
 				ShouldNot(Succeed())
@@ -247,9 +247,9 @@ var _ = Describe("Instance", func() {
 					Cpunumber: 1,
 					Memory:    1024,
 				}, 1, nil)
-			ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any()).Return(dummies.CSMachine1.Spec.Template.ID, 1, nil)
+			ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).Return(dummies.CSMachine1.Spec.Template.ID, 1, nil)
 			dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).Return(diskOfferingFakeID, 1, nil)
-			dos.EXPECT().GetDiskOfferingByID(diskOfferingFakeID).Return(&cloudstack.DiskOffering{Iscustomized: true}, 1, nil)
+			dos.EXPECT().GetDiskOfferingByID(diskOfferingFakeID, gomock.Any()).Return(&cloudstack.DiskOffering{Iscustomized: true}, 1, nil)
 			Ω(client.GetOrCreateVMInstance(
 				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
 				ShouldNot(Succeed())
@@ -274,6 +274,12 @@ var _ = Describe("Instance", func() {
 							VMAvailable:     "20",
 						},
 						CPUAvailable:    "1",
+						MemoryAvailable: "2048",
+						VMAvailable:     "20",
+					},
+					Project: cloud.Project{
+						ID:              "123",
+						CPUAvailable:    "20",
 						MemoryAvailable: "2048",
 						VMAvailable:     "20",
 					},
@@ -305,11 +311,51 @@ var _ = Describe("Instance", func() {
 						MemoryAvailable: "2048",
 						VMAvailable:     "20",
 					},
+					Project: cloud.Project{
+						ID:              "123",
+						CPUAvailable:    "20",
+						MemoryAvailable: "2048",
+						VMAvailable:     "20",
+					},
 				}
 				c := cloud.NewClientFromCSAPIClient(mockClient, user)
 				Ω(c.GetOrCreateVMInstance(
 					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
 					Should(MatchError(MatchRegexp("CPU available .* in domain can't fulfil the requirement:.*")))
+			})
+
+			It("returns errors when there are not enough available CPU in project", func() {
+				expectVMNotFound()
+				dummies.CSMachine1.Spec.DiskOffering.CustomSize = 0
+				sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).
+					Return(&cloudstack.ServiceOffering{
+						Id:        dummies.CSMachine1.Spec.Offering.ID,
+						Name:      dummies.CSMachine1.Spec.Offering.Name,
+						Cpunumber: 2,
+						Memory:    1024,
+					}, 1, nil)
+				user := &cloud.User{
+					Account: cloud.Account{
+						Domain: cloud.Domain{
+							CPUAvailable:    "20",
+							MemoryAvailable: "2048",
+							VMAvailable:     "20",
+						},
+						CPUAvailable:    "20",
+						MemoryAvailable: "2048",
+						VMAvailable:     "20",
+					},
+					Project: cloud.Project{
+						ID:              "123",
+						CPUAvailable:    "1",
+						MemoryAvailable: "2048",
+						VMAvailable:     "20",
+					},
+				}
+				c := cloud.NewClientFromCSAPIClient(mockClient, user)
+				Ω(c.GetOrCreateVMInstance(
+					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
+					Should(MatchError(MatchRegexp("CPU available .* in project can't fulfil the requirement:.*")))
 			})
 
 			It("returns errors when there is not enough available memory in account", func() {
@@ -331,6 +377,12 @@ var _ = Describe("Instance", func() {
 						},
 						CPUAvailable:    "20",
 						MemoryAvailable: "512",
+						VMAvailable:     "20",
+					},
+					Project: cloud.Project{
+						ID:              "123",
+						CPUAvailable:    "1",
+						MemoryAvailable: "2048",
 						VMAvailable:     "20",
 					},
 				}
@@ -361,11 +413,51 @@ var _ = Describe("Instance", func() {
 						MemoryAvailable: "2048",
 						VMAvailable:     "20",
 					},
+					Project: cloud.Project{
+						ID:              "123",
+						CPUAvailable:    "1",
+						MemoryAvailable: "2048",
+						VMAvailable:     "20",
+					},
 				}
 				c := cloud.NewClientFromCSAPIClient(mockClient, user)
 				Ω(c.GetOrCreateVMInstance(
 					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
 					Should(MatchError(MatchRegexp("memory available .* in domain can't fulfil the requirement:.*")))
+			})
+
+			It("returns errors when there is not enough available memory in project", func() {
+				expectVMNotFound()
+				dummies.CSMachine1.Spec.DiskOffering.CustomSize = 0
+				sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).
+					Return(&cloudstack.ServiceOffering{
+						Id:        dummies.CSMachine1.Spec.Offering.ID,
+						Name:      dummies.CSMachine1.Spec.Offering.Name,
+						Cpunumber: 2,
+						Memory:    1024,
+					}, 1, nil)
+				user := &cloud.User{
+					Account: cloud.Account{
+						Domain: cloud.Domain{
+							CPUAvailable:    "20",
+							MemoryAvailable: "2048",
+							VMAvailable:     "20",
+						},
+						CPUAvailable:    "20",
+						MemoryAvailable: "2048",
+						VMAvailable:     "20",
+					},
+					Project: cloud.Project{
+						ID:              "123",
+						CPUAvailable:    "20",
+						MemoryAvailable: "512",
+						VMAvailable:     "20",
+					},
+				}
+				c := cloud.NewClientFromCSAPIClient(mockClient, user)
+				Ω(c.GetOrCreateVMInstance(
+					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
+					Should(MatchError(MatchRegexp("memory available .* in project can't fulfil the requirement:.*")))
 			})
 
 			It("returns errors when there is not enough available VM limit in account", func() {
@@ -388,6 +480,12 @@ var _ = Describe("Instance", func() {
 						CPUAvailable:    "20",
 						MemoryAvailable: "2048",
 						VMAvailable:     "0",
+					},
+					Project: cloud.Project{
+						ID:              "123",
+						CPUAvailable:    "20",
+						MemoryAvailable: "512",
+						VMAvailable:     "20",
 					},
 				}
 				c := cloud.NewClientFromCSAPIClient(mockClient, user)
@@ -417,12 +515,52 @@ var _ = Describe("Instance", func() {
 						MemoryAvailable: "2048",
 						VMAvailable:     "10",
 					},
+					Project: cloud.Project{
+						ID:              "123",
+						CPUAvailable:    "20",
+						MemoryAvailable: "512",
+						VMAvailable:     "20",
+					},
 				}
 				c := cloud.NewClientFromCSAPIClient(mockClient, user)
 				Ω(c.GetOrCreateVMInstance(
 					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
 					Should(MatchError("VM limit in domain has reached its maximum value"))
 			})
+		})
+
+		It("returns errors when there is not enough available VM limit in project", func() {
+			expectVMNotFound()
+			dummies.CSMachine1.Spec.DiskOffering.CustomSize = 0
+			sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).
+				Return(&cloudstack.ServiceOffering{
+					Id:        dummies.CSMachine1.Spec.Offering.ID,
+					Name:      dummies.CSMachine1.Spec.Offering.Name,
+					Cpunumber: 2,
+					Memory:    1024,
+				}, 1, nil)
+			user := &cloud.User{
+				Account: cloud.Account{
+					Domain: cloud.Domain{
+						CPUAvailable:    "20",
+						MemoryAvailable: "2048",
+						VMAvailable:     "10",
+					},
+					CPUAvailable:    "20",
+					MemoryAvailable: "2048",
+					VMAvailable:     "10",
+				},
+				Project: cloud.Project{
+					ID:              "123",
+					CPUAvailable:    "20",
+					MemoryAvailable: "2048",
+					VMAvailable:     "0",
+				},
+			}
+			c := cloud.NewClientFromCSAPIClient(mockClient, user)
+			Ω(c.GetOrCreateVMInstance(
+				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
+				Should(MatchError("VM Limit in project has reached it's maximum value"))
 		})
 
 		It("handles deployment errors", func() {
@@ -434,11 +572,11 @@ var _ = Describe("Instance", func() {
 					Cpunumber: 1,
 					Memory:    1024,
 				}, 1, nil)
-			ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any()).
+			ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).
 				Return(templateFakeID, 1, nil)
 			dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).
 				Return(diskOfferingFakeID, 1, nil)
-			dos.EXPECT().GetDiskOfferingByID(diskOfferingFakeID).
+			dos.EXPECT().GetDiskOfferingByID(diskOfferingFakeID, gomock.Any()).
 				Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, nil)
 			vms.EXPECT().NewDeployVirtualMachineParams(offeringFakeID, templateFakeID, dummies.Zone1.ID).
 				Return(&cloudstack.DeployVirtualMachineParams{})
@@ -453,12 +591,12 @@ var _ = Describe("Instance", func() {
 		Context("when using UUIDs and/or names to locate service offerings and templates", func() {
 			BeforeEach(func() {
 				gomock.InOrder(
-					vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID).
+					vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).
 						Return(nil, -1, notFoundError),
-					vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID).
+					vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).
 						Return(&cloudstack.VirtualMachinesMetric{}, 1, nil))
 
-				vms.EXPECT().GetVirtualMachinesMetricByName(dummies.CSMachine1.Name).Return(nil, -1, notFoundError)
+				vms.EXPECT().GetVirtualMachinesMetricByName(dummies.CSMachine1.Name, gomock.Any()).Return(nil, -1, notFoundError)
 			})
 
 			ActionAndAssert := func() {
@@ -504,8 +642,8 @@ var _ = Describe("Instance", func() {
 					Memory:    1024,
 				}, 1, nil)
 				dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).Return(diskOfferingFakeID, 1, nil)
-				dos.EXPECT().GetDiskOfferingByID(dummies.CSMachine1.Spec.DiskOffering.ID).Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, nil)
-				ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any()).
+				dos.EXPECT().GetDiskOfferingByID(dummies.CSMachine1.Spec.DiskOffering.ID, gomock.Any()).Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, nil)
+				ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).
 					Return(templateFakeID, 1, nil)
 
 				ActionAndAssert()
@@ -523,7 +661,7 @@ var _ = Describe("Instance", func() {
 					Cpunumber: 1,
 					Memory:    1024,
 				}, 1, nil)
-				ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any()).
+				ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).
 					Return(templateFakeID, 1, nil)
 
 				ActionAndAssert()
@@ -536,15 +674,15 @@ var _ = Describe("Instance", func() {
 				dummies.CSMachine1.Spec.Offering.Name = ""
 				dummies.CSMachine1.Spec.Template.Name = templateName
 
-				sos.EXPECT().GetServiceOfferingByID(dummies.CSMachine1.Spec.Offering.ID).Return(&cloudstack.ServiceOffering{
+				sos.EXPECT().GetServiceOfferingByID(dummies.CSMachine1.Spec.Offering.ID, gomock.Any()).Return(&cloudstack.ServiceOffering{
 					Id:        offeringFakeID,
 					Cpunumber: 1,
 					Memory:    1024,
 				}, 1, nil)
-				ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any()).
+				ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).
 					Return(templateFakeID, 1, nil)
 				dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).Return(diskOfferingFakeID, 1, nil)
-				dos.EXPECT().GetDiskOfferingByID(dummies.CSMachine1.Spec.DiskOffering.ID).Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, nil)
+				dos.EXPECT().GetDiskOfferingByID(dummies.CSMachine1.Spec.DiskOffering.ID, gomock.Any()).Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, nil)
 
 				ActionAndAssert()
 			})
@@ -562,9 +700,9 @@ var _ = Describe("Instance", func() {
 					Memory:    1024,
 				}, 1, nil)
 
-				ts.EXPECT().GetTemplateByID(dummies.CSMachine1.Spec.Template.ID, executableFilter).Return(&cloudstack.Template{Name: ""}, 1, nil)
+				ts.EXPECT().GetTemplateByID(dummies.CSMachine1.Spec.Template.ID, executableFilter, gomock.Any()).Return(&cloudstack.Template{Name: ""}, 1, nil)
 				dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).Return(diskOfferingFakeID, 1, nil)
-				dos.EXPECT().GetDiskOfferingByID(dummies.CSMachine1.Spec.DiskOffering.ID).Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, nil)
+				dos.EXPECT().GetDiskOfferingByID(dummies.CSMachine1.Spec.DiskOffering.ID, gomock.Any()).Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, nil)
 
 				ActionAndAssert()
 			})
@@ -576,7 +714,7 @@ var _ = Describe("Instance", func() {
 				dummies.CSMachine1.Spec.Offering.Name = ""
 				dummies.CSMachine1.Spec.Template.Name = ""
 
-				sos.EXPECT().GetServiceOfferingByID(dummies.CSMachine1.Spec.Offering.ID).
+				sos.EXPECT().GetServiceOfferingByID(dummies.CSMachine1.Spec.Offering.ID, gomock.Any()).
 					Return(&cloudstack.ServiceOffering{
 						Id:        offeringFakeID,
 						Cpunumber: 1,
@@ -584,9 +722,9 @@ var _ = Describe("Instance", func() {
 					}, 1, nil)
 				dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).
 					Return(diskOfferingFakeID, 1, nil)
-				dos.EXPECT().GetDiskOfferingByID(dummies.CSMachine1.Spec.DiskOffering.ID).
+				dos.EXPECT().GetDiskOfferingByID(dummies.CSMachine1.Spec.DiskOffering.ID, gomock.Any()).
 					Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, nil)
-				ts.EXPECT().GetTemplateByID(dummies.CSMachine1.Spec.Template.ID, executableFilter).
+				ts.EXPECT().GetTemplateByID(dummies.CSMachine1.Spec.Template.ID, executableFilter, gomock.Any()).
 					Return(&cloudstack.Template{Name: templateName}, 1, nil)
 
 				ActionAndAssert()
@@ -599,15 +737,15 @@ var _ = Describe("Instance", func() {
 				dummies.CSMachine1.Spec.Offering.Name = offeringName
 				dummies.CSMachine1.Spec.Template.Name = templateName
 
-				sos.EXPECT().GetServiceOfferingByID(dummies.CSMachine1.Spec.Offering.ID).Return(&cloudstack.ServiceOffering{
+				sos.EXPECT().GetServiceOfferingByID(dummies.CSMachine1.Spec.Offering.ID, gomock.Any()).Return(&cloudstack.ServiceOffering{
 					Id:        dummies.CSMachine1.Spec.Offering.ID,
 					Name:      dummies.CSMachine1.Spec.Offering.Name,
 					Cpunumber: 1,
 					Memory:    1024,
 				}, 1, nil)
-				ts.EXPECT().GetTemplateByID(dummies.CSMachine1.Spec.Template.ID, executableFilter).Return(&cloudstack.Template{Name: templateName}, 1, nil)
+				ts.EXPECT().GetTemplateByID(dummies.CSMachine1.Spec.Template.ID, executableFilter, gomock.Any()).Return(&cloudstack.Template{Name: templateName}, 1, nil)
 				dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).Return(diskOfferingFakeID, 1, nil)
-				dos.EXPECT().GetDiskOfferingByID(dummies.CSMachine1.Spec.DiskOffering.ID).Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, nil)
+				dos.EXPECT().GetDiskOfferingByID(dummies.CSMachine1.Spec.DiskOffering.ID, gomock.Any()).Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, nil)
 
 				ActionAndAssert()
 			})
@@ -615,9 +753,9 @@ var _ = Describe("Instance", func() {
 
 		Context("when using both UUIDs and names to locate service offerings and templates", func() {
 			BeforeEach(func() {
-				vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID).
+				vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).
 					Return(nil, -1, notFoundError)
-				vms.EXPECT().GetVirtualMachinesMetricByName(dummies.CSMachine1.Name).Return(nil, -1, notFoundError)
+				vms.EXPECT().GetVirtualMachinesMetricByName(dummies.CSMachine1.Name, gomock.Any()).Return(nil, -1, notFoundError)
 			})
 
 			It("works with Id and name both provided, offering name mismatch", func() {
@@ -626,7 +764,7 @@ var _ = Describe("Instance", func() {
 				dummies.CSMachine1.Spec.Offering.Name = offeringName
 				dummies.CSMachine1.Spec.Template.Name = templateName
 
-				sos.EXPECT().GetServiceOfferingByID(dummies.CSMachine1.Spec.Offering.ID).Return(&cloudstack.ServiceOffering{Name: "offering-not-match"}, 1, nil)
+				sos.EXPECT().GetServiceOfferingByID(dummies.CSMachine1.Spec.Offering.ID, gomock.Any()).Return(&cloudstack.ServiceOffering{Name: "offering-not-match"}, 1, nil)
 				requiredRegexp := "offering name %s does not match name %s returned using UUID %s"
 				Ω(client.GetOrCreateVMInstance(
 					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
@@ -639,8 +777,8 @@ var _ = Describe("Instance", func() {
 				dummies.CSMachine1.Spec.Offering.Name = offeringName
 				dummies.CSMachine1.Spec.Template.Name = templateName
 
-				sos.EXPECT().GetServiceOfferingByID(dummies.CSMachine1.Spec.Offering.ID).Return(&cloudstack.ServiceOffering{Name: offeringName}, 1, nil)
-				ts.EXPECT().GetTemplateByID(dummies.CSMachine1.Spec.Template.ID, executableFilter).Return(&cloudstack.Template{Name: "template-not-match"}, 1, nil)
+				sos.EXPECT().GetServiceOfferingByID(dummies.CSMachine1.Spec.Offering.ID, gomock.Any()).Return(&cloudstack.ServiceOffering{Name: offeringName}, 1, nil)
+				ts.EXPECT().GetTemplateByID(dummies.CSMachine1.Spec.Template.ID, executableFilter, gomock.Any()).Return(&cloudstack.Template{Name: "template-not-match"}, 1, nil)
 				requiredRegexp := "template name %s does not match name %s returned using UUID %s"
 				Ω(client.GetOrCreateVMInstance(
 					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
@@ -655,8 +793,8 @@ var _ = Describe("Instance", func() {
 				dummies.CSMachine1.Spec.Template.Name = templateName
 				dummies.CSMachine1.Spec.DiskOffering.Name = "diskoffering"
 
-				sos.EXPECT().GetServiceOfferingByID(dummies.CSMachine1.Spec.Offering.ID).Return(&cloudstack.ServiceOffering{Name: offeringName}, 1, nil)
-				ts.EXPECT().GetTemplateByID(dummies.CSMachine1.Spec.Template.ID, executableFilter).Return(&cloudstack.Template{Name: templateName}, 1, nil)
+				sos.EXPECT().GetServiceOfferingByID(dummies.CSMachine1.Spec.Offering.ID, gomock.Any()).Return(&cloudstack.ServiceOffering{Name: offeringName}, 1, nil)
+				ts.EXPECT().GetTemplateByID(dummies.CSMachine1.Spec.Template.ID, executableFilter, gomock.Any()).Return(&cloudstack.Template{Name: templateName}, 1, nil)
 				dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).Return(diskOfferingFakeID+"-not-match", 1, nil)
 				requiredRegexp := "diskOffering ID %s does not match ID %s returned using name %s"
 				Ω(client.GetOrCreateVMInstance(
@@ -674,13 +812,13 @@ var _ = Describe("Instance", func() {
 			dummies.CSMachine1.Spec.UncompressedUserData = ptr.To(true)
 
 			vms.EXPECT().
-				GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID).
+				GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).
 				Return(nil, -1, notFoundError)
 			vms.EXPECT().
-				GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID).
+				GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).
 				Return(&cloudstack.VirtualMachinesMetric{}, 1, nil)
 			vms.EXPECT().
-				GetVirtualMachinesMetricByName(dummies.CSMachine1.Name).
+				GetVirtualMachinesMetricByName(dummies.CSMachine1.Name, gomock.Any()).
 				Return(nil, -1, notFoundError)
 
 			sos.EXPECT().
@@ -694,7 +832,7 @@ var _ = Describe("Instance", func() {
 				GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).
 				Return(diskOfferingFakeID, 1, nil)
 			dos.EXPECT().
-				GetDiskOfferingByID(dummies.CSMachine1.Spec.DiskOffering.ID).
+				GetDiskOfferingByID(dummies.CSMachine1.Spec.DiskOffering.ID, gomock.Any()).
 				Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, nil)
 			ts.EXPECT().
 				GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any()).
@@ -782,8 +920,8 @@ var _ = Describe("Instance", func() {
 			vms.EXPECT().DestroyVirtualMachine(expungeDestroyParams).Return(nil, nil)
 			vs.EXPECT().NewListVolumesParams().Return(listVolumesParams)
 			vs.EXPECT().ListVolumes(listVolumesParams).Return(listVolumesResponse, nil)
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID).Return(nil, -1, notFoundError)
-			vms.EXPECT().GetVirtualMachinesMetricByName(dummies.CSMachine1.Name).Return(nil, -1, notFoundError)
+			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).Return(nil, -1, notFoundError)
+			vms.EXPECT().GetVirtualMachinesMetricByName(dummies.CSMachine1.Name, gomock.Any()).Return(nil, -1, notFoundError)
 			Ω(client.DestroyVMInstance(dummies.CSMachine1)).
 				Should(Succeed())
 		})
@@ -797,7 +935,7 @@ var _ = Describe("Instance", func() {
 			vms.EXPECT().DestroyVirtualMachine(expungeDestroyParams).Return(nil, nil)
 			vs.EXPECT().NewListVolumesParams().Return(listVolumesParams)
 			vs.EXPECT().ListVolumes(listVolumesParams).Return(listVolumesResponse, nil)
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID).
+			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).
 				Return(&cloudstack.VirtualMachinesMetric{
 					State: "Expunging",
 				}, 1, nil)
@@ -814,7 +952,7 @@ var _ = Describe("Instance", func() {
 			vms.EXPECT().DestroyVirtualMachine(expungeDestroyParams).Return(nil, nil)
 			vs.EXPECT().NewListVolumesParams().Return(listVolumesParams)
 			vs.EXPECT().ListVolumes(listVolumesParams).Return(listVolumesResponse, nil)
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID).
+			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).
 				Return(&cloudstack.VirtualMachinesMetric{
 					State: "Expunged",
 				}, 1, nil)
@@ -831,7 +969,7 @@ var _ = Describe("Instance", func() {
 			vms.EXPECT().DestroyVirtualMachine(expungeDestroyParams).Return(nil, nil)
 			vs.EXPECT().NewListVolumesParams().Return(listVolumesParams)
 			vs.EXPECT().ListVolumes(listVolumesParams).Return(listVolumesResponse, nil)
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID).
+			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).
 				Return(&cloudstack.VirtualMachinesMetric{
 					State: "Stopping",
 				}, 1, nil)
@@ -859,7 +997,7 @@ var _ = Describe("Instance", func() {
 				})
 			vs.EXPECT().NewListVolumesParams().Times(0)
 			vs.EXPECT().ListVolumes(gomock.Any()).Times(0)
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID).
+			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).
 				Return(&cloudstack.VirtualMachinesMetric{
 					State: "Expunged",
 				}, 1, nil)

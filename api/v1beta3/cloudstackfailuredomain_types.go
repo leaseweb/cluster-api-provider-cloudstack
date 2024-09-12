@@ -47,12 +47,12 @@ type Network struct {
 	//+optional
 	ID string `json:"id,omitempty"`
 
+	// Cloudstack Network Name the cluster is built in.
+	Name string `json:"name"`
+
 	// Cloudstack Network Type the cluster is built in.
 	//+optional
 	Type string `json:"type,omitempty"`
-
-	// Cloudstack Network Name the cluster is built in.
-	Name string `json:"name"`
 
 	// CIDR is the IP address range of the network.
 	//+optional
@@ -65,13 +65,13 @@ type Network struct {
 
 // CloudStackZoneSpec specifies a Zone's details.
 type CloudStackZoneSpec struct {
-	// Name.
-	//+optional
-	Name string `json:"name,omitempty"`
-
-	// ID.
+	// Zone ID.
 	//+optional
 	ID string `json:"id,omitempty"`
+
+	// Zone Name.
+	//+optional
+	Name string `json:"name,omitempty"`
 
 	// The network within the Zone to use.
 	Network Network `json:"network"`
@@ -92,6 +92,10 @@ type CloudStackFailureDomainSpec struct {
 	// CloudStack domain.
 	//+optional
 	Domain string `json:"domain,omitempty"`
+
+	// CloudStack project.
+	//+optional
+	Project string `json:"project,omitempty"`
 
 	// Apache CloudStack Endpoint secret reference.
 	ACSEndpoint corev1.SecretReference `json:"acsEndpoint"`

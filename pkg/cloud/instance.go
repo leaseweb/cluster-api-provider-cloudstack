@@ -73,7 +73,7 @@ func setMachineDataFromVMMetrics(vmResponse *cloudstack.VirtualMachinesMetric, c
 func (c *client) ResolveVMInstanceDetails(csMachine *infrav1.CloudStackMachine) error {
 	// Attempt to fetch by ID.
 	if csMachine.Spec.InstanceID != nil {
-		vmResp, count, err := c.cs.VirtualMachine.GetVirtualMachinesMetricByID(*csMachine.Spec.InstanceID)
+		vmResp, count, err := c.cs.VirtualMachine.GetVirtualMachinesMetricByID(*csMachine.Spec.InstanceID, cloudstack.WithProject(c.user.Project.ID))
 		if err != nil && !strings.Contains(strings.ToLower(err.Error()), "no match found") {
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
@@ -89,7 +89,7 @@ func (c *client) ResolveVMInstanceDetails(csMachine *infrav1.CloudStackMachine) 
 
 	// Attempt fetch by name.
 	if csMachine.Name != "" {
-		vmResp, count, err := c.cs.VirtualMachine.GetVirtualMachinesMetricByName(csMachine.Name) // add opts usage
+		vmResp, count, err := c.cs.VirtualMachine.GetVirtualMachinesMetricByName(csMachine.Name, cloudstack.WithProject(c.user.Project.ID))
 		if err != nil && !strings.Contains(strings.ToLower(err.Error()), "no match") {
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
@@ -109,7 +109,7 @@ func (c *client) ResolveVMInstanceDetails(csMachine *infrav1.CloudStackMachine) 
 // resolveServiceOffering attempts to look up the service offering of a CloudStackMachine by ID first and name second.
 func (c *client) resolveServiceOffering(csMachine *infrav1.CloudStackMachine, zoneID string) (offering *cloudstack.ServiceOffering, retErr error) {
 	if len(csMachine.Spec.Offering.ID) > 0 {
-		csOffering, count, err := c.cs.ServiceOffering.GetServiceOfferingByID(csMachine.Spec.Offering.ID)
+		csOffering, count, err := c.cs.ServiceOffering.GetServiceOfferingByID(csMachine.Spec.Offering.ID, cloudstack.WithProject(c.user.Project.ID))
 		if err != nil {
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
@@ -127,7 +127,7 @@ func (c *client) resolveServiceOffering(csMachine *infrav1.CloudStackMachine, zo
 
 		return csOffering, nil
 	}
-	csOffering, count, err := c.cs.ServiceOffering.GetServiceOfferingByName(csMachine.Spec.Offering.Name, cloudstack.WithZone(zoneID))
+	csOffering, count, err := c.cs.ServiceOffering.GetServiceOfferingByName(csMachine.Spec.Offering.Name, cloudstack.WithZone(zoneID), cloudstack.WithProject(c.user.Project.ID))
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
@@ -147,7 +147,7 @@ func (c *client) resolveTemplate(
 	zoneID string,
 ) (templateID string, retErr error) {
 	if len(csMachine.Spec.Template.ID) > 0 {
-		csTemplate, count, err := c.cs.Template.GetTemplateByID(csMachine.Spec.Template.ID, "executable")
+		csTemplate, count, err := c.cs.Template.GetTemplateByID(csMachine.Spec.Template.ID, "executable", cloudstack.WithProject(c.user.Project.ID))
 		if err != nil {
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
@@ -165,15 +165,17 @@ func (c *client) resolveTemplate(
 
 		return csMachine.Spec.Template.ID, nil
 	}
-	templateID, count, err := c.cs.Template.GetTemplateID(csMachine.Spec.Template.Name, "executable", zoneID, func(_ *cloudstack.CloudStackClient, i interface{}) error {
-		v, ok := i.(*cloudstack.ListTemplatesParams)
-		if !ok {
-			return fmt.Errorf("expected a cloudstack.ListTemplatesParams but got a %T", i)
-		}
-		v.SetShowunique(true)
+	templateID, count, err := c.cs.Template.GetTemplateID(csMachine.Spec.Template.Name, "executable", zoneID,
+		cloudstack.WithProject(c.user.Project.ID),
+		func(_ *cloudstack.CloudStackClient, i interface{}) error {
+			v, ok := i.(*cloudstack.ListTemplatesParams)
+			if !ok {
+				return fmt.Errorf("expected a cloudstack.ListTemplatesParams but got a %T", i)
+			}
+			v.SetShowunique(true)
 
-		return nil
-	})
+			return nil
+		})
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
@@ -196,7 +198,7 @@ func (c *client) resolveDiskOffering(csMachine *infrav1.CloudStackMachine, zoneI
 	}
 	diskOfferingID = csMachine.Spec.DiskOffering.ID
 	if len(csMachine.Spec.DiskOffering.Name) > 0 {
-		diskID, count, err := c.cs.DiskOffering.GetDiskOfferingID(csMachine.Spec.DiskOffering.Name, cloudstack.WithZone(zoneID))
+		diskID, count, err := c.cs.DiskOffering.GetDiskOfferingID(csMachine.Spec.DiskOffering.Name, cloudstack.WithZone(zoneID), cloudstack.WithProject(c.user.Project.ID))
 		if err != nil {
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
@@ -224,7 +226,7 @@ func (c *client) resolveDiskOffering(csMachine *infrav1.CloudStackMachine, zoneI
 }
 
 func verifyDiskoffering(csMachine *infrav1.CloudStackMachine, c *client, diskOfferingID string, retErr error) (string, error) {
-	csDiskOffering, count, err := c.cs.DiskOffering.GetDiskOfferingByID(diskOfferingID)
+	csDiskOffering, count, err := c.cs.DiskOffering.GetDiskOfferingByID(diskOfferingID, cloudstack.WithProject(c.user.Project.ID))
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
@@ -302,6 +304,35 @@ func (c *client) checkDomainLimits(offering *cloudstack.ServiceOffering) error {
 	return nil
 }
 
+// CheckProjectLimits Checks the project's limit of VM, CPU & Memory.
+func (c *client) CheckProjectLimits(offering *cloudstack.ServiceOffering) error {
+	if c.user.Project.ID == "" {
+		return nil
+	}
+
+	if c.user.Project.CPUAvailable != LimitUnlimited {
+		cpuAvailable, err := strconv.ParseInt(c.user.Project.CPUAvailable, 10, 0)
+		if err == nil && int64(offering.Cpunumber) > cpuAvailable {
+			return fmt.Errorf("CPU available (%d) in project can't fulfil the requirement: %d", cpuAvailable, offering.Cpunumber)
+		}
+	}
+
+	if c.user.Project.MemoryAvailable != LimitUnlimited {
+		memoryAvailable, err := strconv.ParseInt(c.user.Project.MemoryAvailable, 10, 0)
+		if err == nil && int64(offering.Memory) > memoryAvailable {
+			return fmt.Errorf("memory available (%d) in project can't fulfil the requirement: %d", memoryAvailable, offering.Memory)
+		}
+	}
+
+	if c.user.Project.VMAvailable != LimitUnlimited {
+		vmAvailable, err := strconv.ParseInt(c.user.Project.VMAvailable, 10, 0)
+		if err == nil && vmAvailable < 1 {
+			return fmt.Errorf("VM Limit in project has reached it's maximum value")
+		}
+	}
+	return nil
+}
+
 // checkLimits will check the account & domain limits.
 func (c *client) checkLimits(
 	offering *cloudstack.ServiceOffering,
@@ -316,6 +347,11 @@ func (c *client) checkLimits(
 	}
 
 	err = c.checkDomainLimits(offering)
+	if err != nil {
+		return err
+	}
+
+	err = c.CheckProjectLimits(offering)
 	if err != nil {
 		return err
 	}
@@ -346,6 +382,7 @@ func (c *client) deployVM(
 	setIfNotEmpty(csMachine.Name, p.SetName)
 	setIfNotEmpty(capiMachine.Name, p.SetDisplayname)
 	setIfNotEmpty(diskOfferingID, p.SetDiskofferingid)
+	setIfNotEmpty(c.user.Project.ID, p.SetProjectid)
 	if csMachine.Spec.DiskOffering != nil {
 		setIntIfPositive(csMachine.Spec.DiskOffering.CustomSize, p.SetSize)
 	}
@@ -378,7 +415,7 @@ func (c *client) deployVM(
 		// CloudStack may have created the VM even though it reported an error. We attempt to
 		// retrieve the VM so we can populate the CloudStackMachine for the user to manually
 		// clean up.
-		vm, findErr := findVirtualMachine(c.cs.VirtualMachine, templateID, fd, csMachine)
+		vm, findErr := findVirtualMachine(c.cs.VirtualMachine, c.user.Project.ID, templateID, fd, csMachine)
 		if findErr != nil {
 			if errors.Is(findErr, ErrNotFound) {
 				// We didn't find a VM so return the original error.
@@ -439,6 +476,7 @@ func (c *client) GetOrCreateVMInstance(
 // domain zone and failure domain network. If no virtual machine is found it returns nil, ErrNotFound.
 func findVirtualMachine(
 	client cloudstack.VirtualMachineServiceIface,
+	projectID string,
 	templateID string,
 	failureDomain *infrav1.CloudStackFailureDomain,
 	machine *infrav1.CloudStackMachine,
@@ -448,6 +486,7 @@ func findVirtualMachine(
 	params.SetZoneid(failureDomain.Spec.Zone.ID)
 	params.SetNetworkid(failureDomain.Spec.Zone.Network.ID)
 	params.SetName(machine.Name)
+	setIfNotEmpty(projectID, params.SetProjectid)
 
 	response, err := client.ListVirtualMachines(params)
 	if err != nil {
@@ -518,6 +557,7 @@ func (c *client) listVMInstanceDatadiskVolumeIDs(instanceID string) ([]string, e
 	// - https://github.com/apache/cloudstack/blob/b69cc0272d48f0aea7353627d760c27c284dad84/engine/orchestration/src/main/java/com/cloud/vm/VirtualMachineManagerImpl.java#L524
 	// - https://github.com/kubernetes-sigs/cluster-api-provider-cloudstack/issues/389
 	p.SetKeyword("DATA-")
+	setIfNotEmpty(c.user.Project.ID, p.SetProjectid)
 
 	listVolResp, err := c.csAsync.Volume.ListVolumes(p)
 	if err != nil {
