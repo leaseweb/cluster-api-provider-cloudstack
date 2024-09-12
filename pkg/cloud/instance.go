@@ -502,18 +502,25 @@ func findVirtualMachine(
 
 // DestroyVMInstance Destroys a VM instance. Assumes machine has been fetched prior and has an instance ID.
 func (c *client) DestroyVMInstance(csMachine *infrav1.CloudStackMachine) error {
+	p := c.cs.Configuration.NewListCapabilitiesParams()
+	capabilities, err := c.cs.Configuration.ListCapabilities(p)
+	expunge := true
+	if err == nil {
+		expunge = capabilities.Capabilities.Allowuserexpungerecovervm
+	}
+
 	// Attempt deletion regardless of machine state.
-	p := c.csAsync.VirtualMachine.NewDestroyVirtualMachineParams(*csMachine.Spec.InstanceID)
+	p2 := c.csAsync.VirtualMachine.NewDestroyVirtualMachineParams(*csMachine.Spec.InstanceID)
 	// If an additional data disk was requested on creation of this machine, find it and expunge it as well.
 	if csMachine.Spec.DiskOffering != nil {
 		volIDs, err := c.listVMInstanceDatadiskVolumeIDs(*csMachine.Spec.InstanceID)
 		if err != nil {
 			return err
 		}
-		setArrayIfNotEmpty(volIDs, p.SetVolumeids)
+		setArrayIfNotEmpty(volIDs, p2.SetVolumeids)
 	}
-	p.SetExpunge(true)
-	if _, err := c.csAsync.VirtualMachine.DestroyVirtualMachine(p); err != nil &&
+	p2.SetExpunge(expunge)
+	if _, err := c.csAsync.VirtualMachine.DestroyVirtualMachine(p2); err != nil &&
 		strings.Contains(strings.ToLower(err.Error()), "unable to find uuid for id") {
 		// VM doesn't exist. Success...
 		return nil
