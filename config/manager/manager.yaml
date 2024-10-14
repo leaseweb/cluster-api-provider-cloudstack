@@ -24,9 +24,34 @@ spec:
         - /manager
         args:
         - "--leader-elect"
-        - "--metrics-bind-addr=localhost:8080"
+        - "--v=${CAPC_LOGLEVEL:=0}"
+        - "--diagnostics-address=${CAPC_DIAGNOSTICS_ADDRESS:=:8443}"
+        - "--insecure-diagnostics=${CAPC_INSECURE_DIAGNOSTICS:=false}"
+        - "--cloudstackcluster-concurrency=${CAPC_CLOUDSTACKCLUSTER_CONCURRENCY:=10}"
+        - "--cloudstackmachine-concurrency=${CAPC_CLOUDSTACKMACHINE_CONCURRENCY:=10}"
+        - "--cloudstackaffinitygroup-concurrency=${CAPC_CLOUDSTACKAFFINITYGROUP_CONCURRENCY:=5}"
+        - "--cloudstackfailuredomain-concurrency=${CAPC_CLOUDSTACKFAILUREDOMAIN_CONCURRENCY:=5}"
         image: controller:latest
         name: manager
+        ports:
+          - containerPort: 9440
+            name: healthz
+            protocol: TCP
+          - containerPort: 8443
+            name: metrics
+            protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 9440
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 9440
+          initialDelaySeconds: 5
+          periodSeconds: 10
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -35,18 +60,6 @@ spec:
           privileged: false
           runAsUser: 65532
           runAsGroup: 65532
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 8081
-          initialDelaySeconds: 15
-          periodSeconds: 20
-        readinessProbe:
-          httpGet:
-            path: /readyz
-            port: 8081
-          initialDelaySeconds: 5
-          periodSeconds: 10
         resources:
           limits:
             cpu: 100m
@@ -54,6 +67,7 @@ spec:
           requests:
             cpu: 100m
             memory: 50Mi
+        terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
       tolerations:

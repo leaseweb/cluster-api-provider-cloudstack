@@ -323,7 +323,7 @@ var _ = Describe("User Credentials", func() {
 			Ω(client.ResolveUserKeys(&dummies.User)).Should(Succeed())
 		})
 
-		It("get user keys fils when resolving user", func() {
+		It("get user keys fails when resolving user", func() {
 			initialCalls()
 			usp := &csapi.ListUsersParams{}
 
@@ -335,7 +335,7 @@ var _ = Describe("User Credentials", func() {
 			Ω(err.Error()).Should(ContainSubstring("error encountered when resolving user details"))
 		})
 
-		It("get user keys fils when resolving user keys", func() {
+		It("get user keys fails when resolving user keys", func() {
 			initialCalls()
 			usp := &csapi.ListUsersParams{}
 			ukp := &csapi.GetUserKeysParams{}

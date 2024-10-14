@@ -85,30 +85,30 @@ var _ = Describe("Zone", func() {
 	})
 
 	Context("Resolve network for zone", func() {
-		It("get network by name specfied in zone spec", func() {
-			ns.EXPECT().GetNetworkByName(dummies.Zone1.Network.Name).Return(&csapi.Network{}, 1, nil)
+		It("get network by name specified in zone spec", func() {
+			ns.EXPECT().GetNetworkByName(dummies.Zone1.Network.Name, gomock.Any()).Return(&csapi.Network{}, 1, nil)
 
 			Ω(client.ResolveNetworkForZone(&dummies.CSFailureDomain1.Spec.Zone)).Should(Succeed())
 		})
 
-		It("get network by name specfied in zone spec returns > 1 network", func() {
-			ns.EXPECT().GetNetworkByName(dummies.Zone2.Network.Name).Return(&csapi.Network{}, 2, nil)
-			ns.EXPECT().GetNetworkByID(dummies.Zone2.Network.ID).Return(&csapi.Network{}, 2, nil)
+		It("get network by name specified in zone spec returns > 1 network", func() {
+			ns.EXPECT().GetNetworkByName(dummies.Zone2.Network.Name, gomock.Any()).Return(&csapi.Network{}, 2, nil)
+			ns.EXPECT().GetNetworkByID(dummies.Zone2.Network.ID, gomock.Any()).Return(&csapi.Network{}, 2, nil)
 
 			Ω(client.ResolveNetworkForZone(&dummies.CSFailureDomain2.Spec.Zone)).Should(MatchError(And(
 				ContainSubstring(fmt.Sprintf("expected 1 Network with name %s, but got %d", dummies.Zone2.Network.Name, 2)),
 				ContainSubstring(fmt.Sprintf("expected 1 Network with UUID %v, but got %d", dummies.Zone2.Network.ID, 2)))))
 		})
 
-		It("get network by id specfied in zone spec", func() {
-			ns.EXPECT().GetNetworkByName(dummies.Zone2.Network.Name).Return(nil, -1, fakeError)
-			ns.EXPECT().GetNetworkByID(dummies.Zone2.Network.ID).Return(&csapi.Network{}, 1, nil)
+		It("get network by id specified in zone spec", func() {
+			ns.EXPECT().GetNetworkByName(dummies.Zone2.Network.Name, gomock.Any()).Return(nil, -1, fakeError)
+			ns.EXPECT().GetNetworkByID(dummies.Zone2.Network.ID, gomock.Any()).Return(&csapi.Network{}, 1, nil)
 			Ω(client.ResolveNetworkForZone(&dummies.CSFailureDomain2.Spec.Zone)).Should(Succeed())
 		})
 
 		It("get network by id fails", func() {
-			ns.EXPECT().GetNetworkByName(dummies.Zone2.Network.Name).Return(nil, -1, fakeError)
-			ns.EXPECT().GetNetworkByID(dummies.Zone2.Network.ID).Return(nil, -1, fakeError)
+			ns.EXPECT().GetNetworkByName(dummies.Zone2.Network.Name, gomock.Any()).Return(nil, -1, fakeError)
+			ns.EXPECT().GetNetworkByID(dummies.Zone2.Network.ID, gomock.Any()).Return(nil, -1, fakeError)
 
 			Ω(client.ResolveNetworkForZone(&dummies.CSFailureDomain2.Spec.Zone).Error()).Should(ContainSubstring("could not get Network by ID " + dummies.Zone2.Network.ID))
 		})

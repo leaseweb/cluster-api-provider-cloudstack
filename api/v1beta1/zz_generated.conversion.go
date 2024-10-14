@@ -612,7 +612,7 @@ func autoConvert_v1beta1_CloudStackMachineSpec_To_v1beta3_CloudStackMachineSpec(
 	if err := Convert_v1beta1_CloudStackResourceIdentifier_To_v1beta3_CloudStackResourceIdentifier(&in.Template, &out.Template, s); err != nil {
 		return err
 	}
-	// WARNING: in.DiskOffering requires manual conversion: inconvertible types (./api/v1beta1.CloudStackResourceDiskOffering vs *sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3.CloudStackResourceDiskOffering)
+	// WARNING: in.DiskOffering requires manual conversion: inconvertible types (sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta1.CloudStackResourceDiskOffering vs *sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3.CloudStackResourceDiskOffering)
 	out.SSHKey = in.SSHKey
 	out.Details = *(*map[string]string)(unsafe.Pointer(&in.Details))
 	out.AffinityGroupIDs = *(*[]string)(unsafe.Pointer(&in.AffinityGroupIDs))
@@ -635,7 +635,7 @@ func autoConvert_v1beta3_CloudStackMachineSpec_To_v1beta1_CloudStackMachineSpec(
 	if err := Convert_v1beta3_CloudStackResourceIdentifier_To_v1beta1_CloudStackResourceIdentifier(&in.Template, &out.Template, s); err != nil {
 		return err
 	}
-	// WARNING: in.DiskOffering requires manual conversion: inconvertible types (*sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3.CloudStackResourceDiskOffering vs ./api/v1beta1.CloudStackResourceDiskOffering)
+	// WARNING: in.DiskOffering requires manual conversion: inconvertible types (*sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3.CloudStackResourceDiskOffering vs sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta1.CloudStackResourceDiskOffering)
 	out.SSHKey = in.SSHKey
 	out.Details = *(*map[string]string)(unsafe.Pointer(&in.Details))
 	out.AffinityGroupIDs = *(*[]string)(unsafe.Pointer(&in.AffinityGroupIDs))
@@ -944,8 +944,8 @@ func Convert_v1beta1_CloudStackZoneSpec_To_v1beta3_CloudStackZoneSpec(in *CloudS
 }
 
 func autoConvert_v1beta3_CloudStackZoneSpec_To_v1beta1_CloudStackZoneSpec(in *v1beta3.CloudStackZoneSpec, out *CloudStackZoneSpec, s conversion.Scope) error {
-	out.Name = in.Name
 	out.ID = in.ID
+	out.Name = in.Name
 	if err := Convert_v1beta3_Network_To_v1beta1_Network(&in.Network, &out.Network, s); err != nil {
 		return err
 	}
@@ -971,8 +971,8 @@ func Convert_v1beta1_Network_To_v1beta3_Network(in *Network, out *v1beta3.Networ
 
 func autoConvert_v1beta3_Network_To_v1beta1_Network(in *v1beta3.Network, out *Network, s conversion.Scope) error {
 	out.ID = in.ID
-	out.Type = in.Type
 	out.Name = in.Name
+	out.Type = in.Type
 	// WARNING: in.CIDR requires manual conversion: does not exist in peer-type
 	// WARNING: in.Domain requires manual conversion: does not exist in peer-type
 	return nil

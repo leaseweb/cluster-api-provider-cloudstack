@@ -107,10 +107,10 @@ var _ = Describe("Client", func() {
 
 	Context("NewClientFromConf", func() {
 		clientConfig := &corev1.ConfigMap{}
-		cloud.NewAsyncClient = func(apiurl, apikey, secret string, verifyssl bool, options ...cloudstack.ClientOption) *cloudstack.CloudStackClient {
+		cloud.NewAsyncClient = func(_, _, _ string, _ bool, _ ...cloudstack.ClientOption) *cloudstack.CloudStackClient {
 			return mockClient
 		}
-		cloud.NewClient = func(apiurl, apikey, secret string, verifyssl bool, options ...cloudstack.ClientOption) *cloudstack.CloudStackClient {
+		cloud.NewClient = func(_, _, _ string, _ bool, _ ...cloudstack.ClientOption) *cloudstack.CloudStackClient {
 			return mockClient
 		}
 

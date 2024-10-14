@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.15.0
   name: cloudstackclusters.infrastructure.cluster.x-k8s.io
 spec:
   group: infrastructure.cluster.x-k8s.io
@@ -253,14 +253,17 @@ spec:
                     name:
                       description: The failure domain unique name.
                       type: string
+                    project:
+                      description: CloudStack project.
+                      type: string
                     zone:
                       description: The ACS Zone for this failure domain.
                       properties:
                         id:
-                          description: ID.
+                          description: Zone ID.
                           type: string
                         name:
-                          description: Name.
+                          description: Zone Name.
                           type: string
                         network:
                           description: The network within the Zone to use.
@@ -427,14 +430,17 @@ spec:
                     name:
                       description: The failure domain unique name.
                       type: string
+                    project:
+                      description: CloudStack project.
+                      type: string
                     zone:
                       description: The ACS Zone for this failure domain.
                       properties:
                         id:
-                          description: ID.
+                          description: Zone ID.
                           type: string
                         name:
-                          description: Name.
+                          description: Zone Name.
                           type: string
                         network:
                           description: The network within the Zone to use.

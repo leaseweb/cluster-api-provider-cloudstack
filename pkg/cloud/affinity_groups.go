@@ -17,6 +17,7 @@ limitations under the License.
 package cloud
 
 import (
+	"github.com/apache/cloudstack-go/v2/cloudstack"
 	"github.com/pkg/errors"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
@@ -45,7 +46,7 @@ type AffinityGroupIface interface {
 
 func (c *client) FetchAffinityGroup(group *AffinityGroup) error {
 	if group.ID != "" {
-		affinityGroup, count, err := c.cs.AffinityGroup.GetAffinityGroupByID(group.ID)
+		affinityGroup, count, err := c.cs.AffinityGroup.GetAffinityGroupByID(group.ID, cloudstack.WithProject(c.user.Project.ID))
 		if err != nil {
 			// handle via multierr
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
@@ -54,15 +55,14 @@ func (c *client) FetchAffinityGroup(group *AffinityGroup) error {
 		} else if count > 1 {
 			// handle via creating a new error.
 			return errors.New("count bad")
-		} else {
-			group.Name = affinityGroup.Name
-			group.Type = affinityGroup.Type
-
-			return nil
 		}
+		group.Name = affinityGroup.Name
+		group.Type = affinityGroup.Type
+
+		return nil
 	}
 	if group.Name != "" {
-		affinityGroup, count, err := c.cs.AffinityGroup.GetAffinityGroupByName(group.Name)
+		affinityGroup, count, err := c.cs.AffinityGroup.GetAffinityGroupByName(group.Name, cloudstack.WithProject(c.user.Project.ID))
 		if err != nil {
 			// handle via multierr
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
@@ -71,12 +71,11 @@ func (c *client) FetchAffinityGroup(group *AffinityGroup) error {
 		} else if count > 1 {
 			// handle via creating a new error.
 			return errors.New("count bad")
-		} else {
-			group.ID = affinityGroup.Id
-			group.Type = affinityGroup.Type
-
-			return nil
 		}
+		group.ID = affinityGroup.Id
+		group.Type = affinityGroup.Type
+
+		return nil
 	}
 
 	return errors.Errorf(`could not fetch AffinityGroup by name "%s" or id "%s"`, group.Name, group.ID)
@@ -86,6 +85,7 @@ func (c *client) GetOrCreateAffinityGroup(group *AffinityGroup) error {
 	if err := c.FetchAffinityGroup(group); err != nil { // Group not found?
 		p := c.cs.AffinityGroup.NewCreateAffinityGroupParams(group.Name, group.Type)
 		p.SetName(group.Name)
+		setIfNotEmpty(c.user.Project.ID, p.SetProjectid)
 		resp, err := c.cs.AffinityGroup.CreateAffinityGroup(p)
 		if err != nil {
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
@@ -102,6 +102,7 @@ func (c *client) DeleteAffinityGroup(group *AffinityGroup) error {
 	p := c.cs.AffinityGroup.NewDeleteAffinityGroupParams()
 	setIfNotEmpty(group.ID, p.SetId)
 	setIfNotEmpty(group.Name, p.SetName)
+	setIfNotEmpty(c.user.Project.ID, p.SetProjectid)
 	_, err := c.cs.AffinityGroup.DeleteAffinityGroup(p)
 	c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
@@ -112,20 +113,20 @@ type affinityGroups []AffinityGroup
 
 func (c *client) getCurrentAffinityGroups(csMachine *infrav1.CloudStackMachine) (affinityGroups, error) {
 	// Start by fetching VM details which includes an array of currently associated affinity groups.
-	if virtM, count, err := c.cs.VirtualMachine.GetVirtualMachineByID(*csMachine.Spec.InstanceID); err != nil {
+	virtM, count, err := c.cs.VirtualMachine.GetVirtualMachineByID(*csMachine.Spec.InstanceID, cloudstack.WithProject(c.user.Project.ID))
+	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
 		return nil, err
 	} else if count > 1 {
 		return nil, errors.Errorf("found more than one VM for ID: %s", *csMachine.Spec.InstanceID)
-	} else {
-		groups := make([]AffinityGroup, 0, len(virtM.Affinitygroup))
-		for _, v := range virtM.Affinitygroup {
-			groups = append(groups, AffinityGroup{Name: v.Name, Type: v.Type, ID: v.Id})
-		}
-
-		return groups, nil
 	}
+	groups := make([]AffinityGroup, 0, len(virtM.Affinitygroup))
+	for _, v := range virtM.Affinitygroup {
+		groups = append(groups, AffinityGroup{Name: v.Name, Type: v.Type, ID: v.Id})
+	}
+
+	return groups, nil
 }
 
 func (ags *affinityGroups) toArrayOfIDs() []string {

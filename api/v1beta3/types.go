@@ -16,6 +16,17 @@ limitations under the License.
 
 package v1beta3
 
+// CloudStackResourceIdentifier is used to identify any CloudStack resource that can be referenced by either ID or Name.
+type CloudStackResourceIdentifier struct {
+	// Cloudstack resource ID.
+	//+optional
+	ID string `json:"id,omitempty"`
+
+	// Cloudstack resource Name.
+	//+optional
+	Name string `json:"name,omitempty"`
+}
+
 // LoadBalancer represents basic information about the associated OpenStack LoadBalancer.
 type LoadBalancer struct {
 	IPAddress   string `json:"ipAddress"`

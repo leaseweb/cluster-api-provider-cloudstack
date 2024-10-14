@@ -43,15 +43,16 @@ type Client interface {
 	ZoneIFace
 	IsoNetworkIface
 	UserCredIFace
-	NewClientInDomainAndAccount(domain string, account string) (Client, error)
+	NewClientInDomainAndAccount(domain string, account string, options ...ClientOption) (Client, error)
 }
 
-// cloud-config ini structure.
+// Config is the cloud-config ini structure.
 type Config struct {
 	APIUrl    string `yaml:"api-url"`
 	APIKey    string `yaml:"api-key"`
 	SecretKey string `yaml:"secret-key"`
 	VerifySSL string `yaml:"verify-ssl"`
+	ProjectID string `yaml:"project-id"`
 }
 
 type client struct {
@@ -108,7 +109,7 @@ func UnmarshalAllSecretConfigs(in []byte, out *[]SecretConfig) error {
 }
 
 // NewClientFromK8sSecret returns a client from a k8s secret.
-func NewClientFromK8sSecret(endpointSecret *corev1.Secret, clientConfig *corev1.ConfigMap) (Client, error) {
+func NewClientFromK8sSecret(endpointSecret *corev1.Secret, clientConfig *corev1.ConfigMap, options ...ClientOption) (Client, error) {
 	endpointSecretStrings := map[string]string{}
 	for k, v := range endpointSecret.Data {
 		endpointSecretStrings[k] = string(v)
@@ -118,11 +119,11 @@ func NewClientFromK8sSecret(endpointSecret *corev1.Secret, clientConfig *corev1.
 		return nil, err
 	}
 
-	return NewClientFromBytesConfig(bytes, clientConfig)
+	return NewClientFromBytesConfig(bytes, clientConfig, options...)
 }
 
 // NewClientFromBytesConfig returns a client from a bytes array that unmarshals to a yaml config.
-func NewClientFromBytesConfig(conf []byte, clientConfig *corev1.ConfigMap) (Client, error) {
+func NewClientFromBytesConfig(conf []byte, clientConfig *corev1.ConfigMap, options ...ClientOption) (Client, error) {
 	r := bytes.NewReader(conf)
 	dec := yaml.NewDecoder(r)
 	var config Config
@@ -130,11 +131,11 @@ func NewClientFromBytesConfig(conf []byte, clientConfig *corev1.ConfigMap) (Clie
 		return nil, err
 	}
 
-	return NewClientFromConf(config, clientConfig)
+	return NewClientFromConf(config, clientConfig, options...)
 }
 
 // NewClientFromYamlPath returns a client from a yaml config at path.
-func NewClientFromYamlPath(confPath string, secretName string) (Client, error) {
+func NewClientFromYamlPath(confPath string, secretName string, options ...ClientOption) (Client, error) {
 	content, err := os.ReadFile(confPath)
 	if err != nil {
 		return nil, err
@@ -155,11 +156,11 @@ func NewClientFromYamlPath(confPath string, secretName string) (Client, error) {
 		return nil, errors.Errorf("config with secret name %s not found", secretName)
 	}
 
-	return NewClientFromConf(conf, nil)
+	return NewClientFromConf(conf, nil, options...)
 }
 
 // NewClientFromConf creates a new Cloud Client form a map of strings to strings.
-func NewClientFromConf(conf Config, clientConfig *corev1.ConfigMap) (Client, error) {
+func NewClientFromConf(conf Config, clientConfig *corev1.ConfigMap, options ...ClientOption) (Client, error) {
 	cacheMutex.Lock()
 	defer cacheMutex.Unlock()
 
@@ -199,23 +200,48 @@ func NewClientFromConf(conf Config, clientConfig *corev1.ConfigMap) (Client, err
 			},
 		},
 	}
+
+	// Add project config if a ProjectID is defined in the client config.
+	if conf.ProjectID != "" {
+		user.Project = Project{
+			ID: conf.ProjectID,
+		}
+	}
+
+	c.user = user
+	for _, fn := range options {
+		if err := fn(c); err != nil {
+			return nil, err
+		}
+	}
+
 	if found, err := c.GetUserWithKeys(user); err != nil {
 		return nil, err
 	} else if !found {
 		return nil, errors.Errorf(
 			"could not find sufficient user (with API keys) in domain/account %s/%s", userResponse.Users[0].Domain, userResponse.Users[0].Account)
 	}
-	c.user = user
 	clientCache.Set(clientCacheKey, c, ttlcache.DefaultTTL)
 
 	return c, nil
 }
 
 // NewClientInDomainAndAccount returns a new client in the specified domain and account.
-func (c *client) NewClientInDomainAndAccount(domain string, account string) (Client, error) {
+func (c *client) NewClientInDomainAndAccount(domain string, account string, options ...ClientOption) (Client, error) {
 	user := &User{}
 	user.Account.Domain.Path = domain
 	user.Account.Name = account
+
+	oldUser := c.user
+	c.user = user
+	for _, fn := range options {
+		if err := fn(c); err != nil {
+			return nil, err
+		}
+	}
+	user = c.user
+	c.user = oldUser
+
 	if found, err := c.GetUserWithKeys(user); err != nil {
 		return nil, err
 	} else if !found {
@@ -235,13 +261,13 @@ func NewClientFromCSAPIClient(cs *cloudstack.CloudStackClient, user *User) Clien
 		user = &User{
 			Account: Account{
 				Domain: Domain{
-					CPUAvailable:    "Unlimited",
-					MemoryAvailable: "Unlimited",
-					VMAvailable:     "Unlimited",
+					CPUAvailable:    LimitUnlimited,
+					MemoryAvailable: LimitUnlimited,
+					VMAvailable:     LimitUnlimited,
 				},
-				CPUAvailable:    "Unlimited",
-				MemoryAvailable: "Unlimited",
-				VMAvailable:     "Unlimited",
+				CPUAvailable:    LimitUnlimited,
+				MemoryAvailable: LimitUnlimited,
+				VMAvailable:     LimitUnlimited,
 			},
 		}
 	}
@@ -285,4 +311,33 @@ func GetClientCacheTTL(clientConfig *corev1.ConfigMap) time.Duration {
 	}
 
 	return cacheTTL
+}
+
+// ClientOption can be passed to new client functions to set custom options.
+type ClientOption func(*client) error
+
+// WithProject takes either a project name or ID and sets the project ID parameter in the user object.
+func WithProject(project string) ClientOption {
+	return func(c *client) error {
+		if c == nil || c.user == nil {
+			return errors.New("cannot create client with nil user")
+		}
+
+		// project arg empty or project ID already set through cloud config.
+		if project == "" || c.user.Project.ID != "" {
+			return nil
+		}
+
+		if !cloudstack.IsID(project) {
+			id, _, err := c.cs.Project.GetProjectID(project)
+			if err != nil {
+				return err
+			}
+			project = id
+		}
+
+		c.user.Project.ID = project
+
+		return nil
+	}
 }

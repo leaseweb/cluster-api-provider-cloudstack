@@ -55,6 +55,15 @@ type Account struct {
 	VMAvailable     string
 }
 
+// Project contains specifications that identify a project.
+type Project struct {
+	Name            string
+	ID              string
+	CPUAvailable    string
+	MemoryAvailable string
+	VMAvailable     string
+}
+
 // User contains information uniquely identifying and scoping a user.
 type User struct {
 	ID        string
@@ -62,6 +71,7 @@ type User struct {
 	APIKey    string
 	SecretKey string
 	Account
+	Project
 }
 
 // ResolveDomain resolves a domain's information.
@@ -146,7 +156,8 @@ func (c *client) ResolveDomain(domain *Domain) error {
 // ResolveAccount resolves an account's information.
 func (c *client) ResolveAccount(account *Account) error {
 	// Resolve domain prior to any account resolution activity.
-	if err := c.ResolveDomain(&account.Domain); err != nil {
+	if err := c.ResolveDomain(&account.Domain); err != nil &&
+		!strings.Contains(err.Error(), "The API [listDomains] does not exist or is not available for the account Account") {
 		return errors.Wrapf(err, "resolving domain %s details", account.Domain.Name)
 	}
 
@@ -170,6 +181,37 @@ func (c *client) ResolveAccount(account *Account) error {
 	account.CPUAvailable = resp.Accounts[0].Cpuavailable
 	account.MemoryAvailable = resp.Accounts[0].Memoryavailable
 	account.VMAvailable = resp.Accounts[0].Vmavailable
+
+	return nil
+}
+
+// ResolveProject resolves a project's information.
+func (c *client) ResolveProject(user *User) error {
+	if user.Project.ID == "" {
+		return nil
+	}
+
+	p := c.cs.Project.NewListProjectsParams()
+	p.SetListall(true)
+	p.SetDomainid(c.user.Domain.ID)
+	p.SetAccount(c.user.Account.Name)
+	p.SetId(user.Project.ID)
+	resp, err := c.cs.Project.ListProjects(p)
+	if err != nil {
+		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
+		return err
+	} else if resp.Count == 0 {
+		return errors.Errorf("could not find project with ID '%s'", user.Project.ID)
+	} else if resp.Count != 1 {
+		return errors.Errorf("expected 1 Project with ID '%s' in domain ID '%s', but got %d",
+			user.Project.ID, c.user.Domain.ID, resp.Count)
+	}
+	c.user.Project.ID = resp.Projects[0].Id
+	c.user.Project.Name = resp.Projects[0].Name
+	c.user.Project.CPUAvailable = resp.Projects[0].Cpuavailable
+	c.user.Project.MemoryAvailable = resp.Projects[0].Memoryavailable
+	c.user.Project.VMAvailable = resp.Projects[0].Vmavailable
 
 	return nil
 }
@@ -227,6 +269,10 @@ func (c *client) GetUserWithKeys(user *User) (bool, error) {
 	// Resolve account prior to any user resolution activity.
 	if err := c.ResolveAccount(&user.Account); err != nil {
 		return false, errors.Wrapf(err, "resolving account %s details", user.Account.Name)
+	}
+
+	if err := c.ResolveProject(user); err != nil {
+		return false, errors.Wrapf(err, "resolving project %s details", user.Project.Name)
 	}
 
 	// List users and take first user that has already has api keys.
