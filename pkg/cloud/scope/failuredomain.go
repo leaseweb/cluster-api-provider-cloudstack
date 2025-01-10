@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/logger"
 )
 
-// AffinityGroupScopeParams defines the input parameters used to create a new Scope.
+// FailureDomainScopeParams defines the input parameters used to create a new Scope.
 type FailureDomainScopeParams struct {
 	Client                  client.Client
 	Logger                  *logger.Logger
@@ -95,12 +95,12 @@ type FailureDomainScope struct {
 	csClientFactory cloud.Factory
 }
 
-// Name returns the affinity group name.
+// Name returns the failure domain name.
 func (s *FailureDomainScope) Name() string {
 	return s.CloudStackFailureDomain.Name
 }
 
-// Namespace returns the affinity group namespace.
+// Namespace returns the failure domain namespace.
 func (s *FailureDomainScope) Namespace() string {
 	return s.CloudStackFailureDomain.Namespace
 }
@@ -115,7 +115,7 @@ func (s *FailureDomainScope) SetReady() {
 	s.CloudStackFailureDomain.Status.Ready = true
 }
 
-// SetNotReady sets the CloudStackAffinityGroup Ready Status to false.
+// SetNotReady sets the CloudStackFailureDomain Ready Status to false.
 func (s *FailureDomainScope) SetNotReady() {
 	s.CloudStackFailureDomain.Status.Ready = false
 }

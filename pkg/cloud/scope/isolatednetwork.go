@@ -99,12 +99,12 @@ type IsolatedNetworkScope struct {
 	csClientFactory cloud.Factory
 }
 
-// Name returns the affinity group name.
+// Name returns the isolated network name.
 func (s *IsolatedNetworkScope) Name() string {
 	return s.CloudStackIsolatedNetwork.Name
 }
 
-// Namespace returns the affinity group namespace.
+// Namespace returns the isolated network namespace.
 func (s *IsolatedNetworkScope) Namespace() string {
 	return s.CloudStackIsolatedNetwork.Namespace
 }
@@ -114,7 +114,7 @@ func (s *IsolatedNetworkScope) KubernetesClusterName() string {
 	return s.Cluster.Name
 }
 
-// FailureDomainName returns the affinity group's failure domain name.
+// FailureDomainName returns the isolated network's failure domain name.
 func (s *IsolatedNetworkScope) FailureDomainName() string {
 	return s.CloudStackIsolatedNetwork.Spec.FailureDomainName
 }
@@ -124,7 +124,7 @@ func (s *IsolatedNetworkScope) SetReady() {
 	s.CloudStackIsolatedNetwork.Status.Ready = true
 }
 
-// SetNotReady sets the CloudStackAffinityGroup Ready Status to false.
+// SetNotReady sets the CloudStackIsolatedNetwork Ready Status to false.
 func (s *IsolatedNetworkScope) SetNotReady() {
 	s.CloudStackIsolatedNetwork.Status.Ready = false
 }

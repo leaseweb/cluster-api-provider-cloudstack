@@ -1,0 +1,143 @@
+/*
+Copyright 2024 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package controllers
+
+import (
+	"context"
+	"fmt"
+	"testing"
+
+	"github.com/golang/mock/gomock"
+	. "github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util"
+	"sigs.k8s.io/cluster-api/util/patch"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
+	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/mocks"
+	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
+	"sigs.k8s.io/cluster-api-provider-cloudstack/test/helpers"
+)
+
+func TestCloudStackClusterReconcilerIntegrationTests(t *testing.T) {
+	var (
+		reconciler      CloudStackClusterReconciler
+		mockCtrl        *gomock.Controller
+		mockCloudClient *mocks.MockClient
+		recorder        *record.FakeRecorder
+		ctx             context.Context
+	)
+
+	setup := func(t *testing.T) {
+		t.Helper()
+		mockCtrl = gomock.NewController(t)
+		mockCloudClient = mocks.NewMockClient(mockCtrl)
+		recorder = record.NewFakeRecorder(fakeEventBufferSize)
+		reconciler = CloudStackClusterReconciler{
+			Client:           testEnv.Client,
+			Recorder:         recorder,
+			WatchFilterValue: "",
+		}
+		ctx = context.TODO()
+	}
+
+	teardown := func() {
+		mockCtrl.Finish()
+	}
+
+	t.Run("Should patch back the CloudStackCluster as ready.", func(t *testing.T) {
+		g := NewWithT(t)
+
+		setup(t)
+
+		expectClient := func(m *mocks.MockClientMockRecorder) {
+			m.GetOrCreateAffinityGroup(gomock.Any()).AnyTimes()
+		}
+		expectClient(mockCloudClient.EXPECT())
+
+		ns, err := testEnv.CreateNamespace(ctx, fmt.Sprintf("integ-test-%s", util.RandomString(5)))
+		g.Expect(err).To(BeNil())
+		dummies.SetDummyVars(ns.Name)
+
+		g.Expect(testEnv.Create(ctx, dummies.CAPICluster)).To(Succeed())
+		g.Expect(testEnv.Create(ctx, dummies.CSCluster)).To(Succeed())
+		// Set owner ref from CAPI cluster to CS Cluster and patch back the CS Cluster.
+		g.Eventually(func() error {
+			ph, err := patch.NewHelper(dummies.CSCluster, testEnv.Client)
+			g.Expect(err).To(BeNil())
+			dummies.CSCluster.OwnerReferences = append(dummies.CSCluster.OwnerReferences, metav1.OwnerReference{
+				Kind:       "Cluster",
+				APIVersion: clusterv1.GroupVersion.String(),
+				Name:       dummies.CAPICluster.Name,
+				UID:        types.UID("cluster-uid"),
+			})
+
+			return ph.Patch(ctx, dummies.CSCluster, patch.WithStatusObservedGeneration{})
+		}, timeout).Should(Succeed())
+
+		g.Expect(testEnv.Create(ctx, dummies.ACSEndpointSecret1)).To(Succeed())
+
+		defer teardown()
+		defer t.Cleanup(func() {
+			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, ns)).To(Succeed())
+		})
+
+		result, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: dummies.CSCluster.Name, Namespace: ns.Name}})
+		g.Expect(err).To(BeNil())
+		g.Expect(result.RequeueAfter).NotTo(BeZero())
+
+		// Simulate the CloudStackFailureDomain controller setting the status of the failure domains to ready.
+		g.Eventually(func() error {
+			fds := &infrav1.CloudStackFailureDomainList{}
+			getFailureDomains(g, ctx, testEnv, fds)
+			markFailureDomainsAsReady(g, ctx, testEnv, fds)
+			return nil
+		}, timeout).WithPolling(pollInterval).Should(Succeed())
+
+		// Reconcile again to check if the CloudStackCluster controller sets Status.Ready to true.
+		result, err = reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: dummies.CSCluster.Name, Namespace: ns.Name}})
+		g.Expect(err).To(BeNil())
+		g.Expect(result.RequeueAfter).To(BeZero())
+
+		// Test that the CloudStackCluster controller sets Status.Ready to true.
+		clusterKey := client.ObjectKey{Namespace: ns.Name, Name: dummies.CSCluster.Name}
+		cluster := &infrav1.CloudStackCluster{}
+		g.Eventually(func() bool {
+			err := testEnv.Get(ctx, clusterKey, cluster)
+			return err == nil && cluster.Status.Ready
+		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+
+		g.Expect(cluster.GetFinalizers()).To(ContainElement(infrav1.ClusterFinalizer))
+	})
+}
+
+func getFailureDomains(g *WithT, ctx context.Context, testEnv *helpers.TestEnvironment, fds *infrav1.CloudStackFailureDomainList) {
+	g.Expect(testEnv.List(ctx, fds, client.InNamespace(dummies.CSCluster.Namespace), client.MatchingLabels(map[string]string{clusterv1.ClusterNameLabel: dummies.CAPICluster.Name}))).To(Succeed())
+}
+
+func markFailureDomainsAsReady(g *WithT, ctx context.Context, testEnv *helpers.TestEnvironment, fds *infrav1.CloudStackFailureDomainList) {
+	for _, fd := range fds.Items {
+		fdPatch := client.MergeFrom(fd.DeepCopy())
+		fd.Status.Ready = true
+		g.Expect(testEnv.Status().Patch(ctx, &fd, fdPatch)).To(Succeed())
+	}
+}

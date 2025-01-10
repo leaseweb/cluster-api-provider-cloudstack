@@ -84,12 +84,12 @@ type ClusterScope struct {
 	controllerName string
 }
 
-// Name returns the affinity group name.
+// Name returns the cluster name.
 func (s *ClusterScope) Name() string {
 	return s.CloudStackCluster.Name
 }
 
-// Namespace returns the affinity group namespace.
+// Namespace returns the cluster namespace.
 func (s *ClusterScope) Namespace() string {
 	return s.CloudStackCluster.Namespace
 }
@@ -109,7 +109,7 @@ func (s *ClusterScope) SetNotReady() {
 	s.CloudStackCluster.Status.Ready = false
 }
 
-// PatchObject persists the affinity group configuration and status.
+// PatchObject persists the cluster configuration and status.
 func (s *ClusterScope) PatchObject() error {
 	return s.patchHelper.Patch(context.TODO(), s.CloudStackCluster)
 }
