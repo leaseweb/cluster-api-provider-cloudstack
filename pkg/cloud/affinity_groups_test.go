@@ -48,8 +48,9 @@ var _ = Describe("AffinityGroup Unit Tests", func() {
 		mockClient = cloudstack.NewMockClient(mockCtrl)
 		ags = mockClient.AffinityGroup.(*cloudstack.MockAffinityGroupServiceIface)
 		vms = mockClient.VirtualMachine.(*cloudstack.MockVirtualMachineServiceIface)
-		client = cloud.NewClientFromCSAPIClient(mockClient, nil)
-		dummies.SetDummyVars()
+		mockFactory := cloud.NewFactory()
+		client = mockFactory.NewClientFromCSAPIClient(mockClient, nil)
+		dummies.SetDummyVars("default")
 	})
 
 	AfterEach(func() {

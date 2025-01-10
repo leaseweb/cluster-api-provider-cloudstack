@@ -38,29 +38,31 @@ var _ = Describe("Network", func() {
 
 	fakeError := errors.New(errorMessage)
 	var ( // Declare shared vars.
-		mockCtrl   *gomock.Controller
-		mockClient *csapi.CloudStackClient
-		ns         *csapi.MockNetworkServiceIface
-		nos        *csapi.MockNetworkOfferingServiceIface
-		fs         *csapi.MockFirewallServiceIface
-		as         *csapi.MockAddressServiceIface
-		lbs        *csapi.MockLoadBalancerServiceIface
-		rs         *csapi.MockResourcetagsServiceIface
-		client     cloud.Client
+		mockCtrl    *gomock.Controller
+		mockClient  *csapi.CloudStackClient
+		mockFactory cloud.Factory
+		ns          *csapi.MockNetworkServiceIface
+		nos         *csapi.MockNetworkOfferingServiceIface
+		fs          *csapi.MockFirewallServiceIface
+		as          *csapi.MockAddressServiceIface
+		lbs         *csapi.MockLoadBalancerServiceIface
+		rs          *csapi.MockResourcetagsServiceIface
+		client      cloud.Client
 	)
 
 	BeforeEach(func() {
 		// Setup new mock services.
 		mockCtrl = gomock.NewController(GinkgoT())
 		mockClient = csapi.NewMockClient(mockCtrl)
+		mockFactory = cloud.NewFactory()
 		ns = mockClient.Network.(*csapi.MockNetworkServiceIface)
 		nos = mockClient.NetworkOffering.(*csapi.MockNetworkOfferingServiceIface)
 		fs = mockClient.Firewall.(*csapi.MockFirewallServiceIface)
 		as = mockClient.Address.(*csapi.MockAddressServiceIface)
 		lbs = mockClient.LoadBalancer.(*csapi.MockLoadBalancerServiceIface)
 		rs = mockClient.Resourcetags.(*csapi.MockResourcetagsServiceIface)
-		client = cloud.NewClientFromCSAPIClient(mockClient, nil)
-		dummies.SetDummyVars()
+		client = mockFactory.NewClientFromCSAPIClient(mockClient, nil)
+		dummies.SetDummyVars("default")
 	})
 
 	AfterEach(func() {
@@ -1082,7 +1084,7 @@ var _ = Describe("Network", func() {
 					Fail("Failed to delete existing tags. Error: " + err.Error())
 				}
 			}
-			dummies.SetDummyVars()
+			dummies.SetDummyVars("default")
 
 			// Setup Isolated Network Dummy Vars.
 			dummies.CSISONet1.Spec.ID = ""                        // Make CAPC methods resolve this.

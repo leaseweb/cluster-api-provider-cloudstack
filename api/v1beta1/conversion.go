@@ -165,7 +165,8 @@ func fetchZoneIDUsingK8s(namespace string, zoneName string) (string, error) {
 }
 
 func fetchZoneIDUsingCloudStack(secret *corev1.Secret, zoneName string) (string, error) {
-	client, err := cloud.NewClientFromK8sSecret(secret, nil)
+	clientFactory := cloud.NewFactory()
+	client, err := clientFactory.NewClientFromK8sSecret(secret, nil)
 	if err != nil {
 		return "", err
 	}

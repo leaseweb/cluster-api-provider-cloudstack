@@ -33,7 +33,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/metrics"
 )
 
-//go:generate ../../hack/tools/bin/mockgen -destination=../mocks/mock_client.go -package=mocks sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud Client
+//go:generate ../../hack/tools/bin/mockgen -destination=../mocks/mock_client.go -package=mocks sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud Client,Factory
 
 type Client interface {
 	VMIface
@@ -43,7 +43,18 @@ type Client interface {
 	ZoneIFace
 	IsoNetworkIface
 	UserCredIFace
-	NewClientInDomainAndAccount(domain string, account string, options ...ClientOption) (Client, error)
+	//NewClientInDomainAndAccount(domain string, account string, options ...ClientOption) (Client, error)
+}
+
+// Factory is the interface for creating new Client objects.
+type Factory interface {
+	// NewClient returns a new Client in the real implementation, and the shared global Client in the fake implementation.
+	NewClientFromK8sSecret(endpointSecret *corev1.Secret, clientConfig *corev1.ConfigMap, options ...ClientOption) (Client, error)
+	NewClientFromBytesConfig(conf []byte, clientConfig *corev1.ConfigMap, options ...ClientOption) (Client, error)
+	NewClientFromYamlPath(confPath string, secretName string, options ...ClientOption) (Client, error)
+	NewClientFromCSAPIClient(cs *cloudstack.CloudStackClient, user *User) Client
+	NewClientInDomainAndAccount(c Client, domain string, account string, options ...ClientOption) (Client, error)
+	NewClientFromConf(conf Config, clientConfig *corev1.ConfigMap, options ...ClientOption) (Client, error)
 }
 
 // Config is the cloud-config ini structure.
@@ -62,6 +73,8 @@ type client struct {
 	user          *User
 	customMetrics metrics.ACSCustomMetrics
 }
+
+var _ Client = &client{}
 
 type SecretConfig struct {
 	APIVersion string            `yaml:"apiVersion"`
@@ -88,6 +101,15 @@ const (
 	DefaultClientCacheTTL    = 1 * time.Hour
 )
 
+type factory struct{}
+
+var _ = Factory(&factory{})
+
+// NewFactory creates a new factory for CloudStack clients.
+func NewFactory() Factory {
+	return &factory{}
+}
+
 // UnmarshalAllSecretConfigs parses a yaml document for each secret.
 func UnmarshalAllSecretConfigs(in []byte, out *[]SecretConfig) error {
 	r := bytes.NewReader(in)
@@ -109,7 +131,7 @@ func UnmarshalAllSecretConfigs(in []byte, out *[]SecretConfig) error {
 }
 
 // NewClientFromK8sSecret returns a client from a k8s secret.
-func NewClientFromK8sSecret(endpointSecret *corev1.Secret, clientConfig *corev1.ConfigMap, options ...ClientOption) (Client, error) {
+func (f *factory) NewClientFromK8sSecret(endpointSecret *corev1.Secret, clientConfig *corev1.ConfigMap, options ...ClientOption) (Client, error) {
 	endpointSecretStrings := map[string]string{}
 	for k, v := range endpointSecret.Data {
 		endpointSecretStrings[k] = string(v)
@@ -119,11 +141,11 @@ func NewClientFromK8sSecret(endpointSecret *corev1.Secret, clientConfig *corev1.
 		return nil, err
 	}
 
-	return NewClientFromBytesConfig(bytes, clientConfig, options...)
+	return f.NewClientFromBytesConfig(bytes, clientConfig, options...)
 }
 
 // NewClientFromBytesConfig returns a client from a bytes array that unmarshals to a yaml config.
-func NewClientFromBytesConfig(conf []byte, clientConfig *corev1.ConfigMap, options ...ClientOption) (Client, error) {
+func (f *factory) NewClientFromBytesConfig(conf []byte, clientConfig *corev1.ConfigMap, options ...ClientOption) (Client, error) {
 	r := bytes.NewReader(conf)
 	dec := yaml.NewDecoder(r)
 	var config Config
@@ -131,11 +153,11 @@ func NewClientFromBytesConfig(conf []byte, clientConfig *corev1.ConfigMap, optio
 		return nil, err
 	}
 
-	return NewClientFromConf(config, clientConfig, options...)
+	return f.NewClientFromConf(config, clientConfig, options...)
 }
 
 // NewClientFromYamlPath returns a client from a yaml config at path.
-func NewClientFromYamlPath(confPath string, secretName string, options ...ClientOption) (Client, error) {
+func (f *factory) NewClientFromYamlPath(confPath string, secretName string, options ...ClientOption) (Client, error) {
 	content, err := os.ReadFile(confPath)
 	if err != nil {
 		return nil, err
@@ -156,11 +178,11 @@ func NewClientFromYamlPath(confPath string, secretName string, options ...Client
 		return nil, errors.Errorf("config with secret name %s not found", secretName)
 	}
 
-	return NewClientFromConf(conf, nil, options...)
+	return f.NewClientFromConf(conf, nil, options...)
 }
 
 // NewClientFromConf creates a new Cloud Client form a map of strings to strings.
-func NewClientFromConf(conf Config, clientConfig *corev1.ConfigMap, options ...ClientOption) (Client, error) {
+func (f *factory) NewClientFromConf(conf Config, clientConfig *corev1.ConfigMap, options ...ClientOption) (Client, error) {
 	cacheMutex.Lock()
 	defer cacheMutex.Unlock()
 
@@ -227,36 +249,37 @@ func NewClientFromConf(conf Config, clientConfig *corev1.ConfigMap, options ...C
 }
 
 // NewClientInDomainAndAccount returns a new client in the specified domain and account.
-func (c *client) NewClientInDomainAndAccount(domain string, account string, options ...ClientOption) (Client, error) {
+func (f *factory) NewClientInDomainAndAccount(c Client, domain string, account string, options ...ClientOption) (Client, error) {
 	user := &User{}
 	user.Account.Domain.Path = domain
 	user.Account.Name = account
 
-	oldUser := c.user
-	c.user = user
+	client := c.(*client)
+	oldUser := client.user
+	client.user = user
 	for _, fn := range options {
-		if err := fn(c); err != nil {
+		if err := fn(client); err != nil {
 			return nil, err
 		}
 	}
-	user = c.user
-	c.user = oldUser
+	user = client.user
+	client.user = oldUser
 
-	if found, err := c.GetUserWithKeys(user); err != nil {
+	if found, err := client.GetUserWithKeys(user); err != nil {
 		return nil, err
 	} else if !found {
 		return nil, errors.Errorf(
 			"could not find sufficient user (with API keys) in domain/account %s/%s", domain, account)
 	}
-	c.config.APIKey = user.APIKey
-	c.config.SecretKey = user.SecretKey
-	c.user = user
+	client.config.APIKey = user.APIKey
+	client.config.SecretKey = user.SecretKey
+	client.user = user
 
-	return NewClientFromConf(c.config, nil)
+	return f.NewClientFromConf(client.config, nil)
 }
 
 // NewClientFromCSAPIClient creates a client from a CloudStack-Go API client. Used only for testing.
-func NewClientFromCSAPIClient(cs *cloudstack.CloudStackClient, user *User) Client {
+func (f *factory) NewClientFromCSAPIClient(cs *cloudstack.CloudStackClient, user *User) Client {
 	if user == nil {
 		user = &User{
 			Account: Account{

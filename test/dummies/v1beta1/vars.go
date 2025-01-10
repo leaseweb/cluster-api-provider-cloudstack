@@ -220,6 +220,8 @@ func SetDummyCSMachineVars() {
 }
 
 func SetDummyZoneVars() {
+	Net1 = capcv1.Network{Name: GetYamlVal("CLOUDSTACK_NETWORK_NAME"), Type: cloud.NetworkTypeShared}
+	Net2 = capcv1.Network{Name: "SharedGuestNet2", Type: cloud.NetworkTypeShared, ID: "FakeSharedNetID2"}
 	Zone1 = capcv1.Zone{Network: Net1}
 	Zone1.Name = GetYamlVal("CLOUDSTACK_ZONE_NAME")
 	Zone2 = capcv1.Zone{Network: Net2}
@@ -256,8 +258,6 @@ func SetDummyCAPCClusterVars() {
 		ID:   "FakeAffinityGroupID"}
 	CSAffinityGroup = &capcv1.CloudStackAffinityGroup{
 		Spec: capcv1.CloudStackAffinityGroupSpec{Name: AffinityGroup.Name, Type: AffinityGroup.Type, ID: AffinityGroup.ID}}
-	Net1 = capcv1.Network{Name: GetYamlVal("CLOUDSTACK_NETWORK_NAME"), Type: cloud.NetworkTypeShared}
-	Net2 = capcv1.Network{Name: "SharedGuestNet2", Type: cloud.NetworkTypeShared, ID: "FakeSharedNetID2"}
 	ISONet1 = capcv1.Network{Name: "IsoGuestNet1", Type: cloud.NetworkTypeIsolated, ID: "FakeIsolatedNetID1"}
 	CSCluster = &capcv1.CloudStackCluster{
 		TypeMeta: metav1.TypeMeta{
@@ -314,7 +314,7 @@ func SetDummyCAPIClusterVars() {
 			InfrastructureRef: &corev1.ObjectReference{
 				APIVersion: capcv1.GroupVersion.String(),
 				Kind:       "CloudStackCluster",
-				Name:       "somename",
+				Name:       CSClusterName,
 			},
 		},
 	}

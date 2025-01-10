@@ -249,6 +249,8 @@ func SetDummyCSMachineVars() {
 }
 
 func SetDummyZoneVars() {
+	Net1 = infrav1.Network{Name: GetYamlVal("CLOUDSTACK_NETWORK_NAME"), Type: cloud.NetworkTypeShared}
+	Net2 = infrav1.Network{Name: "SharedGuestNet2", Type: cloud.NetworkTypeShared, ID: "FakeSharedNetID2"}
 	Zone1 = infrav1.CloudStackZoneSpec{Network: Net1}
 	Zone1.Name = GetYamlVal("CLOUDSTACK_ZONE_NAME")
 	Zone2 = infrav1.CloudStackZoneSpec{Network: Net2}
@@ -281,8 +283,6 @@ func SetDummyCAPCClusterVars() {
 		Name: "fakeaffinitygroup",
 		Type: cloud.AffinityGroupType,
 		ID:   "FakeAffinityGroupID"}
-	Net1 = infrav1.Network{Name: GetYamlVal("CLOUDSTACK_NETWORK_NAME"), Type: cloud.NetworkTypeShared}
-	Net2 = infrav1.Network{Name: "SharedGuestNet2", Type: cloud.NetworkTypeShared, ID: "FakeSharedNetID2"}
 	ISONet1 = infrav1.Network{Name: "isoguestnet1", Type: cloud.NetworkTypeIsolated, ID: "FakeIsolatedNetID1"}
 	CSFailureDomain1 = &infrav1.CloudStackFailureDomain{
 		TypeMeta: metav1.TypeMeta{
@@ -401,7 +401,7 @@ func SetDummyCAPIClusterVars() {
 			InfrastructureRef: &corev1.ObjectReference{
 				APIVersion: infrav1.GroupVersion.String(),
 				Kind:       "CloudStackCluster",
-				Name:       "somename",
+				Name:       ClusterName,
 			},
 		},
 	}

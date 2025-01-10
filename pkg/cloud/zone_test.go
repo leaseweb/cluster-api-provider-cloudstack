@@ -36,20 +36,22 @@ var _ = Describe("Zone", func() {
 
 	fakeError := errors.New(errorMessage)
 	var (
-		client     cloud.Client
-		mockCtrl   *gomock.Controller
-		mockClient *csapi.CloudStackClient
-		zs         *csapi.MockZoneServiceIface
-		ns         *csapi.MockNetworkServiceIface
+		client      cloud.Client
+		mockCtrl    *gomock.Controller
+		mockClient  *csapi.CloudStackClient
+		mockFactory cloud.Factory
+		zs          *csapi.MockZoneServiceIface
+		ns          *csapi.MockNetworkServiceIface
 	)
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(GinkgoT())
 		mockClient = csapi.NewMockClient(mockCtrl)
+		mockFactory = cloud.NewFactory()
 		zs = mockClient.Zone.(*csapi.MockZoneServiceIface)
 		ns = mockClient.Network.(*csapi.MockNetworkServiceIface)
-		client = cloud.NewClientFromCSAPIClient(mockClient, nil)
-		dummies.SetDummyVars()
+		client = mockFactory.NewClientFromCSAPIClient(mockClient, nil)
+		dummies.SetDummyVars("default")
 	})
 
 	AfterEach(func() {

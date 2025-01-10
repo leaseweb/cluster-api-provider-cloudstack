@@ -31,21 +31,23 @@ import (
 
 var _ = Describe("Network", func() {
 	var ( // Declare shared vars.
-		mockCtrl   *gomock.Controller
-		mockClient *csapi.CloudStackClient
-		ns         *csapi.MockNetworkServiceIface
-		rs         *csapi.MockResourcetagsServiceIface
-		client     cloud.Client
+		mockCtrl    *gomock.Controller
+		mockClient  *csapi.CloudStackClient
+		mockFactory cloud.Factory
+		ns          *csapi.MockNetworkServiceIface
+		rs          *csapi.MockResourcetagsServiceIface
+		client      cloud.Client
 	)
 
 	BeforeEach(func() {
 		// Setup new mock services.
 		mockCtrl = gomock.NewController(GinkgoT())
 		mockClient = csapi.NewMockClient(mockCtrl)
+		mockFactory = cloud.NewFactory()
 		ns = mockClient.Network.(*csapi.MockNetworkServiceIface)
 		rs = mockClient.Resourcetags.(*csapi.MockResourcetagsServiceIface)
-		client = cloud.NewClientFromCSAPIClient(mockClient, nil)
-		dummies.SetDummyVars()
+		client = mockFactory.NewClientFromCSAPIClient(mockClient, nil)
+		dummies.SetDummyVars("default")
 	})
 
 	AfterEach(func() {
