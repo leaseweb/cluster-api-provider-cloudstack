@@ -14,10 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package scope implement the scope for the CloudStack Cluster when doing the reconciliation process.
 package scope
 
 import (
 	"context"
+	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -40,6 +44,8 @@ type FailureDomainScopeParams struct {
 	CSClientFactory         cloud.Factory
 	ControllerName          string
 }
+
+var metaNameRegex = regexp.MustCompile(`[^a-z0-9-]+`)
 
 // NewFailureDomainScope creates a new Scope from the supplied parameters.
 // This is meant to be called for each reconcile iteration.
@@ -166,4 +172,11 @@ func (s *FailureDomainScope) ClientFactory() cloud.Factory {
 // FailureDomain returns the failure domain.
 func (s *FailureDomainScope) FailureDomain(ctx context.Context) (*infrav1.CloudStackFailureDomain, error) {
 	return s.CloudStackFailureDomain, nil
+}
+
+// IsolatedNetworkName returns the sanitized (CloudStack-compliant) name of the isolated network.
+func (s *FailureDomainScope) IsolatedNetworkName() string {
+	str := metaNameRegex.ReplaceAllString(fmt.Sprintf("%s-%s", s.KubernetesClusterName(), strings.ToLower(s.NetworkName())), "-")
+
+	return strings.TrimSuffix(str, "-")
 }

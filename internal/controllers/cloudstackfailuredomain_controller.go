@@ -203,7 +203,7 @@ func (r *CloudStackFailureDomainReconciler) reconcileNormal(ctx context.Context,
 		if err := r.GenerateIsolatedNetwork(ctx, scope); err != nil {
 			return ctrl.Result{}, errors.Wrap(err, "generating isolated network")
 		} else {
-			objectKey := client.ObjectKey{Name: strings.ToLower(scope.NetworkName()), Namespace: scope.Namespace()}
+			objectKey := client.ObjectKey{Name: scope.IsolatedNetworkName(), Namespace: scope.Namespace()}
 
 			err := client.IgnoreNotFound(r.Client.Get(ctx, objectKey, r.IsoNet))
 			if err != nil {
