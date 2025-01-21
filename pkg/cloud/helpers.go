@@ -27,24 +27,28 @@ type (
 	setInt   func(int64)
 )
 
+// setIfNotEmpty sets the given string to the setFn if it is not empty.
 func setIfNotEmpty(str string, setFn set) {
 	if str != "" {
 		setFn(str)
 	}
 }
 
+// setArrayIfNotEmpty sets the given array to the setFn if it is not empty.
 func setArrayIfNotEmpty(strArray []string, setFn setArray) {
 	if len(strArray) > 0 {
 		setFn(strArray)
 	}
 }
 
+// setIntIfPositive sets the given int64 to the setFn if it is greater than 0.
 func setIntIfPositive(num int64, setFn setInt) {
 	if num > 0 {
 		setFn(num)
 	}
 }
 
+// compress compresses the given string using gzip.
 func compress(str string) (string, error) {
 	var buf bytes.Buffer
 	w := cgzip.NewWriter(&buf)
