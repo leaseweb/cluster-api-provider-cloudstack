@@ -50,8 +50,7 @@ func TestCloud(t *testing.T) {
 			Ω(connectionErr).ShouldNot(HaveOccurred())
 
 			repoRoot := os.Getenv("REPO_ROOT")
-			mockFactory := cloud.NewFactory()
-			realCloudClient, connectionErr = mockFactory.NewClientFromYamlPath(
+			realCloudClient, connectionErr = cloud.NewClientFromYamlPath(
 				repoRoot+"/cloud-config.yaml", "myendpoint")
 			Ω(connectionErr).ShouldNot(HaveOccurred())
 
@@ -72,7 +71,7 @@ func TestCloud(t *testing.T) {
 			Ω(newUser.APIKey).ShouldNot(BeEmpty())
 
 			// Switch to test account user.
-			realCloudClient, connectionErr = mockFactory.NewClientInDomainAndAccount(
+			realCloudClient, connectionErr = cloud.NewClientInDomainAndAccount(
 				realCloudClient, newAccount.Domain.Name, newAccount.Name)
 			Ω(connectionErr).ShouldNot(HaveOccurred())
 		}

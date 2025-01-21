@@ -46,8 +46,8 @@ import (
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/logger"
+	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/scope"
 )
 
 // CloudStackIsolatedNetworkReconciler reconciles a CloudStackIsolatedNetwork object.
@@ -55,7 +55,7 @@ type CloudStackIsolatedNetworkReconciler struct {
 	Client           client.Client
 	Scheme           *runtime.Scheme
 	Recorder         record.EventRecorder
-	CSClientFactory  cloud.Factory
+	ScopeFactory     scope.ClientScopeFactory
 	WatchFilterValue string
 }
 
@@ -103,13 +103,20 @@ func (r *CloudStackIsolatedNetworkReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, err
 	}
 
+	clientScope, err := r.ScopeFactory.NewClientScopeForFailureDomainByName(ctx, r.Client, csin.Spec.FailureDomainName, csin.Namespace, cluster.Name)
+	if err != nil {
+		log.Error(err, "Failed to create client scope")
+		return ctrl.Result{}, err
+	}
+
 	// Create the isolated network scope.
 	scope, err := scope.NewIsolatedNetworkScope(scope.IsolatedNetworkScopeParams{
 		Client:                    r.Client,
 		Cluster:                   cluster,
 		CloudStackCluster:         csCluster,
+		CloudStackFailureDomain:   clientScope.FailureDomain(),
 		CloudStackIsolatedNetwork: csin,
-		CSClientFactory:           r.CSClientFactory,
+		CSClients:                 clientScope.CSClients(),
 		ControllerName:            "cloudstackisolatednetwork",
 	})
 	if err != nil {
@@ -137,7 +144,7 @@ func (r *CloudStackIsolatedNetworkReconciler) reconcileDelete(ctx context.Contex
 	log := ctrl.LoggerFrom(ctx)
 	log.Info("Reconcile CloudStackIsolatedNetwork deletion")
 
-	if err := scope.CSUser.DisposeIsoNetResources(scope.CloudStackIsolatedNetwork, scope.CloudStackCluster); err != nil {
+	if err := scope.CSUser().DisposeIsoNetResources(scope.CloudStackIsolatedNetwork, scope.CloudStackCluster); err != nil {
 		if !strings.Contains(strings.ToLower(err.Error()), "no match found") {
 			return ctrl.Result{}, err
 		}
@@ -172,17 +179,17 @@ func (r *CloudStackIsolatedNetworkReconciler) reconcileNormal(ctx context.Contex
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
-	if err := scope.CSUser.GetOrCreateIsolatedNetwork(scope.CloudStackFailureDomain, scope.CloudStackIsolatedNetwork); err != nil {
+	if err := scope.CSUser().GetOrCreateIsolatedNetwork(scope.CloudStackFailureDomain, scope.CloudStackIsolatedNetwork); err != nil {
 		return ctrl.Result{}, err
 	}
 	// Tag the created network.
-	if err := scope.CSUser.AddClusterTag(cloud.ResourceTypeNetwork, scope.CloudStackIsolatedNetwork.Spec.ID, scope.CloudStackCluster); err != nil {
+	if err := scope.CSUser().AddClusterTag(cloud.ResourceTypeNetwork, scope.CloudStackIsolatedNetwork.Spec.ID, scope.CloudStackCluster); err != nil {
 		return ctrl.Result{}, errors.Wrapf(err, "tagging network with id %s", scope.CloudStackIsolatedNetwork.Spec.ID)
 	}
 
 	// Assign IP and configure API server load balancer, if enabled and this cluster is not externally managed.
 	if !annotations.IsExternallyManaged(scope.CloudStackCluster) {
-		pubIP, err := scope.CSUser.AssociatePublicIPAddress(scope.CloudStackFailureDomain, scope.CloudStackIsolatedNetwork, scope.CloudStackCluster.Spec.ControlPlaneEndpoint.Host)
+		pubIP, err := scope.CSUser().AssociatePublicIPAddress(scope.CloudStackFailureDomain, scope.CloudStackIsolatedNetwork, scope.CloudStackCluster.Spec.ControlPlaneEndpoint.Host)
 		if err != nil {
 			return ctrl.Result{}, errors.Wrap(err, "failed to associate public IP address")
 		}
@@ -195,12 +202,12 @@ func (r *CloudStackIsolatedNetworkReconciler) reconcileNormal(ctx context.Contex
 		}
 		scope.APIServerLoadBalancer().IPAddressID = pubIP.Id
 		scope.APIServerLoadBalancer().IPAddress = pubIP.Ipaddress
-		if err := scope.CSUser.AddClusterTag(cloud.ResourceTypeIPAddress, pubIP.Id, scope.CloudStackCluster); err != nil {
+		if err := scope.CSUser().AddClusterTag(cloud.ResourceTypeIPAddress, pubIP.Id, scope.CloudStackCluster); err != nil {
 			return ctrl.Result{}, errors.Wrapf(err,
 				"adding cluster tag to public IP address with ID %s", pubIP.Id)
 		}
 
-		if err := scope.CSUser.ReconcileLoadBalancer(scope.CloudStackFailureDomain, scope.CloudStackIsolatedNetwork, scope.CloudStackCluster); err != nil {
+		if err := scope.CSUser().ReconcileLoadBalancer(scope.CloudStackFailureDomain, scope.CloudStackIsolatedNetwork, scope.CloudStackCluster); err != nil {
 			return ctrl.Result{}, errors.Wrap(err, "reconciling load balancer")
 		}
 	}

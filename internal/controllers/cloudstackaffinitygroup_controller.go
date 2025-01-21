@@ -36,7 +36,7 @@ import (
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud/scope"
+	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/scope"
 )
 
 // CloudStackAffinityGroupReconciler reconciles a CloudStackAffinityGroup object.
@@ -44,7 +44,7 @@ type CloudStackAffinityGroupReconciler struct {
 	Client           client.Client
 	Scheme           *runtime.Scheme
 	Recorder         record.EventRecorder
-	CSClientFactory  cloud.Factory
+	ScopeFactory     scope.ClientScopeFactory
 	WatchFilterValue string
 }
 
@@ -88,12 +88,18 @@ func (r *CloudStackAffinityGroupReconciler) Reconcile(ctx context.Context, req c
 		return ctrl.Result{}, nil
 	}
 
+	clientScope, err := r.ScopeFactory.NewClientScopeForFailureDomainByName(ctx, r.Client, csag.Spec.FailureDomainName, csag.Namespace, cluster.Name)
+	if err != nil {
+		log.Error(err, "Failed to create client scope")
+		return ctrl.Result{}, err
+	}
+
 	// Create the affinity group scope.
 	scope, err := scope.NewAffinityGroupScope(scope.AffinityGroupScopeParams{
 		Client:                  r.Client,
 		Cluster:                 cluster,
 		CloudStackAffinityGroup: csag,
-		CSClientFactory:         r.CSClientFactory,
+		CSClients:               clientScope.CSClients(),
 		ControllerName:          "cloudstackaffinitygroup",
 	})
 	if err != nil {
@@ -122,7 +128,7 @@ func (r *CloudStackAffinityGroupReconciler) reconcileDelete(ctx context.Context,
 	log.Info("Reconcile CloudStackAffinityGroup deletion")
 
 	group := &cloud.AffinityGroup{Name: scope.Name()}
-	_ = scope.CSClient.FetchAffinityGroup(group)
+	_ = scope.CSClient().FetchAffinityGroup(group)
 	// Affinity group not found, must have been deleted.
 	if group.ID == "" {
 		// Deleting affinity groups on Cloudstack can return error but succeed in
@@ -132,7 +138,7 @@ func (r *CloudStackAffinityGroupReconciler) reconcileDelete(ctx context.Context,
 
 		return ctrl.Result{}, nil
 	}
-	if err := scope.CSClient.DeleteAffinityGroup(group); err != nil {
+	if err := scope.CSClient().DeleteAffinityGroup(group); err != nil {
 		return ctrl.Result{}, err
 	}
 	controllerutil.RemoveFinalizer(scope.CloudStackAffinityGroup, infrav1.AffinityGroupFinalizer)
@@ -153,7 +159,7 @@ func (r *CloudStackAffinityGroupReconciler) reconcileNormal(ctx context.Context,
 	}
 
 	affinityGroup := &cloud.AffinityGroup{Name: scope.Name(), Type: scope.Type()}
-	if err := scope.CSUser.GetOrCreateAffinityGroup(affinityGroup); err != nil {
+	if err := scope.CSUser().GetOrCreateAffinityGroup(affinityGroup); err != nil {
 		return ctrl.Result{}, err
 	}
 	scope.SetID(affinityGroup.ID)

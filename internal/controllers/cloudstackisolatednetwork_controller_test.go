@@ -37,29 +37,30 @@ import (
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/mocks"
+	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/scope"
 	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
 )
 
 func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 	var (
-		reconciler      CloudStackIsolatedNetworkReconciler
-		mockCtrl        *gomock.Controller
-		mockCloudClient *mocks.MockClient
-		mockFactory     *mocks.MockFactory
-		recorder        *record.FakeRecorder
-		ctx             context.Context
+		reconciler             CloudStackIsolatedNetworkReconciler
+		mockCtrl               *gomock.Controller
+		mockClientScopeFactory *scope.MockClientScopeFactory
+		mockCSClient           *mocks.MockClient
+		recorder               *record.FakeRecorder
+		ctx                    context.Context
 	)
 
 	setup := func(t *testing.T) {
 		t.Helper()
 		mockCtrl = gomock.NewController(t)
-		mockCloudClient = mocks.NewMockClient(mockCtrl)
-		mockFactory = mocks.NewMockFactory(mockCtrl)
+		mockClientScopeFactory = scope.NewMockClientScopeFactory(mockCtrl, "")
+		mockCSClient = mockClientScopeFactory.MockCSClients().MockCSUser()
 		recorder = record.NewFakeRecorder(fakeEventBufferSize)
 		reconciler = CloudStackIsolatedNetworkReconciler{
 			Client:           testEnv.Client,
 			Recorder:         recorder,
-			CSClientFactory:  mockFactory,
+			ScopeFactory:     mockClientScopeFactory,
 			WatchFilterValue: "",
 		}
 		ctx = context.TODO()
@@ -79,17 +80,17 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 		g.Expect(err).To(BeNil())
 		dummies.SetDummyVars(ns.Name)
 
-		expectClient := func(m *mocks.MockClientMockRecorder) {
-			m.GetOrCreateIsolatedNetwork(gomock.Any(), gomock.Any()).Times(1)
-			m.AddClusterTag(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
-			m.AssociatePublicIPAddress(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(&cloudstack.PublicIpAddress{
-				Id:                  dummies.PublicIPID,
-				Associatednetworkid: dummies.ISONet1.ID,
-				Ipaddress:           dummies.CSCluster.Spec.ControlPlaneEndpoint.Host,
-			}, nil)
-			m.ReconcileLoadBalancer(gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
-		}
-		expectClient(mockCloudClient.EXPECT())
+		mockCSClient.EXPECT().GetOrCreateIsolatedNetwork(
+			gomock.AssignableToTypeOf(&infrav1.CloudStackFailureDomain{}),
+			gomock.AssignableToTypeOf(&infrav1.CloudStackIsolatedNetwork{}),
+		).Times(1)
+		mockCSClient.EXPECT().AddClusterTag(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
+		mockCSClient.EXPECT().AssociatePublicIPAddress(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(&cloudstack.PublicIpAddress{
+			Id:                  dummies.PublicIPID,
+			Associatednetworkid: dummies.ISONet1.ID,
+			Ipaddress:           dummies.CSCluster.Spec.ControlPlaneEndpoint.Host,
+		}, nil)
+		mockCSClient.EXPECT().ReconcileLoadBalancer(gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
 
 		// Create test objects
 		g.Expect(testEnv.Create(ctx, dummies.CAPICluster)).To(Succeed())
@@ -113,7 +114,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 		g.Expect(testEnv.Create(ctx, dummies.CSFailureDomain2)).To(Succeed())
 		g.Expect(testEnv.Create(ctx, dummies.CSISONet1)).To(Succeed())
 
-		mockFactory.EXPECT().NewClientFromK8sSecret(gomock.Any(), gomock.Any(), gomock.Any()).Return(mockCloudClient, nil)
+		// mockFactory.EXPECT().NewClientFromK8sSecret(gomock.Any(), gomock.Any(), gomock.Any()).Return(mockCloudClient, nil)
 
 		defer func() {
 			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret2, dummies.CSFailureDomain2, dummies.CSISONet1, ns)).To(Succeed())
@@ -170,7 +171,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 			}, nil)
 			m.ReconcileLoadBalancer(gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
 		}
-		expectClient(mockCloudClient.EXPECT())
+		expectClient(mockCSClient.EXPECT())
 
 		// Create test objects
 		g.Expect(testEnv.Create(ctx, dummies.CAPICluster)).To(Succeed())
@@ -195,7 +196,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 		g.Expect(testEnv.Create(ctx, dummies.CSFailureDomain2)).To(Succeed())
 		g.Expect(testEnv.Create(ctx, dummies.CSISONet1)).To(Succeed())
 
-		mockFactory.EXPECT().NewClientFromK8sSecret(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(mockCloudClient, nil)
+		// mockFactory.EXPECT().NewClientFromK8sSecret(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(mockCloudClient, nil)
 
 		defer func() {
 			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret2, dummies.CSFailureDomain2, dummies.CSISONet1, ns)).To(Succeed())
@@ -248,7 +249,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 			m.AssociatePublicIPAddress(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			m.ReconcileLoadBalancer(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 		}
-		expectClient(mockCloudClient.EXPECT())
+		expectClient(mockCSClient.EXPECT())
 
 		// Create test objects
 		g.Expect(testEnv.Create(ctx, dummies.CAPICluster)).To(Succeed())
@@ -275,7 +276,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 		g.Expect(testEnv.Create(ctx, dummies.CSFailureDomain2)).To(Succeed())
 		g.Expect(testEnv.Create(ctx, dummies.CSISONet1)).To(Succeed())
 
-		mockFactory.EXPECT().NewClientFromK8sSecret(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(mockCloudClient, nil)
+		// mockFactory.EXPECT().NewClientFromK8sSecret(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(mockCloudClient, nil)
 
 		defer func() {
 			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret2, dummies.CSFailureDomain2, dummies.CSISONet1, ns)).To(Succeed())

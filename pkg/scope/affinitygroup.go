@@ -26,7 +26,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/logger"
 )
 
@@ -36,7 +35,7 @@ type AffinityGroupScopeParams struct {
 	Logger                  *logger.Logger
 	Cluster                 *clusterv1.Cluster
 	CloudStackAffinityGroup *infrav1.CloudStackAffinityGroup
-	CSClientFactory         cloud.Factory
+	CSClients               CSClientsProvider
 	ControllerName          string
 }
 
@@ -61,14 +60,8 @@ func NewAffinityGroupScope(params AffinityGroupScopeParams) (*AffinityGroupScope
 		Cluster:                 params.Cluster,
 		CloudStackAffinityGroup: params.CloudStackAffinityGroup,
 		controllerName:          params.ControllerName,
-		csClientFactory:         params.CSClientFactory,
+		CSClientsProvider:       params.CSClients,
 	}
-
-	clients, err := getClientsForFailureDomain(params.Client, affinityGroupScope)
-	if err != nil {
-		return nil, errors.Errorf("failed to create CloudStack Clients: %v", err)
-	}
-	affinityGroupScope.CSClients = clients
 
 	helper, err := patch.NewHelper(params.CloudStackAffinityGroup, params.Client)
 	if err != nil {
@@ -90,9 +83,8 @@ type AffinityGroupScope struct {
 	CloudStackFailureDomain *infrav1.CloudStackFailureDomain
 	CloudStackAffinityGroup *infrav1.CloudStackAffinityGroup
 
-	CSClients
-	controllerName  string
-	csClientFactory cloud.Factory
+	CSClientsProvider
+	controllerName string
 }
 
 // Name returns the affinity group name.
@@ -143,11 +135,6 @@ func (s *AffinityGroupScope) PatchObject() error {
 // Close the AffinityGroupScope by updating the affinity group spec, affinity group status.
 func (s *AffinityGroupScope) Close() error {
 	return s.PatchObject()
-}
-
-// ClientFactory returns the CloudStack Client Factory.
-func (s *AffinityGroupScope) ClientFactory() cloud.Factory {
-	return s.csClientFactory
 }
 
 // FailureDomain returns the failure domain of the affinity group.

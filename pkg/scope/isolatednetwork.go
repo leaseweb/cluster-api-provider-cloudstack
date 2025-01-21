@@ -28,7 +28,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/logger"
 )
 
@@ -38,8 +37,9 @@ type IsolatedNetworkScopeParams struct {
 	Logger                    *logger.Logger
 	Cluster                   *clusterv1.Cluster
 	CloudStackCluster         *infrav1.CloudStackCluster
+	CloudStackFailureDomain   *infrav1.CloudStackFailureDomain
 	CloudStackIsolatedNetwork *infrav1.CloudStackIsolatedNetwork
-	CSClientFactory           cloud.Factory
+	CSClients                 CSClientsProvider
 	ControllerName            string
 }
 
@@ -63,16 +63,11 @@ func NewIsolatedNetworkScope(params IsolatedNetworkScopeParams) (*IsolatedNetwor
 		client:                    params.Client,
 		Cluster:                   params.Cluster,
 		CloudStackCluster:         params.CloudStackCluster,
+		CloudStackFailureDomain:   params.CloudStackFailureDomain,
 		CloudStackIsolatedNetwork: params.CloudStackIsolatedNetwork,
 		controllerName:            params.ControllerName,
-		csClientFactory:           params.CSClientFactory,
+		CSClientsProvider:         params.CSClients,
 	}
-
-	clients, err := getClientsForFailureDomain(params.Client, isolatedNetworkScope)
-	if err != nil {
-		return nil, errors.Errorf("failed to create CloudStack Clients: %v", err)
-	}
-	isolatedNetworkScope.CSClients = clients
 
 	helper, err := patch.NewHelper(params.CloudStackIsolatedNetwork, params.Client)
 	if err != nil {
@@ -95,9 +90,8 @@ type IsolatedNetworkScope struct {
 	CloudStackFailureDomain   *infrav1.CloudStackFailureDomain
 	CloudStackIsolatedNetwork *infrav1.CloudStackIsolatedNetwork
 
-	CSClients
-	controllerName  string
-	csClientFactory cloud.Factory
+	CSClientsProvider
+	controllerName string
 }
 
 // Name returns the isolated network name.
@@ -146,6 +140,9 @@ func (s *IsolatedNetworkScope) OwnerGVK() schema.GroupVersionKind {
 
 // FailureDomainZoneID returns the failure domain's zone ID.
 func (s *IsolatedNetworkScope) FailureDomainZoneID() string {
+	if s.CloudStackFailureDomain == nil {
+		return ""
+	}
 	return s.CloudStackFailureDomain.Spec.Zone.ID
 }
 
@@ -199,11 +196,6 @@ func (s *IsolatedNetworkScope) SetAPIServerLoadBalancer(loadBalancer *infrav1.Lo
 // APIServerLoadBalancer returns the API server load balancer.
 func (s *IsolatedNetworkScope) APIServerLoadBalancer() *infrav1.LoadBalancer {
 	return s.CloudStackIsolatedNetwork.Status.APIServerLoadBalancer
-}
-
-// ClientFactory returns the CloudStack Client Factory.
-func (s *IsolatedNetworkScope) ClientFactory() cloud.Factory {
-	return s.csClientFactory
 }
 
 // FailureDomain returns the failure domain of the isolated network.

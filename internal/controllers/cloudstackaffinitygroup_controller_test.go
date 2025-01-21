@@ -36,29 +36,32 @@ import (
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/mocks"
+	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/scope"
 	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
 )
 
 func TestCloudStackAffinityGroupReconcilerIntegrationTests(t *testing.T) {
 	var (
-		reconciler          CloudStackAffinityGroupReconciler
-		mockCtrl            *gomock.Controller
-		mockCloudClient     *mocks.MockClient
-		mockCSClientFactory *mocks.MockFactory
-		recorder            *record.FakeRecorder
-		ctx                 context.Context
+		reconciler             CloudStackAffinityGroupReconciler
+		mockCtrl               *gomock.Controller
+		mockClientScopeFactory *scope.MockClientScopeFactory
+		mockCSClient           *mocks.MockClient
+		mockCSUser             *mocks.MockClient
+		recorder               *record.FakeRecorder
+		ctx                    context.Context
 	)
 
 	setup := func(t *testing.T) {
 		t.Helper()
 		mockCtrl = gomock.NewController(t)
-		mockCSClientFactory = mocks.NewMockFactory(mockCtrl)
-		mockCloudClient = mocks.NewMockClient(mockCtrl)
+		mockClientScopeFactory = scope.NewMockClientScopeFactory(mockCtrl, "")
+		mockCSClient = mockClientScopeFactory.MockCSClients().MockCSClient()
+		mockCSUser = mockClientScopeFactory.MockCSClients().MockCSUser()
 		recorder = record.NewFakeRecorder(fakeEventBufferSize)
 		reconciler = CloudStackAffinityGroupReconciler{
 			Client:           testEnv.Client,
 			Recorder:         recorder,
-			CSClientFactory:  mockCSClientFactory,
+			ScopeFactory:     mockClientScopeFactory,
 			WatchFilterValue: "",
 		}
 		ctx = context.TODO()
@@ -75,13 +78,14 @@ func TestCloudStackAffinityGroupReconcilerIntegrationTests(t *testing.T) {
 		expectClient := func(m *mocks.MockClientMockRecorder) {
 			m.GetOrCreateAffinityGroup(gomock.Any()).AnyTimes()
 		}
-		expectClient(mockCloudClient.EXPECT())
+		expectClient(mockCSUser.EXPECT())
 
-		expectFactory := func(m *mocks.MockFactoryMockRecorder) {
-			m.NewClientFromK8sSecret(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(mockCloudClient, nil).AnyTimes()
-		}
-		expectFactory(mockCSClientFactory.EXPECT())
+		/*
+			expectFactory := func(m *mocks.MockFactoryMockRecorder) {
+				m.NewClientFromK8sSecret(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(mockCloudClient, nil).AnyTimes()
+			}
+			expectFactory(mockClientScopeFactory.EXPECT()) */
 
 		ns, err := testEnv.CreateNamespace(ctx, fmt.Sprintf("integ-test-%s", util.RandomString(5)))
 		g.Expect(err).To(BeNil())
@@ -143,13 +147,15 @@ func TestCloudStackAffinityGroupReconcilerIntegrationTests(t *testing.T) {
 		expectClient := func(m *mocks.MockClientMockRecorder) {
 			m.GetOrCreateAffinityGroup(gomock.Any()).AnyTimes()
 		}
-		expectClient(mockCloudClient.EXPECT())
+		expectClient(mockCSClient.EXPECT())
+		expectClient(mockCSUser.EXPECT())
 
-		expectFactory := func(m *mocks.MockFactoryMockRecorder) {
-			m.NewClientFromK8sSecret(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(mockCloudClient, nil).AnyTimes()
-		}
-		expectFactory(mockCSClientFactory.EXPECT())
+		/*
+			expectFactory := func(m *mocks.MockFactoryMockRecorder) {
+				m.NewClientFromK8sSecret(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(mockCloudClient, nil).AnyTimes()
+			}
+		expectFactory(mockCSClientFactory.EXPECT()) */
 
 		ns, err := testEnv.CreateNamespace(ctx, fmt.Sprintf("integ-test-%s", util.RandomString(5)))
 		g.Expect(err).To(BeNil())
@@ -206,7 +212,7 @@ func TestCloudStackAffinityGroupReconcilerIntegrationTests(t *testing.T) {
 			return err == nil && affinityGroup.Status.Ready
 		}, timeout).WithPolling(pollInterval).Should(BeTrue())
 
-		mockCloudClient.EXPECT().FetchAffinityGroup(gomock.Any()).Do(func(arg1 interface{}) {
+		mockCSClient.EXPECT().FetchAffinityGroup(gomock.Any()).Do(func(arg1 interface{}) {
 			arg1.(*cloud.AffinityGroup).ID = ""
 		}).AnyTimes().Return(nil)
 		g.Expect(testEnv.Delete(ctx, dummies.CSAffinityGroup)).To(Succeed())

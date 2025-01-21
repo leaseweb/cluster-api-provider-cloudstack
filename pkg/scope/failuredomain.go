@@ -31,7 +31,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/logger"
 )
 
@@ -41,7 +40,7 @@ type FailureDomainScopeParams struct {
 	Logger                  *logger.Logger
 	Cluster                 *clusterv1.Cluster
 	CloudStackFailureDomain *infrav1.CloudStackFailureDomain
-	CSClientFactory         cloud.Factory
+	CSClients               CSClientsProvider
 	ControllerName          string
 }
 
@@ -68,14 +67,8 @@ func NewFailureDomainScope(params FailureDomainScopeParams) (*FailureDomainScope
 		Cluster:                 params.Cluster,
 		CloudStackFailureDomain: params.CloudStackFailureDomain,
 		controllerName:          params.ControllerName,
-		csClientFactory:         params.CSClientFactory,
+		CSClientsProvider:       params.CSClients,
 	}
-
-	clients, err := getClientsForFailureDomain(params.Client, failureDomainScope)
-	if err != nil {
-		return nil, errors.Errorf("failed to create CloudStack Clients: %v", err)
-	}
-	failureDomainScope.CSClients = clients
 
 	helper, err := patch.NewHelper(params.CloudStackFailureDomain, params.Client)
 	if err != nil {
@@ -96,9 +89,8 @@ type FailureDomainScope struct {
 	Cluster                 *clusterv1.Cluster
 	CloudStackFailureDomain *infrav1.CloudStackFailureDomain
 
-	CSClients
-	controllerName  string
-	csClientFactory cloud.Factory
+	CSClientsProvider
+	controllerName string
 }
 
 // Name returns the failure domain name.
@@ -137,11 +129,11 @@ func (s *FailureDomainScope) Close() error {
 }
 
 func (s *FailureDomainScope) ResolveZone() error {
-	return s.CSUser.ResolveZone(&s.CloudStackFailureDomain.Spec.Zone)
+	return s.CSUser().ResolveZone(&s.CloudStackFailureDomain.Spec.Zone)
 }
 
 func (s *FailureDomainScope) ResolveNetwork() error {
-	return s.CSUser.ResolveNetworkForZone(&s.CloudStackFailureDomain.Spec.Zone)
+	return s.CSUser().ResolveNetworkForZone(&s.CloudStackFailureDomain.Spec.Zone)
 }
 
 func (s *FailureDomainScope) Network() infrav1.Network {
@@ -162,11 +154,6 @@ func (s *FailureDomainScope) NetworkType() string {
 
 func (s *FailureDomainScope) OwnerGVK() schema.GroupVersionKind {
 	return s.CloudStackFailureDomain.GetObjectKind().GroupVersionKind()
-}
-
-// ClientFactory returns the CloudStack Client Factory.
-func (s *FailureDomainScope) ClientFactory() cloud.Factory {
-	return s.csClientFactory
 }
 
 // FailureDomain returns the failure domain.

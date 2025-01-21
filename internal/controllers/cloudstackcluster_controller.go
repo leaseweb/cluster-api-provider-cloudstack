@@ -42,7 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud/scope"
+	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/scope"
 )
 
 // CloudStackClusterReconciler reconciles a CloudStackCluster object.

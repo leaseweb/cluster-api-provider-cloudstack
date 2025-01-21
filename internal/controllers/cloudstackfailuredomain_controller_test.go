@@ -37,29 +37,30 @@ import (
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/mocks"
+	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/scope"
 	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
 )
 
 func TestCloudStackFailureDomainReconcilerIntegrationTests(t *testing.T) {
 	var (
-		reconciler      CloudStackFailureDomainReconciler
-		mockCtrl        *gomock.Controller
-		mockCloudClient *mocks.MockClient
-		mockFactory     *mocks.MockFactory
-		recorder        *record.FakeRecorder
-		ctx             context.Context
+		reconciler             CloudStackFailureDomainReconciler
+		mockCtrl               *gomock.Controller
+		mockClientScopeFactory *scope.MockClientScopeFactory
+		mockCSClient           *mocks.MockClient
+		recorder               *record.FakeRecorder
+		ctx                    context.Context
 	)
 
 	setup := func(t *testing.T) {
 		t.Helper()
 		mockCtrl = gomock.NewController(t)
-		mockCloudClient = mocks.NewMockClient(mockCtrl)
-		mockFactory = mocks.NewMockFactory(mockCtrl)
+		mockClientScopeFactory = scope.NewMockClientScopeFactory(mockCtrl, "")
+		mockCSClient = mockClientScopeFactory.MockCSClients().MockCSUser()
 		recorder = record.NewFakeRecorder(fakeEventBufferSize)
 		reconciler = CloudStackFailureDomainReconciler{
 			Client:           testEnv.Client,
 			Recorder:         recorder,
-			CSClientFactory:  mockFactory,
+			ScopeFactory:     mockClientScopeFactory,
 			WatchFilterValue: "",
 		}
 		ctx = context.TODO()
@@ -83,7 +84,7 @@ func TestCloudStackFailureDomainReconcilerIntegrationTests(t *testing.T) {
 					arg1.(*infrav1.CloudStackZoneSpec).Network.Type = cloud.NetworkTypeShared
 				}).MinTimes(1)
 		}
-		expectClient(mockCloudClient.EXPECT())
+		expectClient(mockCSClient.EXPECT())
 
 		ns, err := testEnv.CreateNamespace(ctx, fmt.Sprintf("integ-test-%s", util.RandomString(5)))
 		g.Expect(err).To(BeNil())
@@ -108,11 +109,19 @@ func TestCloudStackFailureDomainReconcilerIntegrationTests(t *testing.T) {
 		g.Expect(testEnv.Create(ctx, dummies.ACSEndpointSecret1)).To(Succeed())
 		g.Expect(testEnv.Create(ctx, dummies.CSFailureDomain1)).To(Succeed())
 
-		mockFactory.EXPECT().NewClientFromK8sSecret(gomock.Any(), gomock.Any(), gomock.Any()).Return(mockCloudClient, nil)
+		// mockFactory.EXPECT().NewClientFromK8sSecret(gomock.Any(), gomock.Any(), gomock.Any()).Return(mockCloudClient, nil)
 
 		defer func() {
 			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, dummies.CSFailureDomain1, ns)).To(Succeed())
 		}()
+
+		// Check that the failure domain was created correctly before reconciling.
+		fdKey := client.ObjectKey{Namespace: ns.Name, Name: dummies.CSFailureDomain1.Name}
+		fd := &infrav1.CloudStackFailureDomain{}
+		g.Eventually(func() bool {
+			err := testEnv.Get(ctx, fdKey, fd)
+			return err == nil
+		}, timeout).WithPolling(pollInterval).Should(BeTrue())
 
 		result, err := reconciler.Reconcile(ctx, ctrl.Request{
 			NamespacedName: types.NamespacedName{
@@ -124,7 +133,6 @@ func TestCloudStackFailureDomainReconcilerIntegrationTests(t *testing.T) {
 		g.Expect(result.RequeueAfter).To(BeZero())
 
 		// Check that the failure domain was updated correctly
-		fdKey := client.ObjectKey{Namespace: ns.Name, Name: dummies.CSFailureDomain1.Name}
 		updatedFD := &infrav1.CloudStackFailureDomain{}
 		g.Eventually(func() bool {
 			err := testEnv.Get(ctx, fdKey, updatedFD)
@@ -148,7 +156,7 @@ func TestCloudStackFailureDomainReconcilerIntegrationTests(t *testing.T) {
 					arg1.(*infrav1.CloudStackZoneSpec).Network.Type = cloud.NetworkTypeShared
 				}).Times(1)
 		}
-		expectClient(mockCloudClient.EXPECT())
+		expectClient(mockCSClient.EXPECT())
 
 		ns, err := testEnv.CreateNamespace(ctx, fmt.Sprintf("integ-test-%s", util.RandomString(5)))
 		g.Expect(err).To(BeNil())
@@ -175,11 +183,19 @@ func TestCloudStackFailureDomainReconcilerIntegrationTests(t *testing.T) {
 		dummies.CSFailureDomain1.Finalizers = []string{infrav1.FailureDomainFinalizer}
 		g.Expect(testEnv.Create(ctx, dummies.CSFailureDomain1)).To(Succeed())
 
-		mockFactory.EXPECT().NewClientFromK8sSecret(gomock.Any(), gomock.Any(), gomock.Any()).Times(2).Return(mockCloudClient, nil)
+		// mockFactory.EXPECT().NewClientFromK8sSecret(gomock.Any(), gomock.Any(), gomock.Any()).Times(2).Return(mockCloudClient, nil)
 
 		defer func() {
 			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, dummies.CSFailureDomain1, ns)).To(Succeed())
 		}()
+
+		// Check that the failure domain was created correctly before reconciling.
+		fdKey := client.ObjectKey{Namespace: ns.Name, Name: dummies.CSFailureDomain1.Name}
+		fd := &infrav1.CloudStackFailureDomain{}
+		g.Eventually(func() bool {
+			err := testEnv.Get(ctx, fdKey, fd)
+			return err == nil
+		}, timeout).WithPolling(pollInterval).Should(BeTrue())
 
 		result, err := reconciler.Reconcile(ctx, ctrl.Request{
 			NamespacedName: types.NamespacedName{
@@ -191,7 +207,6 @@ func TestCloudStackFailureDomainReconcilerIntegrationTests(t *testing.T) {
 		g.Expect(result.RequeueAfter).To(BeZero())
 
 		// Check that the failure domain was updated correctly
-		fdKey := client.ObjectKey{Namespace: ns.Name, Name: dummies.CSFailureDomain1.Name}
 		updatedFD := &infrav1.CloudStackFailureDomain{}
 		g.Eventually(func() bool {
 			err := testEnv.Get(ctx, fdKey, updatedFD)

@@ -49,7 +49,6 @@ var _ = Describe("Instance", func() {
 	var (
 		mockCtrl      *gomock.Controller
 		mockClient    *cloudstack.CloudStackClient
-		mockFactory   cloud.Factory
 		configuration *cloudstack.MockConfigurationServiceIface
 		vms           *cloudstack.MockVirtualMachineServiceIface
 		sos           *cloudstack.MockServiceOfferingServiceIface
@@ -62,14 +61,13 @@ var _ = Describe("Instance", func() {
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(GinkgoT())
 		mockClient = cloudstack.NewMockClient(mockCtrl)
-		mockFactory = cloud.NewFactory()
 		configuration = mockClient.Configuration.(*cloudstack.MockConfigurationServiceIface)
 		vms = mockClient.VirtualMachine.(*cloudstack.MockVirtualMachineServiceIface)
 		sos = mockClient.ServiceOffering.(*cloudstack.MockServiceOfferingServiceIface)
 		dos = mockClient.DiskOffering.(*cloudstack.MockDiskOfferingServiceIface)
 		ts = mockClient.Template.(*cloudstack.MockTemplateServiceIface)
 		vs = mockClient.Volume.(*cloudstack.MockVolumeServiceIface)
-		client = mockFactory.NewClientFromCSAPIClient(mockClient, nil)
+		client = cloud.NewClientFromCSAPIClient(mockClient, nil)
 
 		dummies.SetDummyVars("default")
 	})
@@ -288,7 +286,7 @@ var _ = Describe("Instance", func() {
 						VMAvailable:     "20",
 					},
 				}
-				c := mockFactory.NewClientFromCSAPIClient(mockClient, user)
+				c := cloud.NewClientFromCSAPIClient(mockClient, user)
 				Ω(c.GetOrCreateVMInstance(
 					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
 					Should(MatchError(MatchRegexp("CPU available .* in account can't fulfil the requirement:.*")))
@@ -322,7 +320,7 @@ var _ = Describe("Instance", func() {
 						VMAvailable:     "20",
 					},
 				}
-				c := mockFactory.NewClientFromCSAPIClient(mockClient, user)
+				c := cloud.NewClientFromCSAPIClient(mockClient, user)
 				Ω(c.GetOrCreateVMInstance(
 					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
 					Should(MatchError(MatchRegexp("CPU available .* in domain can't fulfil the requirement:.*")))
@@ -356,7 +354,7 @@ var _ = Describe("Instance", func() {
 						VMAvailable:     "20",
 					},
 				}
-				c := mockFactory.NewClientFromCSAPIClient(mockClient, user)
+				c := cloud.NewClientFromCSAPIClient(mockClient, user)
 				Ω(c.GetOrCreateVMInstance(
 					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
 					Should(MatchError(MatchRegexp("CPU available .* in project can't fulfil the requirement:.*")))
@@ -390,7 +388,7 @@ var _ = Describe("Instance", func() {
 						VMAvailable:     "20",
 					},
 				}
-				c := mockFactory.NewClientFromCSAPIClient(mockClient, user)
+				c := cloud.NewClientFromCSAPIClient(mockClient, user)
 				Ω(c.GetOrCreateVMInstance(
 					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
 					Should(MatchError(MatchRegexp("memory available .* in account can't fulfil the requirement:.*")))
@@ -424,7 +422,7 @@ var _ = Describe("Instance", func() {
 						VMAvailable:     "20",
 					},
 				}
-				c := mockFactory.NewClientFromCSAPIClient(mockClient, user)
+				c := cloud.NewClientFromCSAPIClient(mockClient, user)
 				Ω(c.GetOrCreateVMInstance(
 					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
 					Should(MatchError(MatchRegexp("memory available .* in domain can't fulfil the requirement:.*")))
@@ -458,7 +456,7 @@ var _ = Describe("Instance", func() {
 						VMAvailable:     "20",
 					},
 				}
-				c := mockFactory.NewClientFromCSAPIClient(mockClient, user)
+				c := cloud.NewClientFromCSAPIClient(mockClient, user)
 				Ω(c.GetOrCreateVMInstance(
 					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
 					Should(MatchError(MatchRegexp("memory available .* in project can't fulfil the requirement:.*")))
@@ -492,7 +490,7 @@ var _ = Describe("Instance", func() {
 						VMAvailable:     "20",
 					},
 				}
-				c := mockFactory.NewClientFromCSAPIClient(mockClient, user)
+				c := cloud.NewClientFromCSAPIClient(mockClient, user)
 				Ω(c.GetOrCreateVMInstance(
 					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
 					Should(MatchError("VM limit in account has reached its maximum value"))
@@ -526,7 +524,7 @@ var _ = Describe("Instance", func() {
 						VMAvailable:     "20",
 					},
 				}
-				c := mockFactory.NewClientFromCSAPIClient(mockClient, user)
+				c := cloud.NewClientFromCSAPIClient(mockClient, user)
 				Ω(c.GetOrCreateVMInstance(
 					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
 					Should(MatchError("VM limit in domain has reached its maximum value"))
@@ -561,7 +559,7 @@ var _ = Describe("Instance", func() {
 					VMAvailable:     "0",
 				},
 			}
-			c := mockFactory.NewClientFromCSAPIClient(mockClient, user)
+			c := cloud.NewClientFromCSAPIClient(mockClient, user)
 			Ω(c.GetOrCreateVMInstance(
 				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
 				Should(MatchError("VM Limit in project has reached it's maximum value"))

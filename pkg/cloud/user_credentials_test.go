@@ -37,22 +37,20 @@ var _ = Describe("User Credentials", func() {
 
 	fakeError := errors.New(errorMessage)
 	var (
-		mockCtrl    *gomock.Controller
-		mockClient  *csapi.CloudStackClient
-		mockFactory cloud.Factory
-		ds          *csapi.MockDomainServiceIface
-		as          *csapi.MockAccountServiceIface
-		us          *csapi.MockUserServiceIface
+		mockCtrl   *gomock.Controller
+		mockClient *csapi.CloudStackClient
+		ds         *csapi.MockDomainServiceIface
+		as         *csapi.MockAccountServiceIface
+		us         *csapi.MockUserServiceIface
 	)
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(GinkgoT())
 		mockClient = csapi.NewMockClient(mockCtrl)
-		mockFactory = cloud.NewFactory()
 		ds = mockClient.Domain.(*csapi.MockDomainServiceIface)
 		as = mockClient.Account.(*csapi.MockAccountServiceIface)
 		us = mockClient.User.(*csapi.MockUserServiceIface)
-		client = mockFactory.NewClientFromCSAPIClient(mockClient, nil)
+		client = cloud.NewClientFromCSAPIClient(mockClient, nil)
 		dummies.SetDummyVars("default")
 		// dummies.SetDummyClusterStatus()
 		// dummies.SetDummyCSMachineStatuses()
@@ -480,7 +478,7 @@ var _ = Describe("User Credentials", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(found).Should(BeTrue())
 			Ω(user.APIKey).ShouldNot(BeEmpty())
-			newClient, err := mockFactory.NewClientInDomainAndAccount(client, user.Account.Domain.Name, user.Account.Name)
+			newClient, err := cloud.NewClientInDomainAndAccount(client, user.Account.Domain.Name, user.Account.Name)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(newClient).ShouldNot(BeNil())
 		})

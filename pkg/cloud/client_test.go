@@ -33,18 +33,16 @@ import (
 
 var _ = Describe("Client", func() {
 	var (
-		mockCtrl    *gomock.Controller
-		mockClient  *cloudstack.CloudStackClient
-		mockFactory cloud.Factory
-		us          *cloudstack.MockUserServiceIface
-		ds          *cloudstack.MockDomainServiceIface
-		as          *cloudstack.MockAccountServiceIface
+		mockCtrl   *gomock.Controller
+		mockClient *cloudstack.CloudStackClient
+		us         *cloudstack.MockUserServiceIface
+		ds         *cloudstack.MockDomainServiceIface
+		as         *cloudstack.MockAccountServiceIface
 	)
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(GinkgoT())
 		mockClient = cloudstack.NewMockClient(mockCtrl)
-		mockFactory = cloud.NewFactory()
 		us = mockClient.User.(*cloudstack.MockUserServiceIface)
 		ds = mockClient.Domain.(*cloudstack.MockDomainServiceIface)
 		as = mockClient.Account.(*cloudstack.MockAccountServiceIface)
@@ -64,7 +62,7 @@ var _ = Describe("Client", func() {
 			_, errConnect = helpers.NewCSClient()
 			Ω(errConnect).ShouldNot(HaveOccurred())
 
-			_, errConnect = mockFactory.NewClientFromYamlPath(os.Getenv("REPO_ROOT")+"/cloud-config.yaml", "myendpoint")
+			_, errConnect = cloud.NewClientFromYamlPath(os.Getenv("REPO_ROOT")+"/cloud-config.yaml", "myendpoint")
 			Ω(errConnect).ShouldNot(HaveOccurred())
 		})
 	})
@@ -156,7 +154,7 @@ var _ = Describe("Client", func() {
 			config := cloud.Config{
 				APIUrl: "http://1.1.1.1",
 			}
-			result, err := mockFactory.NewClientFromConf(config, clientConfig)
+			result, err := cloud.NewClientFromConf(config, clientConfig)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result).ShouldNot(BeNil())
 		})
@@ -168,8 +166,8 @@ var _ = Describe("Client", func() {
 			config2 := cloud.Config{
 				APIUrl: "http://3.3.3.3",
 			}
-			result1, _ := mockFactory.NewClientFromConf(config1, clientConfig)
-			result2, _ := mockFactory.NewClientFromConf(config2, clientConfig)
+			result1, _ := cloud.NewClientFromConf(config1, clientConfig)
+			result2, _ := cloud.NewClientFromConf(config2, clientConfig)
 			Ω(result1).ShouldNot(Equal(result2))
 		})
 
@@ -180,8 +178,8 @@ var _ = Describe("Client", func() {
 			config2 := cloud.Config{
 				APIUrl: "http://4.4.4.4",
 			}
-			result1, _ := mockFactory.NewClientFromConf(config1, clientConfig)
-			result2, _ := mockFactory.NewClientFromConf(config2, clientConfig)
+			result1, _ := cloud.NewClientFromConf(config1, clientConfig)
+			result2, _ := cloud.NewClientFromConf(config2, clientConfig)
 			Ω(result1).Should(Equal(result2))
 		})
 	})

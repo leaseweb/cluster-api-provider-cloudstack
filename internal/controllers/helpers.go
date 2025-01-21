@@ -20,6 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util"
 )
 
 // GetOwnerClusterName returns the name of the owning Cluster by finding a clusterv1.Cluster in the ownership references.
@@ -37,4 +38,26 @@ func GetOwnerClusterName(obj metav1.ObjectMeta) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// fetchOwnerRef searches a list of OwnerReference objects for a given kind and returns it if found.
+func fetchOwnerRef(refList []metav1.OwnerReference, kind string) *metav1.OwnerReference {
+	for _, ref := range refList {
+		if ref.Kind == kind {
+			return &ref
+		}
+	}
+
+	return nil
+}
+
+// GetManagementOwnerRef returns the owner reference pointing to the CAPI Machine's manager.
+func GetManagementOwnerRef(capiMachine *clusterv1.Machine) *metav1.OwnerReference {
+	if util.IsControlPlaneMachine(capiMachine) {
+		return fetchOwnerRef(capiMachine.OwnerReferences, "KubeadmControlPlane")
+	} else if ref := fetchOwnerRef(capiMachine.OwnerReferences, "EtcdadmCluster"); ref != nil {
+		return ref
+	}
+
+	return fetchOwnerRef(capiMachine.OwnerReferences, "MachineSet")
 }

@@ -34,20 +34,18 @@ var _ = Describe("Tag Unit Tests", func() {
 
 	fakeError := errors.New(errorMessage)
 	var ( // Declare shared vars.
-		mockCtrl    *gomock.Controller
-		mockClient  *csapi.CloudStackClient
-		mockFactory cloud.Factory
-		rs          *csapi.MockResourcetagsServiceIface
-		client      cloud.Client
+		mockCtrl   *gomock.Controller
+		mockClient *csapi.CloudStackClient
+		rs         *csapi.MockResourcetagsServiceIface
+		client     cloud.Client
 	)
 
 	BeforeEach(func() {
 		dummies.SetDummyVars("default")
 		mockCtrl = gomock.NewController(GinkgoT())
 		mockClient = csapi.NewMockClient(mockCtrl)
-		mockFactory = cloud.NewFactory()
 		rs = mockClient.Resourcetags.(*csapi.MockResourcetagsServiceIface)
-		client = mockFactory.NewClientFromCSAPIClient(mockClient, nil)
+		client = cloud.NewClientFromCSAPIClient(mockClient, nil)
 	})
 
 	Context("Tag Integ Tests", Label("integ"), func() {

@@ -40,8 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud/scope"
+	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/scope"
 )
 
 // CloudStackFailureDomainReconciler reconciles a CloudStackFailureDomain object.
@@ -49,7 +48,7 @@ type CloudStackFailureDomainReconciler struct {
 	Client           client.Client
 	Scheme           *runtime.Scheme
 	Recorder         record.EventRecorder
-	CSClientFactory  cloud.Factory
+	ScopeFactory     scope.ClientScopeFactory
 	WatchFilterValue string
 
 	IsoNet   *infrav1.CloudStackIsolatedNetwork
@@ -96,12 +95,18 @@ func (r *CloudStackFailureDomainReconciler) Reconcile(ctx context.Context, req c
 		return ctrl.Result{}, nil
 	}
 
+	clientScope, err := r.ScopeFactory.NewClientScopeForFailureDomain(ctx, r.Client, csfd)
+	if err != nil {
+		log.Error(err, "Failed to create client scope")
+		return ctrl.Result{}, err
+	}
+
 	// Create the affinity group scope.
 	scope, err := scope.NewFailureDomainScope(scope.FailureDomainScopeParams{
 		Client:                  r.Client,
 		Cluster:                 cluster,
 		CloudStackFailureDomain: csfd,
-		CSClientFactory:         r.CSClientFactory,
+		CSClients:               clientScope.CSClients(),
 		ControllerName:          "cloudstackfailuredomain",
 	})
 	if err != nil {
