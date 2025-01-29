@@ -195,7 +195,7 @@ generate-deepcopy: $(DEEPCOPY_GEN_TARGETS) ## Generate code containing DeepCopy,
 api/%/zz_generated.deepcopy.go: $(CONTROLLER_GEN) $(DEEPCOPY_GEN_INPUTS)
 	CGO_ENABLED=0 $(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-MANIFEST_GEN_INPUTS=$(shell find ./api ./controllers -type f -name "*test*" -prune -o -name "*zz_generated*" -prune -o -print)
+MANIFEST_GEN_INPUTS=$(shell find ./api ./internal/controllers -type f -name "*test*" -prune -o -name "*zz_generated*" -prune -o -print)
 # Using a flag file here as config output is too complicated to be a target.
 # The following triggers manifest building if $(IMG) differs from that found in config/default/manager_image_patch.yaml.
 $(shell	grep -qs "$(IMG)" config/default/manager_image_patch_edited.yaml || rm -f config/.flag.mk)
@@ -203,7 +203,7 @@ $(shell	grep -qs "$(IMG)" config/default/manager_image_patch_edited.yaml || rm -
 generate-manifests: config/.flag.mk ## Generates crd, webhook, rbac, and other configuration manifests from kubebuilder instructions in go comments.
 config/.flag.mk: $(CONTROLLER_GEN) $(MANIFEST_GEN_INPUTS)
 	sed -e 's@image: .*@image: '"$(IMG)"'@' config/default/manager_image_patch.yaml > config/default/manager_image_patch_edited.yaml
-	$(CONTROLLER_GEN) crd:crdVersions=v1 rbac:roleName=manager-role webhook paths="{./,./api/...,./controllers/...}" output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) crd:crdVersions=v1 rbac:roleName=manager-role webhook paths="{./,./api/...,./internal/controllers/...}" output:crd:artifacts:config=config/crd/bases
 	@touch config/.flag.mk
 
 .PHONY: generate-conversion
@@ -222,7 +222,7 @@ generate-conversion: $(CONVERSION_GEN) ## Generate code to convert api/v1beta1 a
 ## Build
 ## --------------------------------------
 
-MANAGER_BIN_INPUTS=$(shell find ./controllers ./api ./pkg -name "*mock*" -prune -o -name "*test*" -prune -o -type f -print) main.go go.mod go.sum
+MANAGER_BIN_INPUTS=$(shell find ./internal/controllers ./api ./pkg -name "*mock*" -prune -o -name "*test*" -prune -o -type f -print) main.go go.mod go.sum
 .PHONY: build
 build: binaries generate-deepcopy generate-manifests release-manifests ## Build manager binary.
 $(BIN_DIR)/manager: $(MANAGER_BIN_INPUTS)
@@ -325,7 +325,8 @@ setup-envtest: $(SETUP_ENVTEST) ## Set up envtest (download kubebuilder assets)
 .PHONY: test
 test: ## Run tests.
 test: generate-deepcopy-test generate-manifest-test generate-mocks setup-envtest $(GINKGO)
-	KUBEBUILDER_ASSETS="$(KUBEBUILDER_ASSETS)" $(GINKGO) --label-filter="!integ" --cover -coverprofile cover.out --covermode=atomic -v ./api/... ./controllers/... ./pkg/...
+	KUBEBUILDER_ASSETS="$(KUBEBUILDER_ASSETS)" $(GINKGO) --label-filter="!integ" --cover -coverprofile cover.out --covermode=atomic -v ./api/... ./pkg/...
+	KUBEBUILDER_ASSETS="$(KUBEBUILDER_ASSETS)" go test -v -coverprofile cover.out ./internal/controllers/...
 
 .PHONY: test-pkg
 test-pkg: $(GINKGO)  ## Run pkg tests.
