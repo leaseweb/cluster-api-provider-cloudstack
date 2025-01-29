@@ -17,8 +17,6 @@ limitations under the License.
 package cloud_test
 
 import (
-	"encoding/base64"
-
 	"github.com/apache/cloudstack-go/v2/cloudstack"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
@@ -26,7 +24,6 @@ import (
 	"github.com/pkg/errors"
 	"k8s.io/utils/ptr"
 
-	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
 )
@@ -77,189 +74,393 @@ var _ = Describe("Instance", func() {
 	})
 
 	Context("when fetching a VM instance", func() {
+		It("returns error when instance ID is empty", func() {
+			dummies.CSMachine1.Spec.InstanceID = ptr.To("")
+			_, err := client.GetVMInstanceByID(*dummies.CSMachine1.Spec.InstanceID)
+			Ω(err).Should(MatchError("instance ID is required"))
+		})
+
+		It("returns error when instance name is empty", func() {
+			dummies.CSMachine1.Name = ""
+			_, err := client.GetVMInstanceByName(dummies.CSMachine1.Name)
+			Ω(err).Should(MatchError("instance name is required"))
+		})
+
 		It("Handles an unknown error when fetching by ID", func() {
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).Return(nil, -1, unknownError)
-			Ω(client.ResolveVMInstanceDetails(dummies.CSMachine1)).To(MatchError(unknownErrorMessage))
+			vms.EXPECT().NewListVirtualMachinesParams().Return(&cloudstack.ListVirtualMachinesParams{})
+			vms.EXPECT().ListVirtualMachines(gomock.Any()).Return(nil, unknownError)
+			_, err := client.GetVMInstanceByID(*dummies.CSMachine1.Spec.InstanceID)
+			Ω(err).Should(MatchError(unknownErrorMessage))
 		})
 
 		It("Handles finding more than one VM instance by ID", func() {
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).Return(nil, 2, nil)
-			Ω(client.ResolveVMInstanceDetails(dummies.CSMachine1)).
-				Should(MatchError("found more than one VM Instance with ID " + *dummies.CSMachine1.Spec.InstanceID))
+			vms.EXPECT().NewListVirtualMachinesParams().Return(&cloudstack.ListVirtualMachinesParams{})
+			vms.EXPECT().ListVirtualMachines(gomock.Any()).Return(&cloudstack.ListVirtualMachinesResponse{
+				Count: 2,
+				VirtualMachines: []*cloudstack.VirtualMachine{
+					{Id: *dummies.CSMachine1.Spec.InstanceID},
+					{Id: *dummies.CSMachine1.Spec.InstanceID},
+				},
+			}, nil)
+			_, err := client.GetVMInstanceByID(*dummies.CSMachine1.Spec.InstanceID)
+			Ω(err).Should(MatchError("found more than one VM Instance with ID " + *dummies.CSMachine1.Spec.InstanceID))
 		})
 
-		It("sets dummies.CSMachine1 spec and status values when VM instance found by ID", func() {
-			vmsResp := &cloudstack.VirtualMachinesMetric{Id: *dummies.CSMachine1.Spec.InstanceID}
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).Return(vmsResp, 1, nil)
-			Ω(client.ResolveVMInstanceDetails(dummies.CSMachine1)).Should(Succeed())
-			Ω(dummies.CSMachine1.Spec.ProviderID).Should(Equal(ptr.To("cloudstack:///" + vmsResp.Id)))
-			Ω(dummies.CSMachine1.Spec.InstanceID).Should(Equal(ptr.To(vmsResp.Id)))
+		It("successfully gets VM instance by ID", func() {
+			expectedVM := &cloudstack.VirtualMachine{Id: *dummies.CSMachine1.Spec.InstanceID}
+			vms.EXPECT().NewListVirtualMachinesParams().Return(&cloudstack.ListVirtualMachinesParams{})
+			vms.EXPECT().ListVirtualMachines(gomock.Any()).Return(&cloudstack.ListVirtualMachinesResponse{
+				Count:           1,
+				VirtualMachines: []*cloudstack.VirtualMachine{expectedVM},
+			}, nil)
+			vm, err := client.GetVMInstanceByID(*dummies.CSMachine1.Spec.InstanceID)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(vm).Should(Equal(expectedVM))
 		})
 
 		It("handles an unknown error when fetching by name", func() {
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).Return(nil, -1, notFoundError)
-			vms.EXPECT().GetVirtualMachinesMetricByName(dummies.CSMachine1.Name, gomock.Any()).Return(nil, -1, unknownError)
-
-			Ω(client.ResolveVMInstanceDetails(dummies.CSMachine1)).Should(MatchError(unknownErrorMessage))
+			vms.EXPECT().NewListVirtualMachinesParams().Return(&cloudstack.ListVirtualMachinesParams{})
+			vms.EXPECT().ListVirtualMachines(gomock.Any()).Return(nil, unknownError)
+			_, err := client.GetVMInstanceByName(dummies.CSMachine1.Name)
+			Ω(err).Should(MatchError(unknownErrorMessage))
 		})
 
 		It("handles finding more than one VM instance by Name", func() {
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).Return(nil, -1, notFoundError)
-			vms.EXPECT().GetVirtualMachinesMetricByName(dummies.CSMachine1.Name, gomock.Any()).Return(nil, 2, nil)
-
-			Ω(client.ResolveVMInstanceDetails(dummies.CSMachine1)).Should(
-				MatchError("found more than one VM Instance with name " + dummies.CSMachine1.Name))
+			vms.EXPECT().NewListVirtualMachinesParams().Return(&cloudstack.ListVirtualMachinesParams{})
+			vms.EXPECT().ListVirtualMachines(gomock.Any()).Return(&cloudstack.ListVirtualMachinesResponse{
+				Count: 2,
+				VirtualMachines: []*cloudstack.VirtualMachine{
+					{Name: dummies.CSMachine1.Name},
+					{Name: dummies.CSMachine1.Name},
+				},
+			}, nil)
+			_, err := client.GetVMInstanceByName(dummies.CSMachine1.Name)
+			Ω(err).Should(MatchError("found more than one VM Instance with name " + dummies.CSMachine1.Name))
 		})
 
-		It("sets dummies.CSMachine1 spec and status values when VM instance found by Name", func() {
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).Return(nil, -1, notFoundError)
-			vms.EXPECT().GetVirtualMachinesMetricByName(dummies.CSMachine1.Name, gomock.Any()).
-				Return(&cloudstack.VirtualMachinesMetric{Id: *dummies.CSMachine1.Spec.InstanceID}, -1, nil)
-
-			Ω(client.ResolveVMInstanceDetails(dummies.CSMachine1)).Should(Succeed())
-			Ω(dummies.CSMachine1.Spec.ProviderID).Should(Equal(
-				ptr.To("cloudstack:///" + *dummies.CSMachine1.Spec.InstanceID)))
-			Ω(dummies.CSMachine1.Spec.InstanceID).Should(Equal(ptr.To(*dummies.CSMachine1.Spec.InstanceID)))
+		It("successfully gets VM instance by name", func() {
+			expectedVM := &cloudstack.VirtualMachine{Name: dummies.CSMachine1.Name}
+			vms.EXPECT().NewListVirtualMachinesParams().Return(&cloudstack.ListVirtualMachinesParams{})
+			vms.EXPECT().ListVirtualMachines(gomock.Any()).Return(&cloudstack.ListVirtualMachinesResponse{
+				Count:           1,
+				VirtualMachines: []*cloudstack.VirtualMachine{expectedVM},
+			}, nil)
+			vm, err := client.GetVMInstanceByName(dummies.CSMachine1.Name)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(vm).Should(Equal(expectedVM))
 		})
 	})
 
 	Context("when creating a VM instance", func() {
-		vmMetricResp := &cloudstack.VirtualMachinesMetric{}
-
-		expectVMNotFound := func() {
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).Return(nil, -1, notFoundError)
-			vms.EXPECT().GetVirtualMachinesMetricByName(dummies.CSMachine1.Name, gomock.Any()).Return(nil, -1, notFoundError)
-		}
-
-		It("doesn't re-create if one already exists.", func() {
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).Return(vmMetricResp, -1, nil)
-			Ω(client.GetOrCreateVMInstance(
-				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-				Should(Succeed())
-		})
-
-		It("returns unknown error while fetching VM instance", func() {
-			vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).Return(nil, -1, unknownError)
-			Ω(client.GetOrCreateVMInstance(
-				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-				Should(MatchError(unknownErrorMessage))
-		})
-
 		It("returns errors occurring while fetching service offering information", func() {
-			expectVMNotFound()
 			sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).Return(&cloudstack.ServiceOffering{}, -1, unknownError)
-			Ω(client.GetOrCreateVMInstance(
-				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-				ShouldNot(Succeed())
+			_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+			Ω(err).ShouldNot(Succeed())
 		})
 
 		It("returns errors if more than one service offering found", func() {
-			expectVMNotFound()
 			sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).Return(&cloudstack.ServiceOffering{
 				Id:   dummies.CSMachine1.Spec.Offering.ID,
 				Name: dummies.CSMachine1.Spec.Offering.Name,
 			}, 2, nil)
-			Ω(client.GetOrCreateVMInstance(
-				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-				ShouldNot(Succeed())
+			_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+			Ω(err).ShouldNot(Succeed())
 		})
 
-		It("returns errors while fetching template", func() {
-			expectVMNotFound()
+		It("successfully creates a VM instance", func() {
+			expectedVM := &cloudstack.VirtualMachine{
+				Id: *dummies.CSMachine1.Spec.InstanceID,
+				Nic: []cloudstack.Nic{
+					{Ipaddress: "10.0.0.1", Isdefault: true},
+				},
+			}
 
-			sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).
-				Return(&cloudstack.ServiceOffering{
-					Id:   dummies.CSMachine1.Spec.Offering.ID,
-					Name: dummies.CSMachine1.Spec.Offering.Name,
+			dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).
+				Return(diskOfferingFakeID, 1, nil)
+
+			dos.EXPECT().GetDiskOfferingByID(diskOfferingFakeID, gomock.Any()).
+				Return(&cloudstack.DiskOffering{
+					Id:           diskOfferingFakeID,
+					Iscustomized: false,
 				}, 1, nil)
-			ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).
-				Return("", -1, unknownError)
-			Ω(client.GetOrCreateVMInstance(
-				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-				ShouldNot(Succeed())
-		})
-
-		It("returns errors when more than one template found", func() {
-			expectVMNotFound()
 
 			sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).
 				Return(&cloudstack.ServiceOffering{
-					Id:   dummies.CSMachine1.Spec.Offering.ID,
-					Name: dummies.CSMachine1.Spec.Offering.Name,
-				}, 1, nil)
-			ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).Return("", 2, nil)
-			Ω(client.GetOrCreateVMInstance(
-				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-				ShouldNot(Succeed())
-		})
-
-		It("returns errors when more than one diskoffering found", func() {
-			expectVMNotFound()
-
-			sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).
-				Return(&cloudstack.ServiceOffering{
-					Id:   dummies.CSMachine1.Spec.Offering.ID,
-					Name: dummies.CSMachine1.Spec.Offering.Name,
-				}, 1, nil)
-			ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).Return(dummies.CSMachine1.Spec.Template.ID, 1, nil)
-			dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).Return(diskOfferingFakeID, 2, nil)
-			Ω(client.GetOrCreateVMInstance(
-				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-				ShouldNot(Succeed())
-		})
-
-		It("returns errors when fetching diskoffering", func() {
-			expectVMNotFound()
-			sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).
-				Return(&cloudstack.ServiceOffering{
-					Id:   dummies.CSMachine1.Spec.Offering.ID,
-					Name: dummies.CSMachine1.Spec.Offering.Name,
-				}, 1, nil)
-			ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).Return(dummies.CSMachine1.Spec.Template.ID, 1, nil)
-			dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).Return(diskOfferingFakeID, 1, nil)
-			dos.EXPECT().GetDiskOfferingByID(diskOfferingFakeID, gomock.Any()).Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, unknownError)
-			Ω(client.GetOrCreateVMInstance(
-				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-				ShouldNot(Succeed())
-		})
-
-		It("returns errors when disk size not zero for non-customized disk offering", func() {
-			expectVMNotFound()
-			dummies.CSMachine1.Spec.DiskOffering.CustomSize = 1
-			sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).
-				Return(&cloudstack.ServiceOffering{
-					Id:   dummies.CSMachine1.Spec.Offering.ID,
-					Name: dummies.CSMachine1.Spec.Offering.Name,
-				}, 1, nil)
-			ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).Return(dummies.CSMachine1.Spec.Template.ID, 1, nil)
-			dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).Return(diskOfferingFakeID, 1, nil)
-			dos.EXPECT().GetDiskOfferingByID(diskOfferingFakeID, gomock.Any()).Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, nil)
-			Ω(client.GetOrCreateVMInstance(
-				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-				ShouldNot(Succeed())
-		})
-
-		It("returns errors when disk size zero for customized disk offering", func() {
-			expectVMNotFound()
-			dummies.CSMachine1.Spec.DiskOffering.CustomSize = 0
-			sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).
-				Return(&cloudstack.ServiceOffering{
-					Id:        dummies.CSMachine1.Spec.Offering.ID,
+					Id:        offeringFakeID,
 					Name:      dummies.CSMachine1.Spec.Offering.Name,
 					Cpunumber: 1,
 					Memory:    1024,
 				}, 1, nil)
-			ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).Return(dummies.CSMachine1.Spec.Template.ID, 1, nil)
-			dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).Return(diskOfferingFakeID, 1, nil)
-			dos.EXPECT().GetDiskOfferingByID(diskOfferingFakeID, gomock.Any()).Return(&cloudstack.DiskOffering{Iscustomized: true}, 1, nil)
-			Ω(client.GetOrCreateVMInstance(
-				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-				ShouldNot(Succeed())
+
+			ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).
+				Return(templateFakeID, 1, nil)
+
+			vms.EXPECT().NewDeployVirtualMachineParams(offeringFakeID, templateFakeID, dummies.Zone1.ID).
+				Return(&cloudstack.DeployVirtualMachineParams{})
+
+			vms.EXPECT().DeployVirtualMachine(gomock.Any()).Return(&cloudstack.DeployVirtualMachineResponse{
+				Id: *dummies.CSMachine1.Spec.InstanceID,
+			}, nil)
+
+			vms.EXPECT().NewListVirtualMachinesParams().Return(&cloudstack.ListVirtualMachinesParams{})
+			vms.EXPECT().ListVirtualMachines(gomock.Any()).Return(&cloudstack.ListVirtualMachinesResponse{
+				Count:           1,
+				VirtualMachines: []*cloudstack.VirtualMachine{expectedVM},
+			}, nil)
+
+			vm, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(vm).Should(Equal(expectedVM))
+		})
+
+		Context("when using UUIDs and/or names to locate service offerings", func() {
+			It("works with service offering ID", func() {
+				dummies.CSMachine1.Spec.Offering.ID = offeringFakeID
+				dummies.CSMachine1.Spec.Offering.Name = ""
+
+				sos.EXPECT().GetServiceOfferingByID(dummies.CSMachine1.Spec.Offering.ID, gomock.Any()).
+					Return(&cloudstack.ServiceOffering{
+						Id:        offeringFakeID,
+						Name:      offeringName,
+						Cpunumber: 1,
+						Memory:    1024,
+					}, 1, nil)
+
+				dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).
+					Return(diskOfferingFakeID, 1, nil)
+
+				dos.EXPECT().GetDiskOfferingByID(diskOfferingFakeID, gomock.Any()).
+					Return(&cloudstack.DiskOffering{
+						Id:           diskOfferingFakeID,
+						Iscustomized: false,
+					}, 1, nil)
+
+				ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).
+					Return(templateFakeID, 1, nil)
+
+				vms.EXPECT().NewDeployVirtualMachineParams(offeringFakeID, templateFakeID, dummies.Zone1.ID).
+					Return(&cloudstack.DeployVirtualMachineParams{})
+
+				vms.EXPECT().DeployVirtualMachine(gomock.Any()).Return(&cloudstack.DeployVirtualMachineResponse{
+					Id: *dummies.CSMachine1.Spec.InstanceID,
+				}, nil)
+
+				vms.EXPECT().NewListVirtualMachinesParams().Return(&cloudstack.ListVirtualMachinesParams{})
+				vms.EXPECT().ListVirtualMachines(gomock.Any()).Return(&cloudstack.ListVirtualMachinesResponse{
+					Count: 1,
+					VirtualMachines: []*cloudstack.VirtualMachine{{
+						Id: *dummies.CSMachine1.Spec.InstanceID,
+					}},
+				}, nil)
+
+				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("works with service offering name", func() {
+				dummies.CSMachine1.Spec.Offering.ID = ""
+				dummies.CSMachine1.Spec.Offering.Name = offeringName
+
+				sos.EXPECT().GetServiceOfferingByName(offeringName, gomock.Any()).
+					Return(&cloudstack.ServiceOffering{
+						Id:        offeringFakeID,
+						Name:      offeringName,
+						Cpunumber: 1,
+						Memory:    1024,
+					}, 1, nil)
+
+				dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).
+					Return(diskOfferingFakeID, 1, nil)
+
+				dos.EXPECT().GetDiskOfferingByID(diskOfferingFakeID, gomock.Any()).
+					Return(&cloudstack.DiskOffering{
+						Id:           diskOfferingFakeID,
+						Iscustomized: false,
+					}, 1, nil)
+
+				ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).
+					Return(templateFakeID, 1, nil)
+
+				vms.EXPECT().NewDeployVirtualMachineParams(offeringFakeID, templateFakeID, dummies.Zone1.ID).
+					Return(&cloudstack.DeployVirtualMachineParams{})
+
+				vms.EXPECT().DeployVirtualMachine(gomock.Any()).Return(&cloudstack.DeployVirtualMachineResponse{
+					Id: *dummies.CSMachine1.Spec.InstanceID,
+				}, nil)
+
+				vms.EXPECT().NewListVirtualMachinesParams().Return(&cloudstack.ListVirtualMachinesParams{})
+				vms.EXPECT().ListVirtualMachines(gomock.Any()).Return(&cloudstack.ListVirtualMachinesResponse{
+					Count: 1,
+					VirtualMachines: []*cloudstack.VirtualMachine{{
+						Id: *dummies.CSMachine1.Spec.InstanceID,
+					}},
+				}, nil)
+
+				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("returns error when service offering name and ID mismatch", func() {
+				dummies.CSMachine1.Spec.Offering.ID = offeringFakeID
+				dummies.CSMachine1.Spec.Offering.Name = offeringName
+
+				sos.EXPECT().GetServiceOfferingByID(offeringFakeID, gomock.Any()).
+					Return(&cloudstack.ServiceOffering{
+						Id:   offeringFakeID,
+						Name: "different-name",
+					}, 1, nil)
+
+				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				Ω(err).Should(MatchError(ContainSubstring("offering name")))
+			})
+		})
+
+		Context("when using UUIDs and/or names to locate templates", func() {
+			BeforeEach(func() {
+				// Setup common service offering expectations
+				sos.EXPECT().GetServiceOfferingByName(gomock.Any(), gomock.Any()).
+					Return(&cloudstack.ServiceOffering{
+						Id:        offeringFakeID,
+						Name:      offeringName,
+						Cpunumber: 1,
+						Memory:    1024,
+					}, 1, nil).AnyTimes()
+			})
+
+			It("works with template ID", func() {
+				dummies.CSMachine1.Spec.Template.ID = templateFakeID
+				dummies.CSMachine1.Spec.Template.Name = ""
+
+				ts.EXPECT().GetTemplateByID(templateFakeID, executableFilter, gomock.Any()).
+					Return(&cloudstack.Template{
+						Id:   templateFakeID,
+						Name: templateName,
+					}, 1, nil)
+
+				dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).
+					Return(diskOfferingFakeID, 1, nil)
+
+				dos.EXPECT().GetDiskOfferingByID(diskOfferingFakeID, gomock.Any()).
+					Return(&cloudstack.DiskOffering{
+						Id:           diskOfferingFakeID,
+						Iscustomized: false,
+					}, 1, nil)
+
+				vms.EXPECT().NewDeployVirtualMachineParams(offeringFakeID, templateFakeID, dummies.Zone1.ID).
+					Return(&cloudstack.DeployVirtualMachineParams{})
+
+				vms.EXPECT().DeployVirtualMachine(gomock.Any()).Return(&cloudstack.DeployVirtualMachineResponse{
+					Id: *dummies.CSMachine1.Spec.InstanceID,
+				}, nil)
+
+				vms.EXPECT().NewListVirtualMachinesParams().Return(&cloudstack.ListVirtualMachinesParams{})
+				vms.EXPECT().ListVirtualMachines(gomock.Any()).Return(&cloudstack.ListVirtualMachinesResponse{
+					Count: 1,
+					VirtualMachines: []*cloudstack.VirtualMachine{{
+						Id: *dummies.CSMachine1.Spec.InstanceID,
+					}},
+				}, nil)
+
+				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("returns error when template name and ID mismatch", func() {
+				dummies.CSMachine1.Spec.Template.ID = templateFakeID
+				dummies.CSMachine1.Spec.Template.Name = templateName
+
+				ts.EXPECT().GetTemplateByID(templateFakeID, executableFilter, gomock.Any()).
+					Return(&cloudstack.Template{
+						Id:   templateFakeID,
+						Name: "different-name",
+					}, 1, nil)
+
+				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				Ω(err).Should(MatchError(ContainSubstring("template name")))
+			})
+		})
+
+		Context("when using disk offerings", func() {
+			BeforeEach(func() {
+				// Setup common service offering and template expectations
+				sos.EXPECT().GetServiceOfferingByName(gomock.Any(), gomock.Any()).
+					Return(&cloudstack.ServiceOffering{
+						Id:        offeringFakeID,
+						Name:      offeringName,
+						Cpunumber: 1,
+						Memory:    1024,
+					}, 1, nil).AnyTimes()
+
+				ts.EXPECT().GetTemplateID(gomock.Any(), executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).
+					Return(templateFakeID, 1, nil).AnyTimes()
+			})
+
+			It("works with disk offering ID", func() {
+				dummies.CSMachine1.Spec.DiskOffering.ID = diskOfferingFakeID
+				dummies.CSMachine1.Spec.DiskOffering.Name = ""
+
+				dos.EXPECT().GetDiskOfferingByID(diskOfferingFakeID, gomock.Any()).
+					Return(&cloudstack.DiskOffering{
+						Id:           diskOfferingFakeID,
+						Iscustomized: false,
+					}, 1, nil)
+
+				vms.EXPECT().NewDeployVirtualMachineParams(offeringFakeID, templateFakeID, dummies.Zone1.ID).
+					Return(&cloudstack.DeployVirtualMachineParams{})
+
+				vms.EXPECT().DeployVirtualMachine(gomock.Any()).Return(&cloudstack.DeployVirtualMachineResponse{
+					Id: *dummies.CSMachine1.Spec.InstanceID,
+				}, nil)
+
+				vms.EXPECT().NewListVirtualMachinesParams().Return(&cloudstack.ListVirtualMachinesParams{})
+				vms.EXPECT().ListVirtualMachines(gomock.Any()).Return(&cloudstack.ListVirtualMachinesResponse{
+					Count: 1,
+					VirtualMachines: []*cloudstack.VirtualMachine{{
+						Id: *dummies.CSMachine1.Spec.InstanceID,
+					}},
+				}, nil)
+
+				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("returns error for customized disk offering without size", func() {
+				dummies.CSMachine1.Spec.DiskOffering.ID = diskOfferingFakeID
+				dummies.CSMachine1.Spec.DiskOffering.CustomSize = 0
+
+				dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).
+					Return(diskOfferingFakeID, 1, nil)
+
+				dos.EXPECT().GetDiskOfferingByID(diskOfferingFakeID, gomock.Any()).
+					Return(&cloudstack.DiskOffering{
+						Id:           diskOfferingFakeID,
+						Iscustomized: true,
+					}, 1, nil)
+
+				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				Ω(err).Should(MatchError(ContainSubstring("disk size can not be 0 GB")))
+			})
+
+			It("returns error for non-customized disk offering with size", func() {
+				dummies.CSMachine1.Spec.DiskOffering.ID = diskOfferingFakeID
+				dummies.CSMachine1.Spec.DiskOffering.CustomSize = 100
+
+				dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).
+					Return(diskOfferingFakeID, 1, nil)
+
+				dos.EXPECT().GetDiskOfferingByID(diskOfferingFakeID, gomock.Any()).
+					Return(&cloudstack.DiskOffering{
+						Id:           diskOfferingFakeID,
+						Iscustomized: false,
+					}, 1, nil)
+
+				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				Ω(err).Should(MatchError(ContainSubstring("disk size can not be specified")))
+			})
 		})
 
 		Context("when account & domains have limits", func() {
 			It("returns errors when there are not enough available CPU in account", func() {
-				expectVMNotFound()
 				dummies.CSMachine1.Spec.DiskOffering.CustomSize = 0
 				sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).
 					Return(&cloudstack.ServiceOffering{
@@ -287,13 +488,11 @@ var _ = Describe("Instance", func() {
 					},
 				}
 				c := cloud.NewClientFromCSAPIClient(mockClient, user)
-				Ω(c.GetOrCreateVMInstance(
-					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-					Should(MatchError(MatchRegexp("CPU available .* in account can't fulfil the requirement:.*")))
+				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				Ω(err).Should(MatchError(MatchRegexp("CPU available .* in account can't fulfil the requirement:.*")))
 			})
 
 			It("returns errors when there are not enough available CPU in domain", func() {
-				expectVMNotFound()
 				dummies.CSMachine1.Spec.DiskOffering.CustomSize = 0
 				sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).
 					Return(&cloudstack.ServiceOffering{
@@ -321,13 +520,11 @@ var _ = Describe("Instance", func() {
 					},
 				}
 				c := cloud.NewClientFromCSAPIClient(mockClient, user)
-				Ω(c.GetOrCreateVMInstance(
-					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-					Should(MatchError(MatchRegexp("CPU available .* in domain can't fulfil the requirement:.*")))
+				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				Ω(err).Should(MatchError(MatchRegexp("CPU available .* in domain can't fulfil the requirement:.*")))
 			})
 
 			It("returns errors when there are not enough available CPU in project", func() {
-				expectVMNotFound()
 				dummies.CSMachine1.Spec.DiskOffering.CustomSize = 0
 				sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).
 					Return(&cloudstack.ServiceOffering{
@@ -355,13 +552,11 @@ var _ = Describe("Instance", func() {
 					},
 				}
 				c := cloud.NewClientFromCSAPIClient(mockClient, user)
-				Ω(c.GetOrCreateVMInstance(
-					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-					Should(MatchError(MatchRegexp("CPU available .* in project can't fulfil the requirement:.*")))
+				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				Ω(err).Should(MatchError(MatchRegexp("CPU available .* in project can't fulfil the requirement:.*")))
 			})
 
 			It("returns errors when there is not enough available memory in account", func() {
-				expectVMNotFound()
 				dummies.CSMachine1.Spec.DiskOffering.CustomSize = 0
 				sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).
 					Return(&cloudstack.ServiceOffering{
@@ -383,19 +578,17 @@ var _ = Describe("Instance", func() {
 					},
 					Project: cloud.Project{
 						ID:              "123",
-						CPUAvailable:    "1",
+						CPUAvailable:    "20",
 						MemoryAvailable: "2048",
 						VMAvailable:     "20",
 					},
 				}
 				c := cloud.NewClientFromCSAPIClient(mockClient, user)
-				Ω(c.GetOrCreateVMInstance(
-					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-					Should(MatchError(MatchRegexp("memory available .* in account can't fulfil the requirement:.*")))
+				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				Ω(err).Should(MatchError(MatchRegexp("memory available .* in account can't fulfil the requirement:.*")))
 			})
 
 			It("returns errors when there is not enough available memory in domain", func() {
-				expectVMNotFound()
 				dummies.CSMachine1.Spec.DiskOffering.CustomSize = 0
 				sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).
 					Return(&cloudstack.ServiceOffering{
@@ -417,19 +610,17 @@ var _ = Describe("Instance", func() {
 					},
 					Project: cloud.Project{
 						ID:              "123",
-						CPUAvailable:    "1",
+						CPUAvailable:    "20",
 						MemoryAvailable: "2048",
 						VMAvailable:     "20",
 					},
 				}
 				c := cloud.NewClientFromCSAPIClient(mockClient, user)
-				Ω(c.GetOrCreateVMInstance(
-					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-					Should(MatchError(MatchRegexp("memory available .* in domain can't fulfil the requirement:.*")))
+				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				Ω(err).Should(MatchError(MatchRegexp("memory available .* in domain can't fulfil the requirement:.*")))
 			})
 
 			It("returns errors when there is not enough available memory in project", func() {
-				expectVMNotFound()
 				dummies.CSMachine1.Spec.DiskOffering.CustomSize = 0
 				sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).
 					Return(&cloudstack.ServiceOffering{
@@ -457,13 +648,11 @@ var _ = Describe("Instance", func() {
 					},
 				}
 				c := cloud.NewClientFromCSAPIClient(mockClient, user)
-				Ω(c.GetOrCreateVMInstance(
-					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-					Should(MatchError(MatchRegexp("memory available .* in project can't fulfil the requirement:.*")))
+				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				Ω(err).Should(MatchError(MatchRegexp("memory available .* in project can't fulfil the requirement:.*")))
 			})
 
 			It("returns errors when there is not enough available VM limit in account", func() {
-				expectVMNotFound()
 				dummies.CSMachine1.Spec.DiskOffering.CustomSize = 0
 				sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).
 					Return(&cloudstack.ServiceOffering{
@@ -486,18 +675,16 @@ var _ = Describe("Instance", func() {
 					Project: cloud.Project{
 						ID:              "123",
 						CPUAvailable:    "20",
-						MemoryAvailable: "512",
+						MemoryAvailable: "2048",
 						VMAvailable:     "20",
 					},
 				}
 				c := cloud.NewClientFromCSAPIClient(mockClient, user)
-				Ω(c.GetOrCreateVMInstance(
-					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-					Should(MatchError("VM limit in account has reached its maximum value"))
+				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				Ω(err).Should(MatchError("VM limit in account has reached its maximum value"))
 			})
 
 			It("returns errors when there is not enough available VM limit in domain", func() {
-				expectVMNotFound()
 				dummies.CSMachine1.Spec.DiskOffering.CustomSize = 0
 				sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).
 					Return(&cloudstack.ServiceOffering{
@@ -520,356 +707,46 @@ var _ = Describe("Instance", func() {
 					Project: cloud.Project{
 						ID:              "123",
 						CPUAvailable:    "20",
-						MemoryAvailable: "512",
+						MemoryAvailable: "2048",
 						VMAvailable:     "20",
 					},
 				}
 				c := cloud.NewClientFromCSAPIClient(mockClient, user)
-				Ω(c.GetOrCreateVMInstance(
-					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-					Should(MatchError("VM limit in domain has reached its maximum value"))
+				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				Ω(err).Should(MatchError("VM limit in domain has reached its maximum value"))
 			})
-		})
 
-		It("returns errors when there is not enough available VM limit in project", func() {
-			expectVMNotFound()
-			dummies.CSMachine1.Spec.DiskOffering.CustomSize = 0
-			sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).
-				Return(&cloudstack.ServiceOffering{
-					Id:        dummies.CSMachine1.Spec.Offering.ID,
-					Name:      dummies.CSMachine1.Spec.Offering.Name,
-					Cpunumber: 2,
-					Memory:    1024,
-				}, 1, nil)
-			user := &cloud.User{
-				Account: cloud.Account{
-					Domain: cloud.Domain{
+			It("returns errors when there is not enough available VM limit in project", func() {
+				dummies.CSMachine1.Spec.DiskOffering.CustomSize = 0
+				sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).
+					Return(&cloudstack.ServiceOffering{
+						Id:        dummies.CSMachine1.Spec.Offering.ID,
+						Name:      dummies.CSMachine1.Spec.Offering.Name,
+						Cpunumber: 2,
+						Memory:    1024,
+					}, 1, nil)
+				user := &cloud.User{
+					Account: cloud.Account{
+						Domain: cloud.Domain{
+							CPUAvailable:    "20",
+							MemoryAvailable: "2048",
+							VMAvailable:     "10",
+						},
 						CPUAvailable:    "20",
 						MemoryAvailable: "2048",
 						VMAvailable:     "10",
 					},
-					CPUAvailable:    "20",
-					MemoryAvailable: "2048",
-					VMAvailable:     "10",
-				},
-				Project: cloud.Project{
-					ID:              "123",
-					CPUAvailable:    "20",
-					MemoryAvailable: "2048",
-					VMAvailable:     "0",
-				},
-			}
-			c := cloud.NewClientFromCSAPIClient(mockClient, user)
-			Ω(c.GetOrCreateVMInstance(
-				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-				Should(MatchError("VM Limit in project has reached it's maximum value"))
-		})
-
-		It("handles deployment errors", func() {
-			expectVMNotFound()
-			sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).
-				Return(&cloudstack.ServiceOffering{
-					Id:        offeringFakeID,
-					Name:      dummies.CSMachine1.Spec.Offering.Name,
-					Cpunumber: 1,
-					Memory:    1024,
-				}, 1, nil)
-			ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).
-				Return(templateFakeID, 1, nil)
-			dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).
-				Return(diskOfferingFakeID, 1, nil)
-			dos.EXPECT().GetDiskOfferingByID(diskOfferingFakeID, gomock.Any()).
-				Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, nil)
-			vms.EXPECT().NewDeployVirtualMachineParams(offeringFakeID, templateFakeID, dummies.Zone1.ID).
-				Return(&cloudstack.DeployVirtualMachineParams{})
-			vms.EXPECT().DeployVirtualMachine(gomock.Any()).Return(nil, unknownError)
-			vms.EXPECT().NewListVirtualMachinesParams().Return(&cloudstack.ListVirtualMachinesParams{})
-			vms.EXPECT().ListVirtualMachines(gomock.Any()).Return(&cloudstack.ListVirtualMachinesResponse{}, nil)
-			Ω(client.GetOrCreateVMInstance(
-				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-				Should(MatchError(unknownErrorMessage))
-		})
-
-		Context("when using UUIDs and/or names to locate service offerings and templates", func() {
-			BeforeEach(func() {
-				gomock.InOrder(
-					vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).
-						Return(nil, -1, notFoundError),
-					vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).
-						Return(&cloudstack.VirtualMachinesMetric{}, 1, nil))
-
-				vms.EXPECT().GetVirtualMachinesMetricByName(dummies.CSMachine1.Name, gomock.Any()).Return(nil, -1, notFoundError)
+					Project: cloud.Project{
+						ID:              "123",
+						CPUAvailable:    "20",
+						MemoryAvailable: "2048",
+						VMAvailable:     "0",
+					},
+				}
+				c := cloud.NewClientFromCSAPIClient(mockClient, user)
+				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				Ω(err).Should(MatchError("VM Limit in project has reached it's maximum value"))
 			})
-
-			ActionAndAssert := func() {
-				vms.EXPECT().NewDeployVirtualMachineParams(offeringFakeID, templateFakeID, dummies.Zone1.ID).
-					Return(&cloudstack.DeployVirtualMachineParams{})
-
-				deploymentResp := &cloudstack.DeployVirtualMachineResponse{Id: *dummies.CSMachine1.Spec.InstanceID}
-
-				expectUserData := "my special userdata"
-
-				vms.EXPECT().DeployVirtualMachine(gomock.Any()).Do(
-					func(p interface{}) {
-						params := p.(*cloudstack.DeployVirtualMachineParams)
-						displayName, _ := params.GetDisplayname()
-						Ω(displayName).Should(Equal(dummies.CAPIMachine.Name))
-
-						b64UserData, _ := params.GetUserdata()
-
-						userData, err := base64.StdEncoding.DecodeString(b64UserData)
-						Ω(err).ToNot(HaveOccurred())
-
-						decompressedUserData, err := decompress(userData)
-						Ω(err).ToNot(HaveOccurred())
-
-						Ω(string(decompressedUserData)).To(Equal(expectUserData))
-					}).Return(deploymentResp, nil)
-
-				Ω(client.GetOrCreateVMInstance(
-					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, expectUserData)).
-					Should(Succeed())
-			}
-
-			It("works with service offering name and template name", func() {
-				dummies.CSMachine1.Spec.DiskOffering.ID = diskOfferingFakeID
-				dummies.CSMachine1.Spec.Offering.ID = ""
-				dummies.CSMachine1.Spec.Template.ID = ""
-				dummies.CSMachine1.Spec.Offering.Name = offeringName
-				dummies.CSMachine1.Spec.Template.Name = templateName
-
-				sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).Return(&cloudstack.ServiceOffering{
-					Id:        offeringFakeID,
-					Cpunumber: 1,
-					Memory:    1024,
-				}, 1, nil)
-				dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).Return(diskOfferingFakeID, 1, nil)
-				dos.EXPECT().GetDiskOfferingByID(dummies.CSMachine1.Spec.DiskOffering.ID, gomock.Any()).Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, nil)
-				ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).
-					Return(templateFakeID, 1, nil)
-
-				ActionAndAssert()
-			})
-
-			It("works with service offering name and template name without disk offering", func() {
-				dummies.CSMachine1.Spec.Offering.ID = ""
-				dummies.CSMachine1.Spec.Template.ID = ""
-				dummies.CSMachine1.Spec.Offering.Name = offeringName
-				dummies.CSMachine1.Spec.Template.Name = templateName
-				dummies.CSMachine1.Spec.DiskOffering = &infrav1.CloudStackResourceDiskOffering{}
-
-				sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).Return(&cloudstack.ServiceOffering{
-					Id:        offeringFakeID,
-					Cpunumber: 1,
-					Memory:    1024,
-				}, 1, nil)
-				ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).
-					Return(templateFakeID, 1, nil)
-
-				ActionAndAssert()
-			})
-
-			It("works with service offering ID and template name", func() {
-				dummies.CSMachine1.Spec.DiskOffering.ID = diskOfferingFakeID
-				dummies.CSMachine1.Spec.Offering.ID = offeringFakeID
-				dummies.CSMachine1.Spec.Template.ID = ""
-				dummies.CSMachine1.Spec.Offering.Name = ""
-				dummies.CSMachine1.Spec.Template.Name = templateName
-
-				sos.EXPECT().GetServiceOfferingByID(dummies.CSMachine1.Spec.Offering.ID, gomock.Any()).Return(&cloudstack.ServiceOffering{
-					Id:        offeringFakeID,
-					Cpunumber: 1,
-					Memory:    1024,
-				}, 1, nil)
-				ts.EXPECT().GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any(), gomock.Any()).
-					Return(templateFakeID, 1, nil)
-				dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).Return(diskOfferingFakeID, 1, nil)
-				dos.EXPECT().GetDiskOfferingByID(dummies.CSMachine1.Spec.DiskOffering.ID, gomock.Any()).Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, nil)
-
-				ActionAndAssert()
-			})
-
-			It("works with service offering name and template ID", func() {
-				dummies.CSMachine1.Spec.DiskOffering.ID = diskOfferingFakeID
-				dummies.CSMachine1.Spec.Offering.ID = ""
-				dummies.CSMachine1.Spec.Template.ID = templateFakeID
-				dummies.CSMachine1.Spec.Offering.Name = offeringName
-				dummies.CSMachine1.Spec.Template.Name = ""
-
-				sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).Return(&cloudstack.ServiceOffering{
-					Id:        offeringFakeID,
-					Cpunumber: 1,
-					Memory:    1024,
-				}, 1, nil)
-
-				ts.EXPECT().GetTemplateByID(dummies.CSMachine1.Spec.Template.ID, executableFilter, gomock.Any()).Return(&cloudstack.Template{Name: ""}, 1, nil)
-				dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).Return(diskOfferingFakeID, 1, nil)
-				dos.EXPECT().GetDiskOfferingByID(dummies.CSMachine1.Spec.DiskOffering.ID, gomock.Any()).Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, nil)
-
-				ActionAndAssert()
-			})
-
-			It("works with service offering ID and template ID", func() {
-				dummies.CSMachine1.Spec.DiskOffering.ID = diskOfferingFakeID
-				dummies.CSMachine1.Spec.Offering.ID = offeringFakeID
-				dummies.CSMachine1.Spec.Template.ID = templateFakeID
-				dummies.CSMachine1.Spec.Offering.Name = ""
-				dummies.CSMachine1.Spec.Template.Name = ""
-
-				sos.EXPECT().GetServiceOfferingByID(dummies.CSMachine1.Spec.Offering.ID, gomock.Any()).
-					Return(&cloudstack.ServiceOffering{
-						Id:        offeringFakeID,
-						Cpunumber: 1,
-						Memory:    1024,
-					}, 1, nil)
-				dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).
-					Return(diskOfferingFakeID, 1, nil)
-				dos.EXPECT().GetDiskOfferingByID(dummies.CSMachine1.Spec.DiskOffering.ID, gomock.Any()).
-					Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, nil)
-				ts.EXPECT().GetTemplateByID(dummies.CSMachine1.Spec.Template.ID, executableFilter, gomock.Any()).
-					Return(&cloudstack.Template{Name: templateName}, 1, nil)
-
-				ActionAndAssert()
-			})
-
-			It("works with Id and name both provided", func() {
-				dummies.CSMachine1.Spec.DiskOffering.ID = diskOfferingFakeID
-				dummies.CSMachine1.Spec.Offering.ID = offeringFakeID
-				dummies.CSMachine1.Spec.Template.ID = templateFakeID
-				dummies.CSMachine1.Spec.Offering.Name = offeringName
-				dummies.CSMachine1.Spec.Template.Name = templateName
-
-				sos.EXPECT().GetServiceOfferingByID(dummies.CSMachine1.Spec.Offering.ID, gomock.Any()).Return(&cloudstack.ServiceOffering{
-					Id:        dummies.CSMachine1.Spec.Offering.ID,
-					Name:      dummies.CSMachine1.Spec.Offering.Name,
-					Cpunumber: 1,
-					Memory:    1024,
-				}, 1, nil)
-				ts.EXPECT().GetTemplateByID(dummies.CSMachine1.Spec.Template.ID, executableFilter, gomock.Any()).Return(&cloudstack.Template{Name: templateName}, 1, nil)
-				dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).Return(diskOfferingFakeID, 1, nil)
-				dos.EXPECT().GetDiskOfferingByID(dummies.CSMachine1.Spec.DiskOffering.ID, gomock.Any()).Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, nil)
-
-				ActionAndAssert()
-			})
-		})
-
-		Context("when using both UUIDs and names to locate service offerings and templates", func() {
-			BeforeEach(func() {
-				vms.EXPECT().GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).
-					Return(nil, -1, notFoundError)
-				vms.EXPECT().GetVirtualMachinesMetricByName(dummies.CSMachine1.Name, gomock.Any()).Return(nil, -1, notFoundError)
-			})
-
-			It("works with Id and name both provided, offering name mismatch", func() {
-				dummies.CSMachine1.Spec.Offering.ID = offeringFakeID
-				dummies.CSMachine1.Spec.Template.ID = templateFakeID
-				dummies.CSMachine1.Spec.Offering.Name = offeringName
-				dummies.CSMachine1.Spec.Template.Name = templateName
-
-				sos.EXPECT().GetServiceOfferingByID(dummies.CSMachine1.Spec.Offering.ID, gomock.Any()).Return(&cloudstack.ServiceOffering{Name: "offering-not-match"}, 1, nil)
-				requiredRegexp := "offering name %s does not match name %s returned using UUID %s"
-				Ω(client.GetOrCreateVMInstance(
-					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-					Should(MatchError(MatchRegexp(requiredRegexp, dummies.CSMachine1.Spec.Offering.Name, "offering-not-match", offeringFakeID)))
-			})
-
-			It("works with Id and name both provided, template name mismatch", func() {
-				dummies.CSMachine1.Spec.Offering.ID = offeringFakeID
-				dummies.CSMachine1.Spec.Template.ID = templateFakeID
-				dummies.CSMachine1.Spec.Offering.Name = offeringName
-				dummies.CSMachine1.Spec.Template.Name = templateName
-
-				sos.EXPECT().GetServiceOfferingByID(dummies.CSMachine1.Spec.Offering.ID, gomock.Any()).Return(&cloudstack.ServiceOffering{Name: offeringName}, 1, nil)
-				ts.EXPECT().GetTemplateByID(dummies.CSMachine1.Spec.Template.ID, executableFilter, gomock.Any()).Return(&cloudstack.Template{Name: "template-not-match"}, 1, nil)
-				requiredRegexp := "template name %s does not match name %s returned using UUID %s"
-				Ω(client.GetOrCreateVMInstance(
-					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-					Should(MatchError(MatchRegexp(requiredRegexp, dummies.CSMachine1.Spec.Template.Name, "template-not-match", templateFakeID)))
-			})
-
-			It("works with Id and name both provided, disk offering id/name mismatch", func() {
-				dummies.CSMachine1.Spec.Offering.ID = offeringFakeID
-				dummies.CSMachine1.Spec.Template.ID = templateFakeID
-				dummies.CSMachine1.Spec.DiskOffering.ID = diskOfferingFakeID
-				dummies.CSMachine1.Spec.Offering.Name = offeringName
-				dummies.CSMachine1.Spec.Template.Name = templateName
-				dummies.CSMachine1.Spec.DiskOffering.Name = "diskoffering"
-
-				sos.EXPECT().GetServiceOfferingByID(dummies.CSMachine1.Spec.Offering.ID, gomock.Any()).Return(&cloudstack.ServiceOffering{Name: offeringName}, 1, nil)
-				ts.EXPECT().GetTemplateByID(dummies.CSMachine1.Spec.Template.ID, executableFilter, gomock.Any()).Return(&cloudstack.Template{Name: templateName}, 1, nil)
-				dos.EXPECT().GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).Return(diskOfferingFakeID+"-not-match", 1, nil)
-				requiredRegexp := "diskOffering ID %s does not match ID %s returned using name %s"
-				Ω(client.GetOrCreateVMInstance(
-					dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")).
-					Should(MatchError(MatchRegexp(requiredRegexp, dummies.CSMachine1.Spec.DiskOffering.ID, diskOfferingFakeID+"-not-match", dummies.CSMachine1.Spec.DiskOffering.Name)))
-			})
-		})
-
-		It("doesn't compress user data", func() {
-			dummies.CSMachine1.Spec.DiskOffering.ID = diskOfferingFakeID
-			dummies.CSMachine1.Spec.Offering.ID = ""
-			dummies.CSMachine1.Spec.Template.ID = ""
-			dummies.CSMachine1.Spec.Offering.Name = offeringName
-			dummies.CSMachine1.Spec.Template.Name = templateName
-			dummies.CSMachine1.Spec.UncompressedUserData = ptr.To(true)
-
-			vms.EXPECT().
-				GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).
-				Return(nil, -1, notFoundError)
-			vms.EXPECT().
-				GetVirtualMachinesMetricByID(*dummies.CSMachine1.Spec.InstanceID, gomock.Any()).
-				Return(&cloudstack.VirtualMachinesMetric{}, 1, nil)
-			vms.EXPECT().
-				GetVirtualMachinesMetricByName(dummies.CSMachine1.Name, gomock.Any()).
-				Return(nil, -1, notFoundError)
-
-			sos.EXPECT().
-				GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).
-				Return(&cloudstack.ServiceOffering{
-					Id:        offeringFakeID,
-					Cpunumber: 1,
-					Memory:    1024,
-				}, 1, nil)
-			dos.EXPECT().
-				GetDiskOfferingID(dummies.CSMachine1.Spec.DiskOffering.Name, gomock.Any()).
-				Return(diskOfferingFakeID, 1, nil)
-			dos.EXPECT().
-				GetDiskOfferingByID(dummies.CSMachine1.Spec.DiskOffering.ID, gomock.Any()).
-				Return(&cloudstack.DiskOffering{Iscustomized: false}, 1, nil)
-			ts.EXPECT().
-				GetTemplateID(dummies.CSMachine1.Spec.Template.Name, executableFilter, dummies.Zone1.ID, gomock.Any()).
-				Return(templateFakeID, 1, nil)
-			vms.EXPECT().
-				NewDeployVirtualMachineParams(offeringFakeID, templateFakeID, dummies.Zone1.ID).
-				Return(&cloudstack.DeployVirtualMachineParams{})
-
-			deploymentResp := &cloudstack.DeployVirtualMachineResponse{
-				Id: *dummies.CSMachine1.Spec.InstanceID,
-			}
-
-			expectUserData := "my special userdata"
-
-			vms.EXPECT().DeployVirtualMachine(gomock.Any()).Do(
-				func(p interface{}) {
-					params := p.(*cloudstack.DeployVirtualMachineParams)
-					displayName, _ := params.GetDisplayname()
-					Ω(displayName).Should(Equal(dummies.CAPIMachine.Name))
-
-					// Ensure the user data is only base64 encoded.
-					b64UserData, _ := params.GetUserdata()
-					userData, err := base64.StdEncoding.DecodeString(b64UserData)
-					Ω(err).ToNot(HaveOccurred())
-					Ω(string(userData)).To(Equal(expectUserData))
-				}).Return(deploymentResp, nil)
-
-			err := client.GetOrCreateVMInstance(
-				dummies.CSMachine1,
-				dummies.CAPIMachine,
-				dummies.CSFailureDomain1,
-				dummies.CSAffinityGroup,
-				expectUserData,
-			)
-			Ω(err).Should(Succeed())
 		})
 	})
 
