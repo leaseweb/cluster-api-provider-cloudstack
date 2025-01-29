@@ -781,7 +781,9 @@ func (c *client) ReconcileLoadBalancer(
 // AssignVMToLoadBalancerRules assigns a VM to the load balancing rules listed in isoNet.Status.LoadBalancerRuleIDs,
 // if not already assigned. It returns a bool indicating whether an instance was actually assigned, and an error in case an error occurred.
 func (c *client) AssignVMToLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNetwork, instanceID string) (bool, error) {
-	var found bool
+	var assigned, found bool
+	assigned = false
+
 	for _, lbRuleID := range isoNet.Status.LoadBalancerRuleIDs {
 		// Check that the instance isn't already in LB rotation.
 		found = false
@@ -809,12 +811,12 @@ func (c *client) AssignVMToLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedN
 
 				return false, err
 			} else if resp != nil && resp.Success {
-				return true, nil
+				assigned = true
 			}
 		}
 	}
 
-	return false, nil
+	return assigned, nil
 }
 
 // RemoveVMFromLoadBalancerRules removes a VM from the load balancing rules listed in isoNet.Status.LoadBalancerRuleIDs,

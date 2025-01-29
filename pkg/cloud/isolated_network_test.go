@@ -472,9 +472,11 @@ var _ = Describe("Network", func() {
 				Return(lbip)
 			lbs.EXPECT().ListLoadBalancerRuleInstances(lbip).Return(&csapi.ListLoadBalancerRuleInstancesResponse{}, nil)
 			lbs.EXPECT().NewAssignToLoadBalancerRuleParams(dummies.CSISONet1.Status.LoadBalancerRuleIDs[0]).Return(albp)
-			lbs.EXPECT().AssignToLoadBalancerRule(albp).Return(&csapi.AssignToLoadBalancerRuleResponse{}, nil)
+			lbs.EXPECT().AssignToLoadBalancerRule(albp).Return(&csapi.AssignToLoadBalancerRuleResponse{Success: true}, nil)
 
-			Ω(client.AssignVMToLoadBalancerRules(dummies.CSISONet1, *dummies.CSMachine1.Spec.InstanceID)).Should(Succeed())
+			assigned, err := client.AssignVMToLoadBalancerRules(dummies.CSISONet1, *dummies.CSMachine1.Spec.InstanceID)
+			Ω(assigned).Should(Equal(true))
+			Ω(err).Should(BeNil())
 		})
 
 		It("With additionalPorts defined, associates VM to all related LB rules", func() {
@@ -487,16 +489,18 @@ var _ = Describe("Network", func() {
 					Return(lbip),
 				lbs.EXPECT().ListLoadBalancerRuleInstances(lbip).Return(&csapi.ListLoadBalancerRuleInstancesResponse{}, nil),
 				lbs.EXPECT().NewAssignToLoadBalancerRuleParams(dummies.CSISONet1.Status.LoadBalancerRuleIDs[0]).Return(albp),
-				lbs.EXPECT().AssignToLoadBalancerRule(albp).Return(&csapi.AssignToLoadBalancerRuleResponse{}, nil),
+				lbs.EXPECT().AssignToLoadBalancerRule(albp).Return(&csapi.AssignToLoadBalancerRuleResponse{Success: true}, nil),
 
 				lbs.EXPECT().NewListLoadBalancerRuleInstancesParams(dummies.CSISONet1.Status.LoadBalancerRuleIDs[1]).
 					Return(lbip),
 				lbs.EXPECT().ListLoadBalancerRuleInstances(lbip).Return(&csapi.ListLoadBalancerRuleInstancesResponse{}, nil),
 				lbs.EXPECT().NewAssignToLoadBalancerRuleParams(dummies.CSISONet1.Status.LoadBalancerRuleIDs[1]).Return(albp),
-				lbs.EXPECT().AssignToLoadBalancerRule(albp).Return(&csapi.AssignToLoadBalancerRuleResponse{}, nil),
+				lbs.EXPECT().AssignToLoadBalancerRule(albp).Return(&csapi.AssignToLoadBalancerRuleResponse{Success: true}, nil),
 			)
 
-			Ω(client.AssignVMToLoadBalancerRules(dummies.CSISONet1, *dummies.CSMachine1.Spec.InstanceID)).Should(Succeed())
+			assigned, err := client.AssignVMToLoadBalancerRules(dummies.CSISONet1, *dummies.CSMachine1.Spec.InstanceID)
+			Ω(assigned).Should(Equal(true))
+			Ω(err).Should(BeNil())
 		})
 
 		It("Associating VM to LB rule fails", func() {
@@ -509,7 +513,9 @@ var _ = Describe("Network", func() {
 			lbs.EXPECT().NewAssignToLoadBalancerRuleParams(dummies.CSISONet1.Status.LoadBalancerRuleIDs[0]).Return(albp)
 			lbs.EXPECT().AssignToLoadBalancerRule(albp).Return(nil, fakeError)
 
-			Ω(client.AssignVMToLoadBalancerRules(dummies.CSISONet1, *dummies.CSMachine1.Spec.InstanceID)).ShouldNot(Succeed())
+			assigned, err := client.AssignVMToLoadBalancerRules(dummies.CSISONet1, *dummies.CSMachine1.Spec.InstanceID)
+			Ω(assigned).Should(Equal(false))
+			Ω(err).ShouldNot(BeNil())
 		})
 
 		It("LB Rule already assigned to VM", func() {
@@ -524,7 +530,9 @@ var _ = Describe("Network", func() {
 				}},
 			}, nil)
 
-			Ω(client.AssignVMToLoadBalancerRules(dummies.CSISONet1, *dummies.CSMachine1.Spec.InstanceID)).Should(Succeed())
+			assigned, err := client.AssignVMToLoadBalancerRules(dummies.CSISONet1, *dummies.CSMachine1.Spec.InstanceID)
+			Ω(assigned).Should(Equal(false))
+			Ω(err).Should(BeNil())
 		})
 	})
 
