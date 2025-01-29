@@ -69,7 +69,7 @@ var (
 func init() {
 	// Set log level 5 as default for testing (default for prod is 2).
 	logOptions := logs.NewOptions()
-	logOptions.Verbosity = logsv1.VerbosityLevel(8)
+	logOptions.Verbosity = logsv1.VerbosityLevel(5)
 	if err := logsv1.ValidateAndApply(logOptions, nil); err != nil {
 		klog.ErrorS(err, "Unable to validate and apply log options")
 		os.Exit(1)
