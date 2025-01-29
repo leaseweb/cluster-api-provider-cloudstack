@@ -17,6 +17,8 @@ limitations under the License.
 package cloud_test
 
 import (
+	"encoding/base64"
+
 	"github.com/apache/cloudstack-go/v2/cloudstack"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
@@ -198,7 +200,23 @@ var _ = Describe("Instance", func() {
 			vms.EXPECT().NewDeployVirtualMachineParams(offeringFakeID, templateFakeID, dummies.Zone1.ID).
 				Return(&cloudstack.DeployVirtualMachineParams{})
 
-			vms.EXPECT().DeployVirtualMachine(gomock.Any()).Return(&cloudstack.DeployVirtualMachineResponse{
+			expectUserData := "my special userdata"
+			vms.EXPECT().DeployVirtualMachine(gomock.Any()).Do(
+				func(params *cloudstack.DeployVirtualMachineParams) {
+					displayName, _ := params.GetDisplayname()
+					Ω(displayName).Should(Equal(dummies.CAPIMachine.Name))
+
+					b64UserData, _ := params.GetUserdata()
+
+					userData, err := base64.StdEncoding.DecodeString(b64UserData)
+					Ω(err).ToNot(HaveOccurred())
+
+					decompressedUserData, err := decompress(userData)
+					Ω(err).ToNot(HaveOccurred())
+
+					Ω(string(decompressedUserData)).To(Equal(expectUserData))
+				},
+			).Return(&cloudstack.DeployVirtualMachineResponse{
 				Id: *dummies.CSMachine1.Spec.InstanceID,
 			}, nil)
 
@@ -208,7 +226,7 @@ var _ = Describe("Instance", func() {
 				VirtualMachines: []*cloudstack.VirtualMachine{expectedVM},
 			}, nil)
 
-			vm, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+			vm, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, expectUserData)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(vm).Should(Equal(expectedVM))
 		})

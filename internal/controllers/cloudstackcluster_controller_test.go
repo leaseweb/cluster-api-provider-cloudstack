@@ -75,7 +75,7 @@ func TestCloudStackClusterReconcilerIntegrationTests(t *testing.T) {
 		expectClient(mockCloudClient.EXPECT())
 
 		ns, err := testEnv.CreateNamespace(ctx, fmt.Sprintf("integ-test-%s", util.RandomString(5)))
-		g.Expect(err).To(BeNil())
+		g.Expect(err).ToNot(HaveOccurred())
 		dummies.SetDummyVars(ns.Name)
 
 		g.Expect(testEnv.Create(ctx, dummies.CAPICluster)).To(Succeed())
@@ -83,7 +83,7 @@ func TestCloudStackClusterReconcilerIntegrationTests(t *testing.T) {
 		// Set owner ref from CAPI cluster to CS Cluster and patch back the CS Cluster.
 		g.Eventually(func() error {
 			ph, err := patch.NewHelper(dummies.CSCluster, testEnv.Client)
-			g.Expect(err).To(BeNil())
+			g.Expect(err).ToNot(HaveOccurred())
 			dummies.CSCluster.OwnerReferences = append(dummies.CSCluster.OwnerReferences, metav1.OwnerReference{
 				Kind:       "Cluster",
 				APIVersion: clusterv1.GroupVersion.String(),
@@ -102,20 +102,20 @@ func TestCloudStackClusterReconcilerIntegrationTests(t *testing.T) {
 		})
 
 		result, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: dummies.CSCluster.Name, Namespace: ns.Name}})
-		g.Expect(err).To(BeNil())
+		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result.RequeueAfter).NotTo(BeZero())
 
 		// Simulate the CloudStackFailureDomain controller setting the status of the failure domains to ready.
 		g.Eventually(func() error {
 			fds := &infrav1.CloudStackFailureDomainList{}
-			getFailureDomains(g, ctx, testEnv, fds)
-			markFailureDomainsAsReady(g, ctx, testEnv, fds)
+			getFailureDomains(ctx, g, testEnv, fds)
+			markFailureDomainsAsReady(ctx, g, testEnv, fds)
 			return nil
 		}, timeout).WithPolling(pollInterval).Should(Succeed())
 
 		// Reconcile again to check if the CloudStackCluster controller sets Status.Ready to true.
 		result, err = reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: dummies.CSCluster.Name, Namespace: ns.Name}})
-		g.Expect(err).To(BeNil())
+		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result.RequeueAfter).To(BeZero())
 
 		// Test that the CloudStackCluster controller sets Status.Ready to true.
@@ -130,11 +130,11 @@ func TestCloudStackClusterReconcilerIntegrationTests(t *testing.T) {
 	})
 }
 
-func getFailureDomains(g *WithT, ctx context.Context, testEnv *helpers.TestEnvironment, fds *infrav1.CloudStackFailureDomainList) {
+func getFailureDomains(ctx context.Context, g *WithT, testEnv *helpers.TestEnvironment, fds *infrav1.CloudStackFailureDomainList) {
 	g.Expect(testEnv.List(ctx, fds, client.InNamespace(dummies.CSCluster.Namespace), client.MatchingLabels(map[string]string{clusterv1.ClusterNameLabel: dummies.CAPICluster.Name}))).To(Succeed())
 }
 
-func markFailureDomainsAsReady(g *WithT, ctx context.Context, testEnv *helpers.TestEnvironment, fds *infrav1.CloudStackFailureDomainList) {
+func markFailureDomainsAsReady(ctx context.Context, g *WithT, testEnv *helpers.TestEnvironment, fds *infrav1.CloudStackFailureDomainList) {
 	for _, fd := range fds.Items {
 		fdPatch := client.MergeFrom(fd.DeepCopy())
 		fd.Status.Ready = true

@@ -79,33 +79,6 @@ func setup() {
 		}
 	}()
 	testEnv.WaitForWebhooks()
-
-	/*
-		By("bootstrapping test environment")
-		testEnv = helpers.NewTestEnvironment()
-
-		// Setup mock clients.
-		mockCtrl = gomock.NewController(GinkgoT())
-		mockCSAPIClient = cloudstack.NewMockClient(mockCtrl)
-		mockCloudClient = mocks.NewMockClient(mockCtrl)
-
-		Expect((&CloudStackAffinityGroupReconciler{
-			Client:   testEnv,
-			Scheme:   testEnv.GetScheme(),
-			CSClient: mockCloudClient,
-			Recorder: testEnv.GetEventRecorderFor("CloudStackAffinityGroupReconciler"),
-		}).SetupWithManager(ctx, testEnv.Manager, controller.Options{})).Should(Succeed())
-
-		testEnv.StartManager(ctx)
-
-		Eventually(func() bool {
-			nodes := &corev1.NodeList{}
-			if err := testEnv.Client.List(context.Background(), nodes); err != nil {
-				return false
-			}
-			return true
-		}).Should(BeTrue())
-	*/
 }
 
 func teardown() {

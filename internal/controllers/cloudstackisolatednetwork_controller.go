@@ -133,26 +133,26 @@ func (r *CloudStackIsolatedNetworkReconciler) Reconcile(ctx context.Context, req
 
 	if !csin.DeletionTimestamp.IsZero() {
 		// Handle deletion reconciliation loop.
-		return r.reconcileDelete(ctx, scope)
+		return ctrl.Result{}, r.reconcileDelete(ctx, scope)
 	}
 
 	// Handle normal reconciliation loop.
 	return r.reconcileNormal(ctx, scope)
 }
 
-func (r *CloudStackIsolatedNetworkReconciler) reconcileDelete(ctx context.Context, scope *scope.IsolatedNetworkScope) (ctrl.Result, error) {
+func (r *CloudStackIsolatedNetworkReconciler) reconcileDelete(ctx context.Context, scope *scope.IsolatedNetworkScope) error {
 	log := ctrl.LoggerFrom(ctx)
 	log.Info("Reconcile CloudStackIsolatedNetwork deletion")
 
 	if err := scope.CSUser().DisposeIsoNetResources(scope.CloudStackIsolatedNetwork, scope.CloudStackCluster); err != nil {
 		if !strings.Contains(strings.ToLower(err.Error()), "no match found") {
-			return ctrl.Result{}, err
+			return err
 		}
 	}
 
 	controllerutil.RemoveFinalizer(scope.CloudStackIsolatedNetwork, infrav1.IsolatedNetworkFinalizer)
 
-	return ctrl.Result{}, nil
+	return nil
 }
 
 func (r *CloudStackIsolatedNetworkReconciler) reconcileNormal(ctx context.Context, scope *scope.IsolatedNetworkScope) (ctrl.Result, error) {

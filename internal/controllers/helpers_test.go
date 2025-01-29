@@ -18,9 +18,10 @@ package controllers
 
 import (
 	. "github.com/onsi/gomega"
-	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
 )
 
 // setClusterReady patches the CAPI and CloudStack cluster with ready status true.
@@ -33,7 +34,7 @@ func setClusterReady(g *WithT, client client.Client) {
 func setCAPIClusterReady(g *WithT, client client.Client) {
 	g.Eventually(func() error {
 		ph, err := patch.NewHelper(dummies.CAPICluster, client)
-		g.Expect(err).To(BeNil())
+		g.Expect(err).ToNot(HaveOccurred())
 		dummies.CAPICluster.Status.InfrastructureReady = true
 
 		return ph.Patch(ctx, dummies.CAPICluster, patch.WithStatusObservedGeneration{})
@@ -44,7 +45,7 @@ func setCAPIClusterReady(g *WithT, client client.Client) {
 func setCloudStackClusterReady(g *WithT, client client.Client) {
 	g.Eventually(func() error {
 		ph, err := patch.NewHelper(dummies.CSCluster, client)
-		g.Expect(err).To(BeNil())
+		g.Expect(err).ToNot(HaveOccurred())
 		dummies.CSCluster.Status.Ready = true
 
 		return ph.Patch(ctx, dummies.CSCluster, patch.WithStatusObservedGeneration{})

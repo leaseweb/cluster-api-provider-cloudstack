@@ -290,37 +290,37 @@ func (s *MachineScope) HasFailed() bool {
 }
 
 // InstanceIsRunning returns the instance state of the machine scope.
-func (m *MachineScope) InstanceIsRunning() bool {
-	state := m.GetInstanceState()
+func (s *MachineScope) InstanceIsRunning() bool {
+	state := s.GetInstanceState()
 	return state != "" && cloud.InstanceRunningStates.Has(state)
 }
 
 // InstanceIsOperational returns the operational state of the machine scope.
-func (m *MachineScope) InstanceIsOperational() bool {
-	state := m.GetInstanceState()
+func (s *MachineScope) InstanceIsOperational() bool {
+	state := s.GetInstanceState()
 	return state != "" && cloud.InstanceOperationalStates.Has(state)
 }
 
 // IsControlPlane returns true if the machine is a control plane.
-func (m *MachineScope) IsControlPlane() bool {
-	return util.IsControlPlaneMachine(m.Machine)
+func (s *MachineScope) IsControlPlane() bool {
+	return util.IsControlPlaneMachine(s.Machine)
 }
 
-func (m *MachineScope) IsLBEnabled() bool {
-	return m.CloudStackCluster.Spec.APIServerLoadBalancer.IsEnabled()
+func (s *MachineScope) IsLBEnabled() bool {
+	return s.CloudStackCluster.Spec.APIServerLoadBalancer.IsEnabled()
 }
 
 // CloudStackMachineIsDeleted returns true if the CloudStackMachine is deleted.
-func (m *MachineScope) CloudStackMachineIsDeleted() bool {
-	return !m.CloudStackMachine.ObjectMeta.DeletionTimestamp.IsZero()
+func (s *MachineScope) CloudStackMachineIsDeleted() bool {
+	return !s.CloudStackMachine.ObjectMeta.DeletionTimestamp.IsZero()
 }
 
 // MachineIsDeleted returns true if the CAPI Machine is deleted.
-func (m *MachineScope) MachineIsDeleted() bool {
-	return !m.Machine.ObjectMeta.DeletionTimestamp.IsZero()
+func (s *MachineScope) MachineIsDeleted() bool {
+	return !s.Machine.ObjectMeta.DeletionTimestamp.IsZero()
 }
 
 // IsExternallyManaged checks if the machine is externally managed.
-func (m *MachineScope) IsExternallyManaged() bool {
-	return annotations.IsExternallyManaged(m.CloudStackCluster)
+func (s *MachineScope) IsExternallyManaged() bool {
+	return annotations.IsExternallyManaged(s.CloudStackCluster)
 }

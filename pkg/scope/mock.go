@@ -21,10 +21,11 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/mocks"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type MockClientScopeFactory struct {
@@ -41,7 +42,7 @@ func NewMockClientScopeFactory(mockCtrl *gomock.Controller, projectID string) *M
 	}
 }
 
-func (m *MockClientScopeFactory) NewClientScopeForFailureDomain(ctx context.Context, k8sClient client.Client, fd *infrav1.CloudStackFailureDomain) (Scope, error) {
+func (m *MockClientScopeFactory) NewClientScopeForFailureDomain(_ context.Context, _ client.Client, fd *infrav1.CloudStackFailureDomain) (Scope, error) {
 	if fd == nil {
 		return nil, errors.New("failure domain is nil")
 	}
@@ -58,33 +59,37 @@ func (m *MockClientScopeFactory) NewClientScopeForFailureDomainByName(ctx contex
 	return m.NewClientScopeForFailureDomain(ctx, k8sClient, fd)
 }
 
+// ProjectID returns the CloudStack project ID, if any.
 func (m *MockClientScopeFactory) ProjectID() string {
 	return m.projectID
 }
 
+// CSClients returns the CloudStack clients.
 func (m *MockClientScopeFactory) CSClients() CSClientsProvider {
 	return m.csClients
 }
 
+// FailureDomain returns the CloudStack Failure Domain.
 func (m *MockClientScopeFactory) FailureDomain() *infrav1.CloudStackFailureDomain {
 	return m.failureDomain
 }
 
-// MockCSClientsProvider extends CSClientsProvider to provide access to mock clients for testing
+// MockCSClientsProvider extends CSClientsProvider to provide access to mock clients for testing.
 type MockCSClientsProvider interface {
 	CSClientsProvider
-	// MockCSClient returns the mock CloudStack client for setting expectations
+	// MockCSClient returns the mock CloudStack client.
 	MockCSClient() *mocks.MockClient
-	// MockCSUser returns the mock CloudStack user client for setting expectations
+	// MockCSUser returns the mock CloudStack user (account/domain/project level) client.
 	MockCSUser() *mocks.MockClient
 }
 
+// MockCSClients implements MockCSClientsProvider.
 type MockCSClients struct {
 	csClient *mocks.MockClient
 	csUser   *mocks.MockClient
 }
 
-// Implement CSClientsProvider interface
+// CSClient returns the CAPC provider CloudStack Client.
 func (m *MockCSClients) CSClient() cloud.Client {
 	return m.csClient
 }
@@ -93,15 +98,17 @@ func (m *MockCSClients) CSUser() cloud.Client {
 	return m.csUser
 }
 
-// Implement MockCSClientsProvider interface
+// MockCSClient returns the mock CloudStack client.
 func (m *MockCSClients) MockCSClient() *mocks.MockClient {
 	return m.csClient
 }
 
+// MockCSUser returns the mock CloudStack user (account/domain/project level) client.
 func (m *MockCSClients) MockCSUser() *mocks.MockClient {
 	return m.csUser
 }
 
+// NewMockCSClients returns the mock CloudStack clients.
 func NewMockCSClients(mockCtrl *gomock.Controller) *MockCSClients {
 	return &MockCSClients{
 		csClient: mocks.NewMockClient(mockCtrl),
@@ -109,7 +116,7 @@ func NewMockCSClients(mockCtrl *gomock.Controller) *MockCSClients {
 	}
 }
 
-// Add new method to get mock clients
+// MockCSClients returns the mock CloudStack clients.
 func (m *MockClientScopeFactory) MockCSClients() MockCSClientsProvider {
 	return m.csClients
 }

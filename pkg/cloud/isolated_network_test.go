@@ -475,8 +475,8 @@ var _ = Describe("Network", func() {
 			lbs.EXPECT().AssignToLoadBalancerRule(albp).Return(&csapi.AssignToLoadBalancerRuleResponse{Success: true}, nil)
 
 			assigned, err := client.AssignVMToLoadBalancerRules(dummies.CSISONet1, *dummies.CSMachine1.Spec.InstanceID)
-			Ω(assigned).Should(Equal(true))
-			Ω(err).Should(BeNil())
+			Ω(assigned).Should(BeTrue())
+			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		It("With additionalPorts defined, associates VM to all related LB rules", func() {
@@ -499,8 +499,8 @@ var _ = Describe("Network", func() {
 			)
 
 			assigned, err := client.AssignVMToLoadBalancerRules(dummies.CSISONet1, *dummies.CSMachine1.Spec.InstanceID)
-			Ω(assigned).Should(Equal(true))
-			Ω(err).Should(BeNil())
+			Ω(assigned).Should(BeTrue())
+			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		It("Associating VM to LB rule fails", func() {
@@ -514,8 +514,8 @@ var _ = Describe("Network", func() {
 			lbs.EXPECT().AssignToLoadBalancerRule(albp).Return(nil, fakeError)
 
 			assigned, err := client.AssignVMToLoadBalancerRules(dummies.CSISONet1, *dummies.CSMachine1.Spec.InstanceID)
-			Ω(assigned).Should(Equal(false))
-			Ω(err).ShouldNot(BeNil())
+			Ω(assigned).Should(BeFalse())
+			Ω(err).Should(HaveOccurred())
 		})
 
 		It("LB Rule already assigned to VM", func() {
@@ -531,8 +531,8 @@ var _ = Describe("Network", func() {
 			}, nil)
 
 			assigned, err := client.AssignVMToLoadBalancerRules(dummies.CSISONet1, *dummies.CSMachine1.Spec.InstanceID)
-			Ω(assigned).Should(Equal(false))
-			Ω(err).Should(BeNil())
+			Ω(assigned).Should(BeFalse())
+			Ω(err).ShouldNot(HaveOccurred())
 		})
 	})
 

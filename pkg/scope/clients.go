@@ -36,15 +36,15 @@ const (
 	ClientCacheTTL = 1 * time.Hour
 )
 
-// CSClientsProvider defines the interface for accessing CloudStack clients
+// CSClientsProvider defines the interface for accessing CloudStack clients.
 type CSClientsProvider interface {
-	// CSClient returns the CAPC provider CloudStack Client
+	// CSClient returns the CAPC provider CloudStack Client.
 	CSClient() cloud.Client
 	// CSUser returns the CloudStack User Client
 	CSUser() cloud.Client
 }
 
-// CSClients implements CSClientsProvider
+// CSClients implements CSClientsProvider.
 type CSClients struct {
 	csClient cloud.Client
 	csUser   cloud.Client
@@ -58,7 +58,7 @@ func (c CSClients) CSUser() cloud.Client {
 	return c.csUser
 }
 
-// NewCSClients creates a new CSClients instance
+// NewCSClients creates a new CSClients instance.
 func NewCSClients(csClient, csUser cloud.Client) CSClients {
 	return CSClients{
 		csClient: csClient,

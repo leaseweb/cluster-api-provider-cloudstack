@@ -77,7 +77,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 		defer teardown()
 
 		ns, err := testEnv.CreateNamespace(ctx, fmt.Sprintf("integ-test-%s", util.RandomString(5)))
-		g.Expect(err).To(BeNil())
+		g.Expect(err).ToNot(HaveOccurred())
 		dummies.SetDummyVars(ns.Name)
 
 		mockCSClient.EXPECT().GetOrCreateIsolatedNetwork(
@@ -98,7 +98,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 		// Set owner ref from CAPI cluster to CS Cluster and patch back the CS Cluster.
 		g.Eventually(func() error {
 			ph, err := patch.NewHelper(dummies.CSCluster, testEnv.Client)
-			g.Expect(err).To(BeNil())
+			g.Expect(err).ToNot(HaveOccurred())
 			dummies.CSCluster.OwnerReferences = append(dummies.CSCluster.OwnerReferences, metav1.OwnerReference{
 				Kind:       "Cluster",
 				APIVersion: clusterv1.GroupVersion.String(),
@@ -113,8 +113,6 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 		dummies.CSISONet1.Spec.FailureDomainName = dummies.CSFailureDomain2.Spec.Name
 		g.Expect(testEnv.Create(ctx, dummies.CSFailureDomain2)).To(Succeed())
 		g.Expect(testEnv.Create(ctx, dummies.CSISONet1)).To(Succeed())
-
-		// mockFactory.EXPECT().NewClientFromK8sSecret(gomock.Any(), gomock.Any(), gomock.Any()).Return(mockCloudClient, nil)
 
 		defer func() {
 			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret2, dummies.CSFailureDomain2, dummies.CSISONet1, ns)).To(Succeed())
@@ -134,7 +132,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 				Name:      dummies.CSISONet1.Name,
 			},
 		})
-		g.Expect(err).To(BeNil())
+		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result.RequeueAfter).To(BeZero())
 
 		// Check that the isolated network was updated correctly
@@ -158,7 +156,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 		defer teardown()
 
 		ns, err := testEnv.CreateNamespace(ctx, fmt.Sprintf("integ-test-%s", util.RandomString(5)))
-		g.Expect(err).To(BeNil())
+		g.Expect(err).ToNot(HaveOccurred())
 		dummies.SetDummyVars(ns.Name)
 
 		expectClient := func(m *mocks.MockClientMockRecorder) {
@@ -180,7 +178,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 		// Set owner ref from CAPI cluster to CS Cluster and patch back the CS Cluster.
 		g.Eventually(func() error {
 			ph, err := patch.NewHelper(dummies.CSCluster, testEnv.Client)
-			g.Expect(err).To(BeNil())
+			g.Expect(err).ToNot(HaveOccurred())
 			dummies.CSCluster.OwnerReferences = append(dummies.CSCluster.OwnerReferences, metav1.OwnerReference{
 				Kind:       "Cluster",
 				APIVersion: clusterv1.GroupVersion.String(),
@@ -195,8 +193,6 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 		dummies.CSISONet1.Spec.FailureDomainName = dummies.CSFailureDomain2.Spec.Name
 		g.Expect(testEnv.Create(ctx, dummies.CSFailureDomain2)).To(Succeed())
 		g.Expect(testEnv.Create(ctx, dummies.CSISONet1)).To(Succeed())
-
-		// mockFactory.EXPECT().NewClientFromK8sSecret(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(mockCloudClient, nil)
 
 		defer func() {
 			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret2, dummies.CSFailureDomain2, dummies.CSISONet1, ns)).To(Succeed())
@@ -216,7 +212,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 				Name:      dummies.CSISONet1.Name,
 			},
 		})
-		g.Expect(err).To(BeNil())
+		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result.RequeueAfter).To(BeZero())
 
 		// Check that the isolated network was updated correctly
@@ -240,7 +236,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 		defer teardown()
 
 		ns, err := testEnv.CreateNamespace(ctx, fmt.Sprintf("integ-test-%s", util.RandomString(5)))
-		g.Expect(err).To(BeNil())
+		g.Expect(err).ToNot(HaveOccurred())
 		dummies.SetDummyVars(ns.Name)
 
 		expectClient := func(m *mocks.MockClientMockRecorder) {
@@ -260,7 +256,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 		// Set owner ref from CAPI cluster to CS Cluster and patch back the CS Cluster.
 		g.Eventually(func() error {
 			ph, err := patch.NewHelper(dummies.CSCluster, testEnv.Client)
-			g.Expect(err).To(BeNil())
+			g.Expect(err).ToNot(HaveOccurred())
 			dummies.CSCluster.OwnerReferences = append(dummies.CSCluster.OwnerReferences, metav1.OwnerReference{
 				Kind:       "Cluster",
 				APIVersion: clusterv1.GroupVersion.String(),
@@ -275,8 +271,6 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 		dummies.CSISONet1.Spec.FailureDomainName = dummies.CSFailureDomain2.Spec.Name
 		g.Expect(testEnv.Create(ctx, dummies.CSFailureDomain2)).To(Succeed())
 		g.Expect(testEnv.Create(ctx, dummies.CSISONet1)).To(Succeed())
-
-		// mockFactory.EXPECT().NewClientFromK8sSecret(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(mockCloudClient, nil)
 
 		defer func() {
 			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret2, dummies.CSFailureDomain2, dummies.CSISONet1, ns)).To(Succeed())
@@ -296,7 +290,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 				Name:      dummies.CSISONet1.Name,
 			},
 		})
-		g.Expect(err).To(BeNil())
+		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result.RequeueAfter).To(BeZero())
 
 		// Check that the isolated network was updated correctly

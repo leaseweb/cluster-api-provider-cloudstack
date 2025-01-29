@@ -54,6 +54,8 @@ import (
 )
 
 const (
+	KindCloudStackMachine = "CloudStackMachine"
+
 	CSMachineCreationSuccess = "Created new CloudStack instance %s"
 	CSMachineCreationFailed  = "Failed to create new CloudStack instance: %s"
 	MachineInstanceRunning   = "Machine instance is Running..."
@@ -159,14 +161,14 @@ func (r *CloudStackMachineReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	if !csMachine.DeletionTimestamp.IsZero() {
 		// Handle deletion reconciliation loop.
-		return r.reconcileDelete(ctx, scope)
+		return r.reconcileDelete(scope)
 	}
 
 	// Handle normal reconciliation loop.
 	return r.reconcileNormal(ctx, scope)
 }
 
-func (r *CloudStackMachineReconciler) reconcileDelete(ctx context.Context, scope *scope.MachineScope) (ctrl.Result, error) {
+func (r *CloudStackMachineReconciler) reconcileDelete(scope *scope.MachineScope) (ctrl.Result, error) {
 	scope.Info("Reconcile CloudStackMachine deletion")
 
 	vm, err := r.findInstance(scope)
@@ -182,7 +184,7 @@ func (r *CloudStackMachineReconciler) reconcileDelete(ctx context.Context, scope
 
 	scope.Info("Instance found matching deleted CloudStackMachine", "instance-id", vm.Id)
 
-	if err := r.reconcileLBattachments(ctx, scope); err != nil {
+	if err := r.reconcileLBattachments(scope); err != nil {
 		return ctrl.Result{}, errors.Errorf("failed to reconcile LB attachment: %+v", err)
 	}
 
@@ -356,7 +358,7 @@ func (r *CloudStackMachineReconciler) reconcileNormal(ctx context.Context, scope
 		scope.SetAddresses(addresses)
 
 		if vm.State != cloud.InstanceStateStarting {
-			if err := r.reconcileLBattachments(ctx, scope); err != nil {
+			if err := r.reconcileLBattachments(scope); err != nil {
 				return ctrl.Result{}, err
 			}
 		} else {
@@ -374,7 +376,7 @@ func (r *CloudStackMachineReconciler) reconcileNormal(ctx context.Context, scope
 }
 
 // reconcileLBattachments reconciles the load balancer attachments/detachments for the CloudStackMachine.
-func (r *CloudStackMachineReconciler) reconcileLBattachments(ctx context.Context, scope *scope.MachineScope) error {
+func (r *CloudStackMachineReconciler) reconcileLBattachments(scope *scope.MachineScope) error {
 	if !scope.IsExternallyManaged() && scope.IsControlPlane() && scope.NetworkType() == cloud.NetworkTypeIsolated && scope.IsLBEnabled() {
 		if scope.IsolatedNetworkName() == "" {
 			return errors.New("Could not get required Isolated Network for VM")
@@ -533,7 +535,7 @@ func (r *CloudStackMachineReconciler) getInfraCluster(ctx context.Context, clust
 	}
 	if err := r.Client.Get(ctx, cloudStackClusterName, cloudStackCluster); err != nil {
 		if apierrors.IsNotFound(err) {
-			return nil, nil //nolint:nilerr
+			return nil, nil
 		}
 		return nil, err
 	}
@@ -604,7 +606,7 @@ func (r *CloudStackMachineReconciler) requestsForCluster(ctx context.Context, lo
 	for _, machine := range machineList.Items {
 		m := machine
 		log.WithValues("machine", klog.KObj(&m))
-		if m.Spec.InfrastructureRef.GroupVersionKind().Kind != "CloudStackMachine" {
+		if m.Spec.InfrastructureRef.GroupVersionKind().Kind != KindCloudStackMachine {
 			log.Trace("Machine has an InfrastructureRef for a different type, will not add to reconciliation request.")
 
 			continue
@@ -664,7 +666,7 @@ func (r *CloudStackMachineReconciler) CloudStackIsolatedNetworkToControlPlaneClo
 		for _, machine := range machineList.Items {
 			m := machine
 			log.WithValues("machine", klog.KObj(&m))
-			if m.Spec.InfrastructureRef.GroupVersionKind().Kind != "CloudStackMachine" {
+			if m.Spec.InfrastructureRef.GroupVersionKind().Kind != KindCloudStackMachine {
 				log.Trace("Machine has an InfrastructureRef for a different type, will not add to reconciliation request.")
 
 				continue
@@ -695,7 +697,7 @@ func (r *CloudStackMachineReconciler) SetupWithManager(ctx context.Context, mgr 
 		WithOptions(options).
 		Watches(
 			&clusterv1.Machine{},
-			handler.EnqueueRequestsFromMapFunc(util.MachineToInfrastructureMapFunc(infrav1.GroupVersion.WithKind("CloudStackMachine"))),
+			handler.EnqueueRequestsFromMapFunc(util.MachineToInfrastructureMapFunc(infrav1.GroupVersion.WithKind(KindCloudStackMachine))),
 		).
 		Watches(
 			&infrav1.CloudStackCluster{},
@@ -707,7 +709,7 @@ func (r *CloudStackMachineReconciler) SetupWithManager(ctx context.Context, mgr 
 				// Avoid reconciling if the event triggering the reconciliation is related to incremental status updates
 				// for CloudStackMachine resources only
 				UpdateFunc: func(e event.UpdateEvent) bool {
-					if e.ObjectOld.GetObjectKind().GroupVersionKind().Kind != "CloudStackMachine" {
+					if e.ObjectOld.GetObjectKind().GroupVersionKind().Kind != KindCloudStackMachine {
 						return true
 					}
 

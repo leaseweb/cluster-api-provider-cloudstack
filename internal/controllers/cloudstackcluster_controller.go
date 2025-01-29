@@ -198,7 +198,7 @@ func (r *CloudStackClusterReconciler) reconcileNormal(ctx context.Context, scope
 	}
 
 	// Verify that all required failure domains are present and ready.
-	if err := r.VerifyFailureDomainsExist(ctx, scope, fds); err != nil {
+	if err := r.VerifyFailureDomainsExist(scope, fds); err != nil {
 		log.Info(fmt.Sprintf("%s, requeueing.", err.Error()))
 
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
@@ -245,7 +245,7 @@ func (r *CloudStackClusterReconciler) GetFailureDomains(ctx context.Context, clu
 }
 
 // VerifyFailureDomainsExist verifies that all required failure domains are present.
-func (r *CloudStackClusterReconciler) VerifyFailureDomainsExist(ctx context.Context, clusterScope *scope.ClusterScope, fds *infrav1.CloudStackFailureDomainList) error {
+func (r *CloudStackClusterReconciler) VerifyFailureDomainsExist(clusterScope *scope.ClusterScope, fds *infrav1.CloudStackFailureDomainList) error {
 	// Check that all required failure domains are present and ready.
 	for _, requiredFdSpec := range clusterScope.FailureDomains() {
 		found := false
@@ -253,14 +253,14 @@ func (r *CloudStackClusterReconciler) VerifyFailureDomainsExist(ctx context.Cont
 			if requiredFdSpec.Name == fd.Spec.Name {
 				found = true
 				if !fd.Status.Ready {
-					return errors.New(fmt.Sprintf("required CloudStackFailureDomain %s not ready", fd.Spec.Name))
+					return fmt.Errorf("required CloudStackFailureDomain %s not ready", fd.Spec.Name)
 				}
 
 				break
 			}
 		}
 		if !found {
-			return errors.New(fmt.Sprintf("required CloudStackFailureDomain %s not found", requiredFdSpec.Name))
+			return fmt.Errorf("required CloudStackFailureDomain %s not found", requiredFdSpec.Name)
 		}
 	}
 

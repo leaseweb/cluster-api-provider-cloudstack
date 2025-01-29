@@ -116,14 +116,14 @@ func (r *CloudStackAffinityGroupReconciler) Reconcile(ctx context.Context, req c
 
 	if !csag.DeletionTimestamp.IsZero() {
 		// Handle deletion reconciliation loop.
-		return r.reconcileDelete(ctx, scope)
+		return ctrl.Result{}, r.reconcileDelete(ctx, scope)
 	}
 
 	// Handle normal reconciliation loop.
-	return r.reconcileNormal(ctx, scope)
+	return ctrl.Result{}, r.reconcileNormal(ctx, scope)
 }
 
-func (r *CloudStackAffinityGroupReconciler) reconcileDelete(ctx context.Context, scope *scope.AffinityGroupScope) (ctrl.Result, error) {
+func (r *CloudStackAffinityGroupReconciler) reconcileDelete(ctx context.Context, scope *scope.AffinityGroupScope) error {
 	log := ctrl.LoggerFrom(ctx)
 	log.Info("Reconcile CloudStackAffinityGroup deletion")
 
@@ -136,17 +136,17 @@ func (r *CloudStackAffinityGroupReconciler) reconcileDelete(ctx context.Context,
 		// present on Cloudstack ensures affinity group object deletion is not blocked.
 		controllerutil.RemoveFinalizer(scope.CloudStackAffinityGroup, infrav1.AffinityGroupFinalizer)
 
-		return ctrl.Result{}, nil
+		return nil
 	}
 	if err := scope.CSClient().DeleteAffinityGroup(group); err != nil {
-		return ctrl.Result{}, err
+		return err
 	}
 	controllerutil.RemoveFinalizer(scope.CloudStackAffinityGroup, infrav1.AffinityGroupFinalizer)
 
-	return ctrl.Result{}, nil
+	return nil
 }
 
-func (r *CloudStackAffinityGroupReconciler) reconcileNormal(ctx context.Context, scope *scope.AffinityGroupScope) (ctrl.Result, error) {
+func (r *CloudStackAffinityGroupReconciler) reconcileNormal(ctx context.Context, scope *scope.AffinityGroupScope) error {
 	log := ctrl.LoggerFrom(ctx)
 	log.Info("Reconcile CloudStackAffinityGroup")
 
@@ -154,18 +154,18 @@ func (r *CloudStackAffinityGroupReconciler) reconcileNormal(ctx context.Context,
 	if controllerutil.AddFinalizer(scope.CloudStackAffinityGroup, infrav1.AffinityGroupFinalizer) {
 		// Register the finalizer immediately to avoid orphaning resources on delete
 		if err := scope.PatchObject(); err != nil {
-			return ctrl.Result{}, err
+			return err
 		}
 	}
 
 	affinityGroup := &cloud.AffinityGroup{Name: scope.Name(), Type: scope.Type()}
 	if err := scope.CSUser().GetOrCreateAffinityGroup(affinityGroup); err != nil {
-		return ctrl.Result{}, err
+		return err
 	}
 	scope.SetID(affinityGroup.ID)
 	scope.SetReady()
 
-	return ctrl.Result{}, nil
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

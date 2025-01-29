@@ -80,15 +80,8 @@ func TestCloudStackAffinityGroupReconcilerIntegrationTests(t *testing.T) {
 		}
 		expectClient(mockCSUser.EXPECT())
 
-		/*
-			expectFactory := func(m *mocks.MockFactoryMockRecorder) {
-				m.NewClientFromK8sSecret(gomock.Any(), gomock.Any(), gomock.Any()).
-					Return(mockCloudClient, nil).AnyTimes()
-			}
-			expectFactory(mockClientScopeFactory.EXPECT()) */
-
 		ns, err := testEnv.CreateNamespace(ctx, fmt.Sprintf("integ-test-%s", util.RandomString(5)))
-		g.Expect(err).To(BeNil())
+		g.Expect(err).ToNot(HaveOccurred())
 		dummies.SetDummyVars(ns.Name)
 
 		// Modify failure domain name the same way the cluster controller would.
@@ -99,7 +92,7 @@ func TestCloudStackAffinityGroupReconcilerIntegrationTests(t *testing.T) {
 		// Set owner ref from CAPI cluster to CS Cluster and patch back the CS Cluster.
 		g.Eventually(func() error {
 			ph, err := patch.NewHelper(dummies.CSCluster, testEnv.Client)
-			g.Expect(err).To(BeNil())
+			g.Expect(err).ToNot(HaveOccurred())
 			dummies.CSAffinityGroup.OwnerReferences = append(dummies.CSCluster.OwnerReferences, metav1.OwnerReference{
 				Kind:       "Cluster",
 				APIVersion: clusterv1.GroupVersion.String(),
@@ -126,7 +119,7 @@ func TestCloudStackAffinityGroupReconcilerIntegrationTests(t *testing.T) {
 			},
 		}
 		_, err = reconciler.Reconcile(ctx, req)
-		g.Expect(err).To(BeNil())
+		g.Expect(err).ToNot(HaveOccurred())
 
 		// Test that the AffinityGroup controller sets Status.Ready to true.
 		affinityGroupKey := client.ObjectKey{Namespace: ns.Name, Name: dummies.CSAffinityGroup.Name}
@@ -150,15 +143,8 @@ func TestCloudStackAffinityGroupReconcilerIntegrationTests(t *testing.T) {
 		expectClient(mockCSClient.EXPECT())
 		expectClient(mockCSUser.EXPECT())
 
-		/*
-			expectFactory := func(m *mocks.MockFactoryMockRecorder) {
-				m.NewClientFromK8sSecret(gomock.Any(), gomock.Any(), gomock.Any()).
-					Return(mockCloudClient, nil).AnyTimes()
-			}
-		expectFactory(mockCSClientFactory.EXPECT()) */
-
 		ns, err := testEnv.CreateNamespace(ctx, fmt.Sprintf("integ-test-%s", util.RandomString(5)))
-		g.Expect(err).To(BeNil())
+		g.Expect(err).ToNot(HaveOccurred())
 		dummies.SetDummyVars(ns.Name)
 
 		// Modify failure domain name the same way the cluster controller would.
@@ -169,7 +155,7 @@ func TestCloudStackAffinityGroupReconcilerIntegrationTests(t *testing.T) {
 		// Set owner ref from CAPI cluster to CS Cluster and patch back the CS Cluster.
 		g.Eventually(func() error {
 			ph, err := patch.NewHelper(dummies.CSCluster, testEnv.Client)
-			g.Expect(err).To(BeNil())
+			g.Expect(err).ToNot(HaveOccurred())
 			dummies.CSCluster.OwnerReferences = append(dummies.CSCluster.OwnerReferences, metav1.OwnerReference{
 				Kind:       "Cluster",
 				APIVersion: clusterv1.GroupVersion.String(),
@@ -204,7 +190,7 @@ func TestCloudStackAffinityGroupReconcilerIntegrationTests(t *testing.T) {
 			},
 		}
 		_, err = reconciler.Reconcile(ctx, req)
-		g.Expect(err).To(BeNil())
+		g.Expect(err).ToNot(HaveOccurred())
 
 		// Test that the AffinityGroup controller sets Status.Ready to true.
 		g.Eventually(func() bool {
@@ -217,7 +203,7 @@ func TestCloudStackAffinityGroupReconcilerIntegrationTests(t *testing.T) {
 		}).AnyTimes().Return(nil)
 		g.Expect(testEnv.Delete(ctx, dummies.CSAffinityGroup)).To(Succeed())
 		_, err = reconciler.Reconcile(ctx, req)
-		g.Expect(err).To(BeNil())
+		g.Expect(err).ToNot(HaveOccurred())
 
 		// Once the affinity group id was set to "" the controller should remove the finalizer and unblock deleting affinity group resource
 		g.Eventually(func() bool {

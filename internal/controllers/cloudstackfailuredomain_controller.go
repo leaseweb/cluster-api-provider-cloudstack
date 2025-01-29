@@ -207,14 +207,14 @@ func (r *CloudStackFailureDomainReconciler) reconcileNormal(ctx context.Context,
 	if scope.NetworkID() == "" || scope.NetworkType() == infrav1.NetworkTypeIsolated {
 		if err := r.GenerateIsolatedNetwork(ctx, scope); err != nil {
 			return ctrl.Result{}, errors.Wrap(err, "generating isolated network")
-		} else {
-			objectKey := client.ObjectKey{Name: scope.IsolatedNetworkName(), Namespace: scope.Namespace()}
-
-			err := client.IgnoreNotFound(r.Client.Get(ctx, objectKey, r.IsoNet))
-			if err != nil {
-				return ctrl.Result{}, errors.Wrap(err, "failed to get CloudStackIsolatedNetwork")
-			}
 		}
+
+		objectKey := client.ObjectKey{Name: scope.IsolatedNetworkName(), Namespace: scope.Namespace()}
+		err := client.IgnoreNotFound(r.Client.Get(ctx, objectKey, r.IsoNet))
+		if err != nil {
+			return ctrl.Result{}, errors.Wrap(err, "failed to get CloudStackIsolatedNetwork")
+		}
+
 		if r.IsoNet.Name == "" {
 			log.Info("Couldn't find isolated network. Requeueing.")
 

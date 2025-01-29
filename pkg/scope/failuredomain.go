@@ -157,7 +157,7 @@ func (s *FailureDomainScope) OwnerGVK() schema.GroupVersionKind {
 }
 
 // FailureDomain returns the failure domain.
-func (s *FailureDomainScope) FailureDomain(ctx context.Context) (*infrav1.CloudStackFailureDomain, error) {
+func (s *FailureDomainScope) FailureDomain(_ context.Context) (*infrav1.CloudStackFailureDomain, error) {
 	return s.CloudStackFailureDomain, nil
 }
 

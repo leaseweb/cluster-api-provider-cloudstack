@@ -84,7 +84,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		defer teardown()
 
 		ns, err := testEnv.CreateNamespace(ctx, fmt.Sprintf("integ-test-%s", util.RandomString(5)))
-		g.Expect(err).To(BeNil())
+		g.Expect(err).ToNot(HaveOccurred())
 		dummies.SetDummyVars(ns.Name)
 
 		mockCSCUser.EXPECT().GetVMInstanceByID(gomock.AssignableToTypeOf(*dummies.CSMachine1.Spec.InstanceID)).
@@ -119,7 +119,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		// Set owner ref from CAPI cluster to CS Cluster and patch back the CS Cluster.
 		g.Eventually(func() error {
 			ph, err := patch.NewHelper(dummies.CSCluster, testEnv.Client)
-			g.Expect(err).To(BeNil())
+			g.Expect(err).ToNot(HaveOccurred())
 			dummies.CSCluster.OwnerReferences = append(dummies.CSCluster.OwnerReferences, metav1.OwnerReference{
 				Kind:       "Cluster",
 				APIVersion: clusterv1.GroupVersion.String(),
@@ -150,7 +150,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		// Set owner ref from CAPI machine to CS machine and patch back the CS machine.
 		g.Eventually(func() error {
 			ph, err := patch.NewHelper(dummies.CSMachine1, testEnv.Client)
-			g.Expect(err).To(BeNil())
+			g.Expect(err).ToNot(HaveOccurred())
 			dummies.CSMachine1.OwnerReferences = append(dummies.CSMachine1.OwnerReferences, metav1.OwnerReference{
 				Kind:       "Machine",
 				APIVersion: clusterv1.GroupVersion.String(),
@@ -184,7 +184,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 				Name:      dummies.CSMachine1.Name,
 			},
 		})
-		g.Expect(err).To(BeNil())
+		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result.RequeueAfter).To(BeZero())
 
 		// Eventually the machine should set ready to true.
@@ -208,7 +208,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		defer teardown()
 
 		ns, err := testEnv.CreateNamespace(ctx, fmt.Sprintf("integ-test-%s", util.RandomString(5)))
-		g.Expect(err).To(BeNil())
+		g.Expect(err).ToNot(HaveOccurred())
 		dummies.SetDummyVars(ns.Name)
 
 		gomock.InOrder(
@@ -253,7 +253,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		// Set owner ref from CAPI cluster to CS Cluster and patch back the CS Cluster.
 		g.Eventually(func() error {
 			ph, err := patch.NewHelper(dummies.CSCluster, testEnv.Client)
-			g.Expect(err).To(BeNil())
+			g.Expect(err).ToNot(HaveOccurred())
 			dummies.CSCluster.OwnerReferences = append(dummies.CSCluster.OwnerReferences, metav1.OwnerReference{
 				Kind:       "Cluster",
 				APIVersion: clusterv1.GroupVersion.String(),
@@ -284,7 +284,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		// Set owner ref from CAPI machine to CS machine and patch back the CS machine.
 		g.Eventually(func() error {
 			ph, err := patch.NewHelper(dummies.CSMachine1, testEnv.Client)
-			g.Expect(err).To(BeNil())
+			g.Expect(err).ToNot(HaveOccurred())
 			dummies.CSMachine1.OwnerReferences = append(dummies.CSMachine1.OwnerReferences, metav1.OwnerReference{
 				Kind:       "Machine",
 				APIVersion: clusterv1.GroupVersion.String(),
@@ -319,7 +319,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 				Name:      dummies.CSMachine1.Name,
 			},
 		})
-		g.Expect(err).To(BeNil())
+		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result.RequeueAfter).To(BeZero())
 
 		// Eventually the machine should set ready to true.
@@ -348,7 +348,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 				Name:      dummies.CSMachine1.Name,
 			},
 		})
-		g.Expect(err).To(BeNil())
+		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result.RequeueAfter).To(Equal(10 * time.Second))
 
 		result, err = reconciler.Reconcile(ctx, ctrl.Request{
@@ -357,7 +357,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 				Name:      dummies.CSMachine1.Name,
 			},
 		})
-		g.Expect(err).To(BeNil())
+		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result.RequeueAfter).To(BeZero())
 
 		g.Eventually(func() bool {
@@ -371,7 +371,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 	})
 }
 
-// FailMessage returns message for gomega matcher if panic happened
+// FailMessage returns message for gomega matcher if panic happened.
 func FailMessage(err interface{}) string {
 	message := ShortPanicMessage()
 	if message == "" {
@@ -384,7 +384,7 @@ func FailMessage(err interface{}) string {
 	)
 }
 
-// ShortPanicMessage returns the exact line where the panic occurred
+// ShortPanicMessage returns the exact line where the panic occurred.
 func ShortPanicMessage() string {
 	group := "trace"
 	re := regexp.MustCompile(`panic.go.+\n.+\n(?P<` + group + `>.+)`)
