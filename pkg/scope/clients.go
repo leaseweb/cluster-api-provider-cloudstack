@@ -25,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -98,12 +99,17 @@ func (s *clientScopeFactory) NewClientScopeForFailureDomain(ctx context.Context,
 		return nil, errors.New("failure domain is nil")
 	}
 
-	clientConfig, err := getClientConfigFromSecret(ctx, k8sClient, cloud.ClientConfigMapNamespace, cloud.ClientConfigMapName)
+	cloudConfig, err := getCloudConfigFromSecret(ctx, k8sClient, fd.Spec.ACSEndpoint.Namespace, fd.Spec.ACSEndpoint.Name)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting client config from secret")
 	}
 
-	return NewClientScope(s.clientCache, fd, clientConfig)
+	clientConfig, err := getClientConfig(ctx, k8sClient, fd.Spec.ACSEndpoint.Namespace, fd.Spec.ACSEndpoint.Name)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting client configuration configmap")
+	}
+
+	return NewClientScope(s.clientCache, fd, cloudConfig, clientConfig)
 }
 
 func (s *clientScopeFactory) NewClientScopeForFailureDomainByName(ctx context.Context, k8sClient client.Client, name, namespace, clusterName string) (scope Scope, err error) {
@@ -124,14 +130,14 @@ func getScopeCacheKey(clientConfig cloud.Config) string {
 	return fmt.Sprintf("%d", HashConfig(clientConfig))
 }
 
-func NewClientScope(cache *cache.LRUExpireCache, fd *infrav1.CloudStackFailureDomain, clientConfig cloud.Config) (scope Scope, err error) {
-	key := getScopeCacheKey(clientConfig)
+func NewClientScope(cache *cache.LRUExpireCache, fd *infrav1.CloudStackFailureDomain, cloudConfig cloud.Config, clientConfig *corev1.ConfigMap) (scope Scope, err error) {
+	key := getScopeCacheKey(cloudConfig)
 
 	if scope, found := cache.Get(key); found {
 		return scope.(Scope), nil
 	}
 
-	csClient, err := cloud.NewClientFromConf(clientConfig, nil, cloud.WithProject(fd.Spec.Project))
+	csClient, err := cloud.NewClientFromConf(cloudConfig, clientConfig, cloud.WithProject(fd.Spec.Project))
 	if err != nil {
 		return nil, errors.Wrapf(err, "parsing ACSEndpoint secret with ref: %v", fd.Spec.ACSEndpoint)
 	}
@@ -176,12 +182,13 @@ func getFailureDomainByName(ctx context.Context, k8sClient client.Client, name, 
 	return fd, nil
 }
 
-func getClientConfigFromSecret(ctx context.Context, k8sClient client.Client, secretNamespace, secretName string) (cloud.Config, error) {
-	clientConfig := cloud.Config{}
+// getCloudConfigFromSecret gets the CloudStack credentials from a k8s secret referenced by the failure domain ACSEndpoint.
+func getCloudConfigFromSecret(ctx context.Context, k8sClient client.Client, secretNamespace, secretName string) (cloud.Config, error) {
+	cloudConfig := cloud.Config{}
 	endpointSecret := &corev1.Secret{}
 	key := client.ObjectKey{Name: secretName, Namespace: secretNamespace}
 	if err := k8sClient.Get(ctx, key, endpointSecret); err != nil {
-		return clientConfig, errors.Wrapf(err, "getting ACSEndpoint secret with ref: %s/%s", secretNamespace, secretName)
+		return cloudConfig, errors.Wrapf(err, "getting ACSEndpoint secret with ref: %s/%s", secretNamespace, secretName)
 	}
 
 	endpointSecretStrings := map[string]string{}
@@ -190,11 +197,24 @@ func getClientConfigFromSecret(ctx context.Context, k8sClient client.Client, sec
 	}
 	bytes, err := yaml.Marshal(endpointSecretStrings)
 	if err != nil {
-		return clientConfig, err
+		return cloudConfig, err
 	}
 
-	if err := yaml.Unmarshal(bytes, &clientConfig); err != nil {
-		return clientConfig, err
+	if err := yaml.Unmarshal(bytes, &cloudConfig); err != nil {
+		return cloudConfig, err
+	}
+
+	return cloudConfig, nil
+}
+
+// getClientConfig gets the client configuration configmap.
+func getClientConfig(ctx context.Context, k8sClient client.Client, configMapNamespace, configMapName string) (*corev1.ConfigMap, error) {
+	clientConfig := &corev1.ConfigMap{}
+	key := client.ObjectKey{Name: configMapName, Namespace: configMapNamespace}
+	if err := k8sClient.Get(ctx, key, clientConfig); err != nil {
+		if !k8serrors.IsNotFound(err) {
+			return nil, errors.Wrapf(err, "getting client configuration configmap with ref: %s/%s", configMapNamespace, configMapName)
+		}
 	}
 
 	return clientConfig, nil
