@@ -324,7 +324,7 @@ func (r *CloudStackMachineReconciler) reconcileNormal(ctx context.Context, scope
 			return ctrl.Result{}, err
 		}
 		r.Recorder.Eventf(scope.CloudStackMachine, corev1.EventTypeNormal, "InstanceCreated", CSMachineCreationSuccess, vm.Name)
-		scope.Info(CSMachineCreationSuccess, "instanceStatus", scope.CloudStackMachine.Status)
+		scope.Info("Created a new CloudStack instance", "instance-name", vm.Name, "instance-id", vm.Id)
 	}
 
 	scope.SetInstanceID(vm.Id)
@@ -367,7 +367,9 @@ func (r *CloudStackMachineReconciler) reconcileNormal(ctx context.Context, scope
 		}
 		scope.SetAddresses(addresses)
 
-		if vm.State != cloud.InstanceStateStarting {
+		// If the instance is not just created (previous state empty and current state stopped) or starting,
+		// reconcile the load balancer attachments.
+		if !(prevState == "" && vm.State == cloud.InstanceStateStopped) || vm.State != cloud.InstanceStateStarting {
 			if err := r.reconcileLBattachments(scope); err != nil {
 				return ctrl.Result{}, err
 			}
