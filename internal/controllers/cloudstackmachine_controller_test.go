@@ -89,6 +89,8 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 
 		mockCSCUser.EXPECT().GetVMInstanceByID(gomock.AssignableToTypeOf(*dummies.CSMachine1.Spec.InstanceID)).
 			Return(nil, nil).Times(1)
+		mockCSCUser.EXPECT().GetVMInstanceByName(gomock.AssignableToTypeOf(dummies.CSMachine1.Name)).
+			Return(nil, nil).Times(1)
 		mockCSCUser.EXPECT().CreateVMInstance(
 			gomock.AssignableToTypeOf(&infrav1.CloudStackMachine{}),
 			gomock.AssignableToTypeOf(&clusterv1.Machine{}),

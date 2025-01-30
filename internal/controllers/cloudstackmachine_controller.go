@@ -181,7 +181,7 @@ func (r *CloudStackMachineReconciler) reconcileDelete(scope *scope.MachineScope)
 	scope.Info("Reconcile CloudStackMachine deletion")
 
 	vm, err := r.findInstance(scope)
-	if err != nil {
+	if err != nil && !errors.Is(err, cloud.ErrNotFound) {
 		return ctrl.Result{}, err
 	}
 	if vm == nil {
@@ -308,7 +308,7 @@ func (r *CloudStackMachineReconciler) reconcileNormal(ctx context.Context, scope
 	}
 
 	vm, err := r.findInstance(scope)
-	if err != nil {
+	if err != nil && !errors.Is(err, cloud.ErrNotFound) {
 		return ctrl.Result{}, err
 	}
 	if vm == nil {
@@ -425,18 +425,27 @@ func (r *CloudStackMachineReconciler) reconcileLBattachments(scope *scope.Machin
 }
 
 // findInstance finds the VM instance for the given CloudStackMachine, either by instance ID or name.
+// If InstanceID is empty, it will be retrieved by name.
+// If it still cannot find the instance, it will return an error.
 func (r *CloudStackMachineReconciler) findInstance(scope *scope.MachineScope) (*cloudstack.VirtualMachine, error) {
-	vm, err := scope.CSUser().GetVMInstanceByID(scope.GetInstanceID())
-	if err != nil && errors.Is(err, cloud.ErrNotFound) {
-		vm, err = scope.CSUser().GetVMInstanceByName(scope.Name())
-		if err != nil {
+	var instance *cloudstack.VirtualMachine
+	var err error
+
+	if scope.GetInstanceID() != "" {
+		instance, err = scope.CSUser().GetVMInstanceByID(scope.GetInstanceID())
+		if err != nil && !errors.Is(err, cloud.ErrNotFound) {
 			return nil, err
 		}
-	} else if err != nil {
+		if instance != nil {
+			return instance, nil
+		}
+	}
+	instance, err = scope.CSUser().GetVMInstanceByName(scope.Name())
+	if err != nil {
 		return nil, err
 	}
 
-	return vm, nil
+	return instance, nil
 }
 
 // GenerateAffinityGroupName generates the affinity group name relevant to this machine.
