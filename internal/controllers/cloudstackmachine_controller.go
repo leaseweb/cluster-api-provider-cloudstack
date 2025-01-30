@@ -127,7 +127,19 @@ func (r *CloudStackMachineReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, nil
 	}
 
-	clientScope, err := r.ScopeFactory.NewClientScopeForFailureDomainByName(ctx, r.Client, csMachine.Spec.FailureDomainName, csMachine.Namespace, cluster.Name)
+	var fdName string
+	if machine.Spec.FailureDomain != nil {
+		fdName = *machine.Spec.FailureDomain
+	} else {
+		fdName = csMachine.Spec.FailureDomainName
+	}
+	if fdName == "" {
+		log.Info("No failuredomain name found yet, skipping reconciliation")
+
+		return ctrl.Result{}, nil
+	}
+
+	clientScope, err := r.ScopeFactory.NewClientScopeForFailureDomainByName(ctx, r.Client, fdName, csMachine.Namespace, cluster.Name)
 	if err != nil {
 		log.Error(err, "Failed to create client scope")
 		return ctrl.Result{}, err

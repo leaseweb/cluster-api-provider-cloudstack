@@ -129,7 +129,13 @@ func (s *MachineScope) KubernetesClusterName() string {
 }
 
 // FailureDomainName returns the machine's failure domain name.
+// If the machine has a failure domain, it will be used.
+// Otherwise, the CloudStackMachine's failure domain name will be used.
 func (s *MachineScope) FailureDomainName() string {
+	if s.Machine.Spec.FailureDomain != nil {
+		return *s.Machine.Spec.FailureDomain
+	}
+
 	return s.CloudStackMachine.Spec.FailureDomainName
 }
 
