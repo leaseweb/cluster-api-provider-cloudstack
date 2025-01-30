@@ -246,7 +246,7 @@ func (r *CloudStackFailureDomainReconciler) GenerateIsolatedNetwork(ctx context.
 		},
 	}
 	csIsoNet.Spec.Name = lowerName
-	csIsoNet.Spec.FailureDomainName = scope.Name()
+	csIsoNet.Spec.FailureDomainName = scope.FailureDomainName()
 	if scope.Network().CIDR != "" {
 		csIsoNet.Spec.CIDR = scope.Network().CIDR
 	}

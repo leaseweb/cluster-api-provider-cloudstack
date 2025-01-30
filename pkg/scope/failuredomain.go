@@ -128,6 +128,11 @@ func (s *FailureDomainScope) Close() error {
 	return s.PatchObject()
 }
 
+// FailureDomainName returns the failure domain's plain (non hashed) name.
+func (s *FailureDomainScope) FailureDomainName() string {
+	return s.CloudStackFailureDomain.Spec.Name
+}
+
 func (s *FailureDomainScope) ResolveZone() error {
 	return s.CSUser().ResolveZone(&s.CloudStackFailureDomain.Spec.Zone)
 }
