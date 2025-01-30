@@ -267,6 +267,7 @@ func (r *CloudStackMachineReconciler) reconcileNormal(ctx context.Context, scope
 	if scope.NetworkType() == cloud.NetworkTypeIsolated {
 		objectKey := client.ObjectKey{Name: scope.IsolatedNetworkName(), Namespace: scope.Namespace()}
 
+		scope.CloudStackIsolatedNetwork = &infrav1.CloudStackIsolatedNetwork{}
 		err := client.IgnoreNotFound(r.Client.Get(ctx, objectKey, scope.CloudStackIsolatedNetwork))
 		if err != nil {
 			return ctrl.Result{}, errors.Wrap(err, "failed to get CloudStackIsolatedNetwork")

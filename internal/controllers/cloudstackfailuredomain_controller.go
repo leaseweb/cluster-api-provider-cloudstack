@@ -209,6 +209,8 @@ func (r *CloudStackFailureDomainReconciler) reconcileNormal(ctx context.Context,
 			return ctrl.Result{}, errors.Wrap(err, "generating isolated network")
 		}
 
+		// Get the isolated network from the cluster.
+		r.IsoNet = &infrav1.CloudStackIsolatedNetwork{}
 		objectKey := client.ObjectKey{Name: scope.IsolatedNetworkName(), Namespace: scope.Namespace()}
 		err := client.IgnoreNotFound(r.Client.Get(ctx, objectKey, r.IsoNet))
 		if err != nil {
@@ -231,7 +233,7 @@ func (r *CloudStackFailureDomainReconciler) reconcileNormal(ctx context.Context,
 	return ctrl.Result{}, nil
 }
 
-// GenerateIsolatedNetwork creates a CloudStackIsolatedNetwork object that is owned by the CloudStackFailureDomain.
+// GenerateIsolatedNetwork creates a CloudStackIsolatedNetwork object in the cluster that is owned by the CloudStackFailureDomain.
 func (r *CloudStackFailureDomainReconciler) GenerateIsolatedNetwork(ctx context.Context, scope *scope.FailureDomainScope) error {
 	lowerName := strings.ToLower(scope.NetworkName())
 	metaName := fmt.Sprintf("%s-%s", scope.KubernetesClusterName(), lowerName)
