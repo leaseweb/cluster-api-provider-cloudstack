@@ -19,8 +19,8 @@ package scope
 import (
 	"context"
 
-	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
+	"go.uber.org/mock/gomock"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"

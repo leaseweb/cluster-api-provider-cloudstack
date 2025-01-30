@@ -20,10 +20,10 @@ import (
 	"encoding/base64"
 
 	"github.com/apache/cloudstack-go/v2/cloudstack"
-	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+	"go.uber.org/mock/gomock"
 	"k8s.io/utils/ptr"
 
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"

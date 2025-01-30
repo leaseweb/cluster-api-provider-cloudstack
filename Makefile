@@ -91,9 +91,9 @@ GOLANGCI_LINT := $(abspath $(TOOLS_BIN_DIR)/$(GOLANGCI_LINT_BIN)-$(GOLANGCI_LINT
 GOLANGCI_LINT_PKG := github.com/golangci/golangci-lint/cmd/golangci-lint
 
 MOCKGEN_BIN := mockgen
-MOCKGEN_VER := v1.6.0
+MOCKGEN_VER := v0.5.0
 MOCKGEN := $(abspath $(TOOLS_BIN_DIR)/$(MOCKGEN_BIN)-$(MOCKGEN_VER))
-MOCKGEN_PKG := github.com/golang/mock/mockgen
+MOCKGEN_PKG := go.uber.org/mock/mockgen
 
 KUBECTL := $(TOOLS_BIN_DIR)/kubectl
 
