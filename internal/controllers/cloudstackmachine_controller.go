@@ -19,6 +19,8 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"hash/crc32"
+	"sort"
 	"strings"
 	"time"
 
@@ -128,18 +130,17 @@ func (r *CloudStackMachineReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	var fdName string
-	if machine.Spec.FailureDomain != nil {
-		fdName = *machine.Spec.FailureDomain
-	} else {
-		fdName = csMachine.Spec.FailureDomainName
+	if csMachine.Spec.FailureDomainName == "" {
+		fdName = getCloudStackMachineFailureDomain(csCluster, machine, csMachine)
+		if fdName == "" {
+			log.Info("Could not determine CloudStackMachine failure domain name yet, skipping reconciliation")
+			return ctrl.Result{}, nil
+		}
+		csMachine.Spec.FailureDomainName = fdName
+		csMachine.Labels[infrav1.FailureDomainLabelName] = infrav1.FailureDomainHashedMetaName(fdName, csCluster.Name)
 	}
-	if fdName == "" {
-		log.Info("No failuredomain name found yet, skipping reconciliation")
 
-		return ctrl.Result{}, nil
-	}
-
-	clientScope, err := r.ScopeFactory.NewClientScopeForFailureDomainByName(ctx, r.Client, fdName, csMachine.Namespace, cluster.Name)
+	clientScope, err := r.ScopeFactory.NewClientScopeForFailureDomainByName(ctx, r.Client, csMachine.Spec.FailureDomainName, csMachine.Namespace, cluster.Name)
 	if err != nil {
 		log.Error(err, "Failed to create client scope")
 		return ctrl.Result{}, err
@@ -561,6 +562,35 @@ func (r *CloudStackMachineReconciler) getInfraCluster(ctx context.Context, clust
 		return nil, err
 	}
 	return cloudStackCluster, nil
+}
+
+// getCloudStackMachineFailureDomain determines the failure domain name for the given CloudStackMachine.
+func getCloudStackMachineFailureDomain(csCluster *infrav1.CloudStackCluster, machine *clusterv1.Machine, csMachine *infrav1.CloudStackMachine) string {
+	var fdName string
+	// The failuredomain set in the Machine spec takes precedence over the one set in the CloudStackMachine spec.
+	// The machine controller will set the failure domain name in the Machine spec for control plane machines or
+	// when the machine is created from a template.
+	if machine.Spec.FailureDomain != nil {
+		fdName = *machine.Spec.FailureDomain
+	} else {
+		// If the failure domain name is not set in the Machine spec, we set a random one from the failure domains
+		// set in the CloudStackCluster spec.
+		failureDomainNames := make([]string, 0, len(csCluster.Spec.FailureDomains))
+		for _, fd := range csCluster.Spec.FailureDomains {
+			failureDomainNames = append(failureDomainNames, fd.Name)
+		}
+		if len(failureDomainNames) == 0 {
+			return ""
+		} else if len(failureDomainNames) == 1 {
+			fdName = failureDomainNames[0]
+		} else {
+			sort.Strings(failureDomainNames)
+			pos := int(crc32.ChecksumIEEE([]byte(csMachine.Name))) % len(failureDomainNames)
+			fdName = failureDomainNames[pos]
+		}
+	}
+
+	return fdName
 }
 
 // CloudStackClusterToCloudStackMachines is a handler.ToRequestsFunc to be used to enqueue requests for reconciliation
