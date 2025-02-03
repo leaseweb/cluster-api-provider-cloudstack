@@ -156,7 +156,7 @@ var _ = Describe("Instance", func() {
 	Context("when creating a VM instance", func() {
 		It("returns errors occurring while fetching service offering information", func() {
 			sos.EXPECT().GetServiceOfferingByName(dummies.CSMachine1.Spec.Offering.Name, gomock.Any()).Return(&cloudstack.ServiceOffering{}, -1, unknownError)
-			_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+			_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, nil)
 			Ω(err).ShouldNot(Succeed())
 		})
 
@@ -165,7 +165,7 @@ var _ = Describe("Instance", func() {
 				Id:   dummies.CSMachine1.Spec.Offering.ID,
 				Name: dummies.CSMachine1.Spec.Offering.Name,
 			}, 2, nil)
-			_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+			_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, nil)
 			Ω(err).ShouldNot(Succeed())
 		})
 
@@ -200,7 +200,7 @@ var _ = Describe("Instance", func() {
 			vms.EXPECT().NewDeployVirtualMachineParams(offeringFakeID, templateFakeID, dummies.Zone1.ID).
 				Return(&cloudstack.DeployVirtualMachineParams{})
 
-			expectUserData := "my special userdata"
+			expectUserData := []byte("my special userdata")
 			vms.EXPECT().DeployVirtualMachine(gomock.Any()).Do(
 				func(params *cloudstack.DeployVirtualMachineParams) {
 					displayName, _ := params.GetDisplayname()
@@ -214,7 +214,7 @@ var _ = Describe("Instance", func() {
 					decompressedUserData, err := decompress(userData)
 					Ω(err).ToNot(HaveOccurred())
 
-					Ω(string(decompressedUserData)).To(Equal(expectUserData))
+					Ω(decompressedUserData).Should(Equal(expectUserData))
 				},
 			).Return(&cloudstack.DeployVirtualMachineResponse{
 				Id: *dummies.CSMachine1.Spec.InstanceID,
@@ -271,7 +271,7 @@ var _ = Describe("Instance", func() {
 					}},
 				}, nil)
 
-				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, nil)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
@@ -314,7 +314,7 @@ var _ = Describe("Instance", func() {
 					}},
 				}, nil)
 
-				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, nil)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
@@ -328,7 +328,7 @@ var _ = Describe("Instance", func() {
 						Name: "different-name",
 					}, 1, nil)
 
-				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, nil)
 				Ω(err).Should(MatchError(ContainSubstring("offering name")))
 			})
 		})
@@ -379,7 +379,7 @@ var _ = Describe("Instance", func() {
 					}},
 				}, nil)
 
-				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, nil)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
@@ -393,7 +393,7 @@ var _ = Describe("Instance", func() {
 						Name: "different-name",
 					}, 1, nil)
 
-				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, nil)
 				Ω(err).Should(MatchError(ContainSubstring("template name")))
 			})
 		})
@@ -438,7 +438,7 @@ var _ = Describe("Instance", func() {
 					}},
 				}, nil)
 
-				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, nil)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
@@ -455,7 +455,7 @@ var _ = Describe("Instance", func() {
 						Iscustomized: true,
 					}, 1, nil)
 
-				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, nil)
 				Ω(err).Should(MatchError(ContainSubstring("disk size can not be 0 GB")))
 			})
 
@@ -472,7 +472,7 @@ var _ = Describe("Instance", func() {
 						Iscustomized: false,
 					}, 1, nil)
 
-				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				_, err := client.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, nil)
 				Ω(err).Should(MatchError(ContainSubstring("disk size can not be specified")))
 			})
 		})
@@ -506,7 +506,7 @@ var _ = Describe("Instance", func() {
 					},
 				}
 				c := cloud.NewClientFromCSAPIClient(mockClient, user)
-				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, nil)
 				Ω(err).Should(MatchError(MatchRegexp("CPU available .* in account can't fulfil the requirement:.*")))
 			})
 
@@ -538,7 +538,7 @@ var _ = Describe("Instance", func() {
 					},
 				}
 				c := cloud.NewClientFromCSAPIClient(mockClient, user)
-				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, nil)
 				Ω(err).Should(MatchError(MatchRegexp("CPU available .* in domain can't fulfil the requirement:.*")))
 			})
 
@@ -570,7 +570,7 @@ var _ = Describe("Instance", func() {
 					},
 				}
 				c := cloud.NewClientFromCSAPIClient(mockClient, user)
-				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, nil)
 				Ω(err).Should(MatchError(MatchRegexp("CPU available .* in project can't fulfil the requirement:.*")))
 			})
 
@@ -602,7 +602,7 @@ var _ = Describe("Instance", func() {
 					},
 				}
 				c := cloud.NewClientFromCSAPIClient(mockClient, user)
-				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, nil)
 				Ω(err).Should(MatchError(MatchRegexp("memory available .* in account can't fulfil the requirement:.*")))
 			})
 
@@ -634,7 +634,7 @@ var _ = Describe("Instance", func() {
 					},
 				}
 				c := cloud.NewClientFromCSAPIClient(mockClient, user)
-				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, nil)
 				Ω(err).Should(MatchError(MatchRegexp("memory available .* in domain can't fulfil the requirement:.*")))
 			})
 
@@ -666,7 +666,7 @@ var _ = Describe("Instance", func() {
 					},
 				}
 				c := cloud.NewClientFromCSAPIClient(mockClient, user)
-				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, nil)
 				Ω(err).Should(MatchError(MatchRegexp("memory available .* in project can't fulfil the requirement:.*")))
 			})
 
@@ -698,7 +698,7 @@ var _ = Describe("Instance", func() {
 					},
 				}
 				c := cloud.NewClientFromCSAPIClient(mockClient, user)
-				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, nil)
 				Ω(err).Should(MatchError("VM limit in account has reached its maximum value"))
 			})
 
@@ -730,7 +730,7 @@ var _ = Describe("Instance", func() {
 					},
 				}
 				c := cloud.NewClientFromCSAPIClient(mockClient, user)
-				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, nil)
 				Ω(err).Should(MatchError("VM limit in domain has reached its maximum value"))
 			})
 
@@ -762,7 +762,7 @@ var _ = Describe("Instance", func() {
 					},
 				}
 				c := cloud.NewClientFromCSAPIClient(mockClient, user)
-				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "")
+				_, err := c.CreateVMInstance(dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, nil)
 				Ω(err).Should(MatchError("VM Limit in project has reached it's maximum value"))
 			})
 		})

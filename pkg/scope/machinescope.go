@@ -19,7 +19,6 @@ package scope
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"strings"
 
@@ -252,23 +251,24 @@ func (s *MachineScope) SetInstanceID(id string) {
 	s.CloudStackMachine.Spec.InstanceID = instanceID
 }
 
-func (s *MachineScope) GetBootstrapData() (string, error) {
+// GetBootstrapData returns the bootstrap data from the secret in the Machine's bootstrap.dataSecretName.
+func (s *MachineScope) GetBootstrapData() ([]byte, error) {
 	if s.Machine.Spec.Bootstrap.DataSecretName == nil {
-		return "", errors.New("error retrieving bootstrap data: linked Machine's bootstrap.dataSecretName is nil")
+		return nil, errors.New("error retrieving bootstrap data: linked Machine's bootstrap.dataSecretName is nil")
 	}
 
 	secret := &corev1.Secret{}
 	key := types.NamespacedName{Namespace: s.Machine.Namespace, Name: *s.Machine.Spec.Bootstrap.DataSecretName}
 	if err := s.client.Get(context.TODO(), key, secret); err != nil {
-		return "", errors.Wrapf(err, "failed to retrieve bootstrap data secret for CloudStackMachine %s/%s", s.Namespace(), s.Name())
+		return nil, errors.Wrapf(err, "failed to retrieve bootstrap data secret for CloudStackMachine %s/%s", s.Namespace(), s.Name())
 	}
 
 	value, ok := secret.Data["value"]
 	if !ok {
-		return "", errors.New("error retrieving bootstrap data: secret value key is missing")
+		return nil, errors.New("error retrieving bootstrap data: secret value key is missing")
 	}
 
-	return base64.StdEncoding.EncodeToString(value), nil
+	return value, nil
 }
 
 func (s *MachineScope) SetInstanceState(state string) {

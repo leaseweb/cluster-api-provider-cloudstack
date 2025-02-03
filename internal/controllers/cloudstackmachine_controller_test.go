@@ -96,7 +96,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 			gomock.AssignableToTypeOf(&clusterv1.Machine{}),
 			gomock.AssignableToTypeOf(&infrav1.CloudStackFailureDomain{}),
 			gomock.AssignableToTypeOf(&infrav1.CloudStackAffinityGroup{}),
-			gomock.AssignableToTypeOf(""),
+			gomock.AssignableToTypeOf([]byte{}),
 		).Return(&cloudstack.VirtualMachine{
 			Id:    *dummies.CSMachine1.Spec.InstanceID,
 			Name:  dummies.CSMachine1.Name,

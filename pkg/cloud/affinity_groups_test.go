@@ -142,7 +142,7 @@ var _ = Describe("AffinityGroup Unit Tests", func() {
 			dummies.CSMachine1.Spec.DiskOffering.Name = ""
 
 			Ω(client.CreateVMInstance(
-				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "",
+				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, nil,
 			)).Should(Succeed())
 
 			Ω(client.GetOrCreateAffinityGroup(dummies.AffinityGroup)).Should(Succeed())

@@ -66,7 +66,7 @@ type VMIface interface {
 	ResolveVMInstanceDetails(csMachine *infrav1.CloudStackMachine) error
 	GetVMInstanceByID(id string) (*cloudstack.VirtualMachine, error)
 	GetVMInstanceByName(name string) (*cloudstack.VirtualMachine, error)
-	CreateVMInstance(csMachine *infrav1.CloudStackMachine, capiMachine *clusterv1.Machine, fd *infrav1.CloudStackFailureDomain, affinity *infrav1.CloudStackAffinityGroup, userData string) (*cloudstack.VirtualMachine, error)
+	CreateVMInstance(csMachine *infrav1.CloudStackMachine, capiMachine *clusterv1.Machine, fd *infrav1.CloudStackFailureDomain, affinity *infrav1.CloudStackAffinityGroup, userData []byte) (*cloudstack.VirtualMachine, error)
 	GetInstanceAddresses(vm *cloudstack.VirtualMachine) ([]corev1.NodeAddress, error)
 	DestroyVMInstance(csMachine *infrav1.CloudStackMachine) error
 }
@@ -128,7 +128,7 @@ func (c *client) GetVMInstanceByName(name string) (*cloudstack.VirtualMachine, e
 }
 
 // CreateVMInstance creates a new VM instance and returns the created VM instance.
-func (c *client) CreateVMInstance(csMachine *infrav1.CloudStackMachine, capiMachine *clusterv1.Machine, fd *infrav1.CloudStackFailureDomain, affinity *infrav1.CloudStackAffinityGroup, userData string) (*cloudstack.VirtualMachine, error) {
+func (c *client) CreateVMInstance(csMachine *infrav1.CloudStackMachine, capiMachine *clusterv1.Machine, fd *infrav1.CloudStackFailureDomain, affinity *infrav1.CloudStackAffinityGroup, userData []byte) (*cloudstack.VirtualMachine, error) {
 	offering, err := c.resolveServiceOffering(csMachine, fd.Spec.Zone.ID)
 	if err != nil {
 		return nil, err
@@ -161,13 +161,12 @@ func (c *client) CreateVMInstance(csMachine *infrav1.CloudStackMachine, capiMach
 	setIfNotEmpty(csMachine.Spec.SSHKey, p.SetKeypair)
 
 	if csMachine.CompressUserdata() {
-		userData, err = compress(userData)
+		userData, err = GzipBytes(userData)
 		if err != nil {
 			return nil, err
 		}
 	}
-	userData = base64.StdEncoding.EncodeToString([]byte(userData))
-	setIfNotEmpty(userData, p.SetUserdata)
+	setIfNotEmpty(base64.StdEncoding.EncodeToString(userData), p.SetUserdata)
 
 	if len(csMachine.Spec.AffinityGroupIDs) > 0 {
 		p.SetAffinitygroupids(csMachine.Spec.AffinityGroupIDs)
