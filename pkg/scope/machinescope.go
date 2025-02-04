@@ -190,6 +190,24 @@ func (s *MachineScope) NetworkType() string {
 	return s.CloudStackFailureDomain.Spec.Zone.Network.Type
 }
 
+// IsolatedNetwork returns the isolated network of the machine.
+func (s *MachineScope) IsolatedNetwork(ctx context.Context) (*infrav1.CloudStackIsolatedNetwork, error) {
+	isonet := &infrav1.CloudStackIsolatedNetwork{}
+	if s.CloudStackIsolatedNetwork == nil || s.CloudStackIsolatedNetwork.Name == "" {
+		err := s.client.Get(ctx, client.ObjectKey{Name: s.IsolatedNetworkName(), Namespace: s.Namespace()}, isonet)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get isolated network with name %s", s.IsolatedNetworkName())
+		}
+	}
+
+	return isonet, nil
+}
+
+// SetIsolatedNetwork sets the isolated network of the machine.
+func (s *MachineScope) SetIsolatedNetwork(isonet *infrav1.CloudStackIsolatedNetwork) {
+	s.CloudStackIsolatedNetwork = isonet
+}
+
 // IsolatedNetworkName returns the sanitized (CloudStack-compliant) name of the isolated network.
 func (s *MachineScope) IsolatedNetworkName() string {
 	str := metaNameRegex.ReplaceAllString(fmt.Sprintf("%s-%s", s.KubernetesClusterName(), strings.ToLower(s.NetworkName())), "-")

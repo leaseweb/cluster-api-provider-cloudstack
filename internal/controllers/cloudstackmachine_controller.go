@@ -171,14 +171,14 @@ func (r *CloudStackMachineReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	if !csMachine.DeletionTimestamp.IsZero() {
 		// Handle deletion reconciliation loop.
-		return r.reconcileDelete(scope)
+		return r.reconcileDelete(ctx, scope)
 	}
 
 	// Handle normal reconciliation loop.
 	return r.reconcileNormal(ctx, scope)
 }
 
-func (r *CloudStackMachineReconciler) reconcileDelete(scope *scope.MachineScope) (ctrl.Result, error) {
+func (r *CloudStackMachineReconciler) reconcileDelete(ctx context.Context, scope *scope.MachineScope) (ctrl.Result, error) {
 	scope.Info("Reconcile CloudStackMachine deletion")
 
 	vm, err := r.findInstance(scope)
@@ -193,6 +193,15 @@ func (r *CloudStackMachineReconciler) reconcileDelete(scope *scope.MachineScope)
 	}
 
 	scope.Info("Instance found matching deleted CloudStackMachine", "instance-id", vm.Id)
+
+	// Get the isolated network if it exists. It is required for the LB attachment.
+	if scope.NetworkType() == cloud.NetworkTypeIsolated {
+		isonet, err := scope.IsolatedNetwork(ctx)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		scope.SetIsolatedNetwork(isonet)
+	}
 
 	if err := r.reconcileLBattachments(scope); err != nil {
 		return ctrl.Result{}, errors.Errorf("failed to reconcile LB attachment: %+v", err)
@@ -266,13 +275,11 @@ func (r *CloudStackMachineReconciler) reconcileNormal(ctx context.Context, scope
 	}
 
 	if scope.NetworkType() == cloud.NetworkTypeIsolated {
-		objectKey := client.ObjectKey{Name: scope.IsolatedNetworkName(), Namespace: scope.Namespace()}
-
-		scope.CloudStackIsolatedNetwork = &infrav1.CloudStackIsolatedNetwork{}
-		err := client.IgnoreNotFound(r.Client.Get(ctx, objectKey, scope.CloudStackIsolatedNetwork))
+		isonet, err := scope.IsolatedNetwork(ctx)
 		if err != nil {
-			return ctrl.Result{}, errors.Wrap(err, "failed to get CloudStackIsolatedNetwork")
+			return ctrl.Result{}, err
 		}
+		scope.SetIsolatedNetwork(isonet)
 	}
 
 	// Get or create the CloudStackAffinityGroup if affinity is enabled.
@@ -289,8 +296,6 @@ func (r *CloudStackMachineReconciler) reconcileNormal(ctx context.Context, scope
 		}
 
 		scope.CloudStackAffinityGroup = &infrav1.CloudStackAffinityGroup{}
-		scope.CloudStackAffinityGroup.Spec.FailureDomainName = scope.FailureDomainName()
-
 		if err := r.GetOrCreateAffinityGroup(ctx, agName, scope); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -391,13 +396,13 @@ func (r *CloudStackMachineReconciler) reconcileNormal(ctx context.Context, scope
 // reconcileLBattachments reconciles the load balancer attachments/detachments for the CloudStackMachine.
 func (r *CloudStackMachineReconciler) reconcileLBattachments(scope *scope.MachineScope) error {
 	if !scope.IsExternallyManaged() && scope.IsControlPlane() && scope.NetworkType() == cloud.NetworkTypeIsolated && scope.IsLBEnabled() {
-		if scope.IsolatedNetworkName() == "" {
+		if scope.CloudStackIsolatedNetwork == nil {
 			return errors.New("Could not get required Isolated Network for VM")
 		}
 
 		if scope.CloudStackMachineIsDeleted() || scope.MachineIsDeleted() || !scope.InstanceIsRunning() {
 			scope.Info("Removing VM from load balancer rule.", "instance-id", scope.GetInstanceID())
-			removed, err := scope.CSUser().RemoveVMFromLoadBalancerRules(scope.CloudStackIsolatedNetwork, *scope.CloudStackMachine.Spec.InstanceID)
+			removed, err := scope.CSUser().RemoveVMFromLoadBalancerRules(scope.CloudStackIsolatedNetwork, scope.GetInstanceID())
 			if err != nil {
 				r.Recorder.Eventf(scope.CloudStackMachine, corev1.EventTypeWarning, "FailedDetachControlPlaneLB",
 					"Failed to unregister control plane instance %q from load balancer: %v", scope.GetInstanceID(), err)
@@ -410,7 +415,7 @@ func (r *CloudStackMachineReconciler) reconcileLBattachments(scope *scope.Machin
 			}
 		} else {
 			scope.Info("Assigning VM to load balancer rule.", "instance-id", scope.GetInstanceID())
-			assigned, err := scope.CSUser().AssignVMToLoadBalancerRules(scope.CloudStackIsolatedNetwork, *scope.CloudStackMachine.Spec.InstanceID)
+			assigned, err := scope.CSUser().AssignVMToLoadBalancerRules(scope.CloudStackIsolatedNetwork, scope.GetInstanceID())
 			if err != nil {
 				r.Recorder.Eventf(scope.CloudStackMachine, corev1.EventTypeWarning, "FailedAttachControlPlaneLB",
 					"Failed to register control plane instance %q with load balancer: %v", scope.GetInstanceID(), err)
@@ -470,8 +475,8 @@ func GenerateAffinityGroupName(csMachine infrav1.CloudStackMachine, capiMachine 
 		capiCluster.Name, capiCluster.UID, titleCaser.String(csMachine.Spec.Affinity), managerOwnerRef.Name, managerOwnerRef.UID, csMachine.Spec.FailureDomainName), nil
 }
 
-// GetOrCreateAffinityGroup of the passed name that's owned by the failure domain of the reconciliation subject and
-// the control plane that manages it.
+// GetOrCreateAffinityGroup creates an affinity group if it doesn't exist. The affinity group is owned by the failure domain of the CloudStackMachine.
+// The result is stored in the CloudStackAffinityGroup field of the MachineScope.
 func (r *CloudStackMachineReconciler) GetOrCreateAffinityGroup(ctx context.Context, name string, scope *scope.MachineScope) error {
 	// Start by attempting a fetch.
 	lowerName := strings.ToLower(name)
@@ -500,6 +505,7 @@ func (r *CloudStackMachineReconciler) GetOrCreateAffinityGroup(ctx context.Conte
 	// Setup basic metadata.
 	scope.CloudStackAffinityGroup.Name = name
 	scope.CloudStackAffinityGroup.Spec.Name = name
+	scope.CloudStackAffinityGroup.Spec.FailureDomainName = scope.FailureDomainName()
 	ownerGVK := scope.CloudStackMachine.GetObjectKind().GroupVersionKind()
 	scope.CloudStackAffinityGroup.ObjectMeta = metav1.ObjectMeta{
 		Name:      lowerName,
