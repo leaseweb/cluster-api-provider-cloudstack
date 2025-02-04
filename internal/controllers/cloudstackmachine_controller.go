@@ -124,7 +124,7 @@ func (r *CloudStackMachineReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		log.Error(err, "Failed to get CloudStackCluster")
 		return ctrl.Result{}, err
 	}
-	if csCluster == nil {
+	if csCluster == nil || (csCluster.DeletionTimestamp.IsZero() && !csCluster.Status.Ready) {
 		log.Info("CloudStackCluster not ready yet")
 		return ctrl.Result{}, nil
 	}
