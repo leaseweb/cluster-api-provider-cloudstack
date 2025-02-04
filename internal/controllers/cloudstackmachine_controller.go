@@ -78,7 +78,7 @@ type CloudStackMachineReconciler struct {
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machines;machines/status,verbs=get;list;watch
 
 func (r *CloudStackMachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, reterr error) {
-	log := ctrl.LoggerFrom(ctx)
+	log := logger.FromContext(ctx)
 
 	// Fetch the CloudStackMachine instance
 	csMachine := &infrav1.CloudStackMachine{}
@@ -112,7 +112,6 @@ func (r *CloudStackMachineReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	log = log.WithValues("cluster", klog.KObj(cluster))
-	ctx = ctrl.LoggerInto(ctx, log)
 
 	if annotations.IsPaused(cluster, csMachine) {
 		log.Info("CloudStackMachine or linked Cluster is marked as paused. Won't reconcile")
@@ -149,6 +148,7 @@ func (r *CloudStackMachineReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	// Create the machine scope.
 	scope, err := scope.NewMachineScope(scope.MachineScopeParams{
 		Client:                  r.Client,
+		Logger:                  log,
 		Cluster:                 cluster,
 		CloudStackCluster:       csCluster,
 		Machine:                 machine,

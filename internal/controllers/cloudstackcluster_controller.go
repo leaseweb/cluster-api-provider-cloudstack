@@ -42,6 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
+	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/logger"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/scope"
 )
 
@@ -65,7 +66,7 @@ type CloudStackClusterReconciler struct {
 //+kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters;clusters/status,verbs=get;list;watch
 
 func (r *CloudStackClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, reterr error) {
-	log := ctrl.LoggerFrom(ctx)
+	log := logger.FromContext(ctx)
 
 	// Fetch the CloudStackCluster instance
 	cscluster := &infrav1.CloudStackCluster{}
@@ -91,7 +92,6 @@ func (r *CloudStackClusterReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	log = log.WithValues("cluster", klog.KObj(cluster))
-	ctx = ctrl.LoggerInto(ctx, log)
 
 	if annotations.IsPaused(cluster, cscluster) {
 		log.Info("Reconciliation is paused for this object")
@@ -101,6 +101,7 @@ func (r *CloudStackClusterReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	// Create the scope.
 	scope, err := scope.NewClusterScope(scope.ClusterScopeParams{
 		Client:            r.Client,
+		Logger:            log,
 		Cluster:           cluster,
 		CloudStackCluster: cscluster,
 		ControllerName:    "cloudstackcluster",
@@ -127,15 +128,13 @@ func (r *CloudStackClusterReconciler) Reconcile(ctx context.Context, req ctrl.Re
 }
 
 func (r *CloudStackClusterReconciler) reconcileDelete(ctx context.Context, scope *scope.ClusterScope) (ctrl.Result, error) {
-	log := ctrl.LoggerFrom(ctx)
-
 	// Skip deletion if finalizer is not present.
 	if !controllerutil.ContainsFinalizer(scope.CloudStackCluster, infrav1.ClusterFinalizer) {
-		log.Info("No finalizer on CloudStackCluster, skipping deletion reconciliation")
+		scope.Info("No finalizer on CloudStackCluster, skipping deletion reconciliation")
 		return ctrl.Result{}, nil
 	}
 
-	log.Info("Reconcile CloudStackCluster deletion")
+	scope.Info("Reconcile CloudStackCluster deletion")
 
 	fds := &infrav1.CloudStackFailureDomainList{}
 	if err := r.GetFailureDomains(ctx, scope, fds); err != nil {
@@ -147,7 +146,7 @@ func (r *CloudStackClusterReconciler) reconcileDelete(ctx context.Context, scope
 				return ctrl.Result{}, err
 			}
 		}
-		log.Info("Child FailureDomains still present, requeueing.")
+		scope.Info("Child FailureDomains still present, requeueing.")
 
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
@@ -158,8 +157,7 @@ func (r *CloudStackClusterReconciler) reconcileDelete(ctx context.Context, scope
 }
 
 func (r *CloudStackClusterReconciler) reconcileNormal(ctx context.Context, scope *scope.ClusterScope) (ctrl.Result, error) {
-	log := ctrl.LoggerFrom(ctx)
-	log.Info("Reconcile CloudStackCluster")
+	scope.Info("Reconcile CloudStackCluster")
 
 	// If the CloudStackCluster doesn't have our finalizer, add it.
 	if controllerutil.AddFinalizer(scope.CloudStackCluster, infrav1.ClusterFinalizer) {
@@ -199,7 +197,7 @@ func (r *CloudStackClusterReconciler) reconcileNormal(ctx context.Context, scope
 
 	// Verify that all required failure domains are present and ready.
 	if err := r.VerifyFailureDomainsExist(scope, fds); err != nil {
-		log.Info(fmt.Sprintf("%s, requeueing.", err.Error()))
+		scope.Info(fmt.Sprintf("%s, requeueing.", err.Error()))
 
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
@@ -291,10 +289,12 @@ func (r *CloudStackClusterReconciler) DeleteRemovedFailureDomains(ctx context.Co
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *CloudStackClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
+	log := logger.FromContext(ctx)
+
 	err := ctrl.NewControllerManagedBy(mgr).
 		For(&infrav1.CloudStackCluster{}).
 		WithOptions(options).
-		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(ctrl.LoggerFrom(ctx), r.WatchFilterValue)).
+		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(log.GetLogger(), r.WatchFilterValue)).
 		WithEventFilter(
 			predicate.Funcs{
 				UpdateFunc: func(e event.UpdateEvent) bool {
@@ -321,10 +321,10 @@ func (r *CloudStackClusterReconciler) SetupWithManager(ctx context.Context, mgr 
 			&clusterv1.Cluster{},
 			handler.EnqueueRequestsFromMapFunc(util.ClusterToInfrastructureMapFunc(ctx, infrav1.GroupVersion.WithKind("CloudStackCluster"), mgr.GetClient(), &infrav1.CloudStackCluster{})),
 			builder.WithPredicates(
-				predicates.ClusterUnpaused(ctrl.LoggerFrom(ctx)),
+				predicates.ClusterUnpaused(log.GetLogger()),
 			),
 		).
-		WithEventFilter(predicates.ResourceIsNotExternallyManaged(ctrl.LoggerFrom(ctx))).
+		WithEventFilter(predicates.ResourceIsNotExternallyManaged(log.GetLogger())).
 		Complete(r)
 	if err != nil {
 		return errors.Wrap(err, "failed setting up with a controller manager")

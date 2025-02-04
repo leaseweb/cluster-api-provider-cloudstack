@@ -36,6 +36,7 @@ import (
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
+	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/logger"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/scope"
 )
 
@@ -55,7 +56,7 @@ type CloudStackAffinityGroupReconciler struct {
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=cloudstackmachinetemplate,verbs=get;list;watch
 
 func (r *CloudStackAffinityGroupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, reterr error) {
-	log := ctrl.LoggerFrom(ctx)
+	log := logger.FromContext(ctx)
 
 	// Fetch the CloudStackAffinityGroup instance
 	csag := &infrav1.CloudStackAffinityGroup{}
@@ -81,7 +82,6 @@ func (r *CloudStackAffinityGroupReconciler) Reconcile(ctx context.Context, req c
 	}
 
 	log = log.WithValues("cluster", klog.KObj(cluster))
-	ctx = ctrl.LoggerInto(ctx, log)
 
 	if annotations.IsPaused(cluster, csag) {
 		log.Info("Reconciliation is paused for this object")
@@ -97,6 +97,7 @@ func (r *CloudStackAffinityGroupReconciler) Reconcile(ctx context.Context, req c
 	// Create the affinity group scope.
 	scope, err := scope.NewAffinityGroupScope(scope.AffinityGroupScopeParams{
 		Client:                  r.Client,
+		Logger:                  log,
 		Cluster:                 cluster,
 		CloudStackAffinityGroup: csag,
 		CSClients:               clientScope.CSClients(),
@@ -116,16 +117,15 @@ func (r *CloudStackAffinityGroupReconciler) Reconcile(ctx context.Context, req c
 
 	if !csag.DeletionTimestamp.IsZero() {
 		// Handle deletion reconciliation loop.
-		return ctrl.Result{}, r.reconcileDelete(ctx, scope)
+		return ctrl.Result{}, r.reconcileDelete(scope)
 	}
 
 	// Handle normal reconciliation loop.
-	return ctrl.Result{}, r.reconcileNormal(ctx, scope)
+	return ctrl.Result{}, r.reconcileNormal(scope)
 }
 
-func (r *CloudStackAffinityGroupReconciler) reconcileDelete(ctx context.Context, scope *scope.AffinityGroupScope) error {
-	log := ctrl.LoggerFrom(ctx)
-	log.Info("Reconcile CloudStackAffinityGroup deletion")
+func (r *CloudStackAffinityGroupReconciler) reconcileDelete(scope *scope.AffinityGroupScope) error {
+	scope.Info("Reconcile CloudStackAffinityGroup deletion")
 
 	group := &cloud.AffinityGroup{Name: scope.Name()}
 	_ = scope.CSClient().FetchAffinityGroup(group)
@@ -146,9 +146,8 @@ func (r *CloudStackAffinityGroupReconciler) reconcileDelete(ctx context.Context,
 	return nil
 }
 
-func (r *CloudStackAffinityGroupReconciler) reconcileNormal(ctx context.Context, scope *scope.AffinityGroupScope) error {
-	log := ctrl.LoggerFrom(ctx)
-	log.Info("Reconcile CloudStackAffinityGroup")
+func (r *CloudStackAffinityGroupReconciler) reconcileNormal(scope *scope.AffinityGroupScope) error {
+	scope.Info("Reconcile CloudStackAffinityGroup")
 
 	// If the CloudStackAffinityGroup doesn't have our finalizer, add it.
 	if controllerutil.AddFinalizer(scope.CloudStackAffinityGroup, infrav1.AffinityGroupFinalizer) {
@@ -170,10 +169,12 @@ func (r *CloudStackAffinityGroupReconciler) reconcileNormal(ctx context.Context,
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *CloudStackAffinityGroupReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
+	log := logger.FromContext(ctx)
+
 	err := ctrl.NewControllerManagedBy(mgr).
 		For(&infrav1.CloudStackAffinityGroup{}).
 		WithOptions(options).
-		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(ctrl.LoggerFrom(ctx), r.WatchFilterValue)).
+		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(log.GetLogger(), r.WatchFilterValue)).
 		Complete(r)
 	if err != nil {
 		return errors.Wrap(err, "failed setting up with a controller manager")

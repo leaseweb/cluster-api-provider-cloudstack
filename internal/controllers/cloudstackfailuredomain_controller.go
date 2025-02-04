@@ -40,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
+	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/logger"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/scope"
 )
 
@@ -62,7 +63,7 @@ type CloudStackFailureDomainReconciler struct {
 //+kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters;clusters/status,verbs=get;list;watch
 
 func (r *CloudStackFailureDomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, reterr error) {
-	log := ctrl.LoggerFrom(ctx)
+	log := logger.FromContext(ctx)
 
 	// Fetch the CloudStackFailureDomain instance
 	csfd := &infrav1.CloudStackFailureDomain{}
@@ -88,7 +89,6 @@ func (r *CloudStackFailureDomainReconciler) Reconcile(ctx context.Context, req c
 	}
 
 	log = log.WithValues("cluster", klog.KObj(cluster))
-	ctx = ctrl.LoggerInto(ctx, log)
 
 	if annotations.IsPaused(cluster, csfd) {
 		log.Info("Reconciliation is paused for this object")
@@ -104,6 +104,7 @@ func (r *CloudStackFailureDomainReconciler) Reconcile(ctx context.Context, req c
 	// Create the affinity group scope.
 	scope, err := scope.NewFailureDomainScope(scope.FailureDomainScopeParams{
 		Client:                  r.Client,
+		Logger:                  log,
 		Cluster:                 cluster,
 		CloudStackFailureDomain: csfd,
 		CSClients:               clientScope.CSClients(),
@@ -131,8 +132,7 @@ func (r *CloudStackFailureDomainReconciler) Reconcile(ctx context.Context, req c
 }
 
 func (r *CloudStackFailureDomainReconciler) reconcileDelete(ctx context.Context, scope *scope.FailureDomainScope) (ctrl.Result, error) {
-	log := ctrl.LoggerFrom(ctx)
-	log.Info("Reconcile CloudStackFailureDomain deletion")
+	scope.Info("Reconcile CloudStackFailureDomain deletion")
 
 	// Get all the CloudStackMachines in the failure domain sorted by name.
 	machines := &infrav1.CloudStackMachineList{}
@@ -154,7 +154,7 @@ func (r *CloudStackFailureDomainReconciler) reconcileDelete(ctx context.Context,
 
 		for _, condition := range scope.Cluster.Status.Conditions {
 			if condition.Type == clusterv1.ReadyCondition && condition.Status == corev1.ConditionFalse {
-				log.Info("Cluster status not ready. Requeueing.")
+				scope.Info("Cluster status not ready. Requeueing.")
 				return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 			}
 		}
@@ -173,7 +173,7 @@ func (r *CloudStackFailureDomainReconciler) reconcileDelete(ctx context.Context,
 
 	// Ensure owned objects are deleted before removing finalizer
 	if err := r.EnsureOwnedObjectsDeleted(ctx, scope); err != nil {
-		log.Info("Waiting for owned objects to be deleted", "error", err.Error())
+		scope.Info("Waiting for owned objects to be deleted", "error", err.Error())
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
@@ -184,8 +184,7 @@ func (r *CloudStackFailureDomainReconciler) reconcileDelete(ctx context.Context,
 }
 
 func (r *CloudStackFailureDomainReconciler) reconcileNormal(ctx context.Context, scope *scope.FailureDomainScope) (ctrl.Result, error) {
-	log := ctrl.LoggerFrom(ctx)
-	log.Info("Reconcile CloudStackFailureDomain")
+	scope.Info("Reconcile CloudStackFailureDomain")
 
 	// If the CloudStackCluster doesn't have our finalizer, add it.
 	if controllerutil.AddFinalizer(scope.CloudStackFailureDomain, infrav1.FailureDomainFinalizer) {
@@ -218,12 +217,12 @@ func (r *CloudStackFailureDomainReconciler) reconcileNormal(ctx context.Context,
 		}
 
 		if r.IsoNet.Name == "" {
-			log.Info("Couldn't find isolated network. Requeueing.")
+			scope.Info("Couldn't find isolated network. Requeueing.")
 
 			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
 		if !r.IsoNet.Status.Ready {
-			log.Info("Isolated network dependency not ready. Requeueing.")
+			scope.Info("Isolated network dependency not ready. Requeueing.")
 
 			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
@@ -267,8 +266,6 @@ func (r *CloudStackFailureDomainReconciler) GenerateIsolatedNetwork(ctx context.
 
 // DeleteMachinesFromFailureDomain deletes the CAPI machine in FailureDomain.
 func (r *CloudStackFailureDomainReconciler) DeleteMachinesFromFailureDomain(ctx context.Context, scope *scope.FailureDomainScope) (ctrl.Result, error) {
-	log := ctrl.LoggerFrom(ctx)
-
 	// Pick first machine to delete
 	if len(r.Machines) > 0 {
 		for _, ref := range r.Machines[0].OwnerReferences {
@@ -280,7 +277,7 @@ func (r *CloudStackFailureDomainReconciler) DeleteMachinesFromFailureDomain(ctx 
 				return ctrl.Result{}, err
 			}
 			if !machine.DeletionTimestamp.IsZero() {
-				log.Info("Machine is being deleted, ", "machine", machine.Name)
+				scope.Info("Machine is being deleted, ", "machine", machine.Name)
 
 				return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 			}
@@ -288,7 +285,7 @@ func (r *CloudStackFailureDomainReconciler) DeleteMachinesFromFailureDomain(ctx 
 				return ctrl.Result{}, err
 			}
 
-			log.Info("Start to delete machine, ", "machine", machine.Name)
+			scope.Info("Start to delete machine, ", "machine", machine.Name)
 
 			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
@@ -300,8 +297,6 @@ func (r *CloudStackFailureDomainReconciler) DeleteMachinesFromFailureDomain(ctx 
 // DeleteOwnedObjects deletes any CloudStackAffinityGroup or CloudStackIsolatedNetwork resources
 // owned by the CloudStackFailureDomain.
 func (r *CloudStackFailureDomainReconciler) DeleteOwnedObjects(ctx context.Context, scope *scope.FailureDomainScope) error {
-	log := ctrl.LoggerFrom(ctx)
-
 	// Delete owned CloudStackIsolatedNetworks
 	isoNets := &infrav1.CloudStackIsolatedNetworkList{}
 	if err := r.Client.List(ctx, isoNets, client.InNamespace(scope.Namespace())); err != nil {
@@ -315,7 +310,7 @@ func (r *CloudStackFailureDomainReconciler) DeleteOwnedObjects(ctx context.Conte
 				return fmt.Errorf("failed to delete owned CloudStackIsolatedNetwork %s: %w",
 					isoNet.Name, err)
 			}
-			log.Info("Deleted owned CloudStackIsolatedNetwork", "name", isoNet.Name)
+			scope.Info("Deleted owned CloudStackIsolatedNetwork", "name", isoNet.Name)
 		}
 	}
 
@@ -332,7 +327,7 @@ func (r *CloudStackFailureDomainReconciler) DeleteOwnedObjects(ctx context.Conte
 				return fmt.Errorf("failed to delete owned CloudStackAffinityGroup %s: %w",
 					ag.Name, err)
 			}
-			log.Info("Deleted owned CloudStackAffinityGroup", "name", ag.Name)
+			scope.Info("Deleted owned CloudStackAffinityGroup", "name", ag.Name)
 		}
 	}
 
@@ -373,10 +368,12 @@ func (r *CloudStackFailureDomainReconciler) EnsureOwnedObjectsDeleted(ctx contex
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *CloudStackFailureDomainReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
+	log := logger.FromContext(ctx)
+
 	err := ctrl.NewControllerManagedBy(mgr).
 		For(&infrav1.CloudStackFailureDomain{}).
 		WithOptions(options).
-		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(ctrl.LoggerFrom(ctx), r.WatchFilterValue)).
+		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(log.GetLogger(), r.WatchFilterValue)).
 		Complete(r)
 	if err != nil {
 		return errors.Wrap(err, "failed setting up with a controller manager")

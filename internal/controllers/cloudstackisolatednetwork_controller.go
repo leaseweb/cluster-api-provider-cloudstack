@@ -64,7 +64,7 @@ type CloudStackIsolatedNetworkReconciler struct {
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=cloudstackisolatednetworks/finalizers,verbs=update
 
 func (r *CloudStackIsolatedNetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, reterr error) {
-	log := ctrl.LoggerFrom(ctx)
+	log := logger.FromContext(ctx)
 
 	// Fetch the CloudStackIsolatedNetwork instance
 	csin := &infrav1.CloudStackIsolatedNetwork{}
@@ -90,7 +90,6 @@ func (r *CloudStackIsolatedNetworkReconciler) Reconcile(ctx context.Context, req
 	}
 
 	log = log.WithValues("cluster", klog.KObj(cluster))
-	ctx = ctrl.LoggerInto(ctx, log)
 
 	if annotations.IsPaused(cluster, csin) {
 		log.Info("Reconciliation is paused for this object")
@@ -112,6 +111,7 @@ func (r *CloudStackIsolatedNetworkReconciler) Reconcile(ctx context.Context, req
 	// Create the isolated network scope.
 	scope, err := scope.NewIsolatedNetworkScope(scope.IsolatedNetworkScopeParams{
 		Client:                    r.Client,
+		Logger:                    log,
 		Cluster:                   cluster,
 		CloudStackCluster:         csCluster,
 		CloudStackFailureDomain:   clientScope.FailureDomain(),
@@ -141,8 +141,7 @@ func (r *CloudStackIsolatedNetworkReconciler) Reconcile(ctx context.Context, req
 }
 
 func (r *CloudStackIsolatedNetworkReconciler) reconcileDelete(ctx context.Context, scope *scope.IsolatedNetworkScope) error {
-	log := ctrl.LoggerFrom(ctx)
-	log.Info("Reconcile CloudStackIsolatedNetwork deletion")
+	scope.Info("Reconcile CloudStackIsolatedNetwork deletion")
 
 	if err := scope.CSUser().DisposeIsoNetResources(scope.CloudStackIsolatedNetwork, scope.CloudStackCluster); err != nil {
 		if !strings.Contains(strings.ToLower(err.Error()), "no match found") {
@@ -156,8 +155,7 @@ func (r *CloudStackIsolatedNetworkReconciler) reconcileDelete(ctx context.Contex
 }
 
 func (r *CloudStackIsolatedNetworkReconciler) reconcileNormal(ctx context.Context, scope *scope.IsolatedNetworkScope) (ctrl.Result, error) {
-	log := ctrl.LoggerFrom(ctx)
-	log.Info("Reconcile CloudStackIsolatedNetwork")
+	scope.Info("Reconcile CloudStackIsolatedNetwork")
 
 	// If the CloudStackIsolatedNetwork doesn't have our finalizer, add it.
 	if controllerutil.AddFinalizer(scope.CloudStackIsolatedNetwork, infrav1.IsolatedNetworkFinalizer) {
@@ -174,7 +172,7 @@ func (r *CloudStackIsolatedNetworkReconciler) reconcileNormal(ctx context.Contex
 		return ctrl.Result{}, errors.Wrap(err, "setting up CloudStackCluster patcher")
 	}
 	if scope.FailureDomainZoneID() == "" {
-		log.Info("Zone ID not resolved yet.")
+		scope.Info("Zone ID not resolved yet.")
 
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
