@@ -401,7 +401,7 @@ func (r *CloudStackMachineReconciler) reconcileLBattachments(scope *scope.Machin
 		}
 
 		if scope.CloudStackMachineIsDeleted() || scope.MachineIsDeleted() || !scope.InstanceIsRunning() {
-			scope.Info("Removing VM from load balancer rule.", "instance-id", scope.GetInstanceID())
+			scope.Debug("Removing VM from load balancer rule.", "instance-id", scope.GetInstanceID())
 			removed, err := scope.CSUser().RemoveVMFromLoadBalancerRules(scope.CloudStackIsolatedNetwork, scope.GetInstanceID())
 			if err != nil {
 				r.Recorder.Eventf(scope.CloudStackMachine, corev1.EventTypeWarning, "FailedDetachControlPlaneLB",
@@ -409,12 +409,12 @@ func (r *CloudStackMachineReconciler) reconcileLBattachments(scope *scope.Machin
 				return err
 			}
 			if removed {
-				scope.Info("VM detached from load balancer rule", "instance-id", scope.GetInstanceID())
+				scope.Debug("VM detached from load balancer rule", "instance-id", scope.GetInstanceID())
 				r.Recorder.Eventf(scope.CloudStackMachine, corev1.EventTypeNormal, "SuccessfulDetachControlPlaneLB",
 					"Control plane instance %q is de-registered from load balancer", scope.GetInstanceID())
 			}
 		} else {
-			scope.Info("Assigning VM to load balancer rule.", "instance-id", scope.GetInstanceID())
+			scope.Debug("Assigning VM to load balancer rule.", "instance-id", scope.GetInstanceID())
 			assigned, err := scope.CSUser().AssignVMToLoadBalancerRules(scope.CloudStackIsolatedNetwork, scope.GetInstanceID())
 			if err != nil {
 				r.Recorder.Eventf(scope.CloudStackMachine, corev1.EventTypeWarning, "FailedAttachControlPlaneLB",
@@ -422,7 +422,7 @@ func (r *CloudStackMachineReconciler) reconcileLBattachments(scope *scope.Machin
 				return err
 			}
 			if assigned {
-				scope.Info("VM attached to load balancer rule", "instance-id", scope.GetInstanceID())
+				scope.Debug("VM attached to load balancer rule", "instance-id", scope.GetInstanceID())
 				r.Recorder.Eventf(scope.CloudStackMachine, corev1.EventTypeNormal, "SuccessfulAttachControlPlaneLB",
 					"Control plane instance %q is registered with load balancer", scope.GetInstanceID())
 			}
