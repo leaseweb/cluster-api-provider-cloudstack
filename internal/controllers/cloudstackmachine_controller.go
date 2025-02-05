@@ -348,21 +348,45 @@ func (r *CloudStackMachineReconciler) reconcileNormal(ctx context.Context, scope
 		scope.SetNotReady()
 		shouldRequeue = true
 		scope.Info("Instance is starting", "instance-id", scope.GetInstanceID())
-	case cloud.InstanceStateStopping, cloud.InstanceStateStopped:
-		scope.SetNotReady()
-		scope.Info("Instance is stopping or stopped", "instance-id", scope.GetInstanceID())
 	case cloud.InstanceStateRunning:
 		if !scope.IsReady() {
 			scope.Info("Instance is running", "instance-id", scope.GetInstanceID())
 			r.Recorder.Event(scope.CloudStackMachine, corev1.EventTypeNormal, cloud.InstanceStateRunning, MachineInstanceRunning)
 		}
 		scope.SetReady()
+	case cloud.InstanceStateStopping, cloud.InstanceStateStopped:
+		scope.SetNotReady()
+		scope.Info("Instance is stopping or stopped", "instance-id", scope.GetInstanceID())
+		// If the machine doesn't have a node reference, it is a new instance, so requeue to check if it is operational.
+		// This is needed because in CloudStack, a new instance is initially in stopped state after creation.
+		if scope.Machine.Status.NodeRef == nil {
+			scope.Info("Waiting for instance to be operational", "state", vm.State, "instance-id", scope.GetInstanceID())
+			shouldRequeue = true
+		} else {
+			scope.Info("Instance is stopping or stopped", "instance-id", scope.GetInstanceID())
+		}
+	case cloud.InstanceStateError:
+		scope.SetNotReady()
+		scope.Info("Instance is in error state", "instance-id", scope.GetInstanceID())
+		// If the machine doesn't have a node reference, it never worked properly,
+		// so set the failure reason and message and do not requeue.
+		// If it does have a node reference, it could be a temporary condition.
+		if scope.Machine.Status.NodeRef == nil {
+			scope.SetFailureReason(capierrors.UpdateMachineError)
+			scope.SetFailureMessage(errors.Errorf("CloudStack instance state %s is unexpected", vm.State))
+		}
+		shouldRequeue = true
+	case cloud.InstanceStateExpunging, cloud.InstanceStateDestroyed:
+		scope.SetNotReady()
+		scope.Info("Unexpected instance termination", "state", vm.State, "instance-id", scope.GetInstanceID())
+		r.Recorder.Eventf(scope.CloudStackMachine, corev1.EventTypeWarning, "InstanceUnexpectedTermination", "Unexpected CloudStack instance termination")
+		scope.SetFailureReason(capierrors.UpdateMachineError)
+		scope.SetFailureMessage(errors.Errorf("CloudStack instance state %s is unexpected", vm.State))
 	default:
 		scope.SetNotReady()
 		scope.Info("Instance state is unexpected", "state", vm.State, "instance-id", scope.GetInstanceID())
 		r.Recorder.Eventf(scope.CloudStackMachine, corev1.EventTypeWarning, "InstanceStateUnexpected", "CloudStack instance state is unexpected")
-		scope.SetFailureReason(capierrors.UpdateMachineError)
-		scope.SetFailureMessage(errors.Errorf("CloudStack instance state %s is unexpected", vm.State))
+		shouldRequeue = true
 	}
 
 	// tasks that can only take place during operational instance states
