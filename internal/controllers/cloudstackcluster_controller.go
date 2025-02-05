@@ -169,7 +169,6 @@ func (r *CloudStackClusterReconciler) reconcileNormal(ctx context.Context, scope
 
 	// Create any non existing failure domain and set the FailureDomains status map in CloudStackCluster,
 	// which is used by the CAPI Cluster Controller for machine placement.
-	scope.CloudStackCluster.Status.FailureDomains = clusterv1.FailureDomains{}
 	for _, fdSpec := range scope.FailureDomains() {
 		metaHashName := infrav1.FailureDomainHashedMetaName(fdSpec.Name, scope.KubernetesClusterName())
 		if err := r.CreateFailureDomain(ctx, scope, fdSpec); err != nil {
@@ -177,12 +176,12 @@ func (r *CloudStackClusterReconciler) reconcileNormal(ctx context.Context, scope
 				return ctrl.Result{}, errors.Wrap(err, "creating CloudStackFailureDomains")
 			}
 		}
-		scope.CloudStackCluster.Status.FailureDomains[fdSpec.Name] = clusterv1.FailureDomainSpec{
+		scope.SetFailureDomain(fdSpec.Name, clusterv1.FailureDomainSpec{
 			ControlPlane: true,
 			Attributes: map[string]string{
 				"MetaHashName": metaHashName,
 			},
-		}
+		})
 	}
 
 	fds := &infrav1.CloudStackFailureDomainList{}

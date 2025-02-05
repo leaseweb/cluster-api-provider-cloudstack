@@ -120,6 +120,14 @@ func (s *ClusterScope) Close() error {
 	return s.PatchObject()
 }
 
+// SetFailureDomain sets the infrastructure provider failure domain key to the spec given as input.
+func (s *ClusterScope) SetFailureDomain(id string, spec clusterv1.FailureDomainSpec) {
+	if s.CloudStackCluster.Status.FailureDomains == nil {
+		s.CloudStackCluster.Status.FailureDomains = make(clusterv1.FailureDomains)
+	}
+	s.CloudStackCluster.Status.FailureDomains[id] = spec
+}
+
 func (s *ClusterScope) FailureDomains() []infrav1.CloudStackFailureDomainSpec {
 	return s.CloudStackCluster.Spec.FailureDomains
 }
