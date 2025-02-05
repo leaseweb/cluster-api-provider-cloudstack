@@ -115,7 +115,7 @@ func (s *clientScopeFactory) NewClientScopeForFailureDomain(ctx context.Context,
 func (s *clientScopeFactory) NewClientScopeForFailureDomainByName(ctx context.Context, k8sClient client.Client, name, namespace, clusterName string) (scope Scope, err error) {
 	fd, err := getFailureDomainByName(ctx, k8sClient, name, namespace, clusterName)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get failure domain with name %s", name)
+		return nil, err
 	}
 	return s.NewClientScopeForFailureDomain(ctx, k8sClient, fd)
 }
