@@ -85,8 +85,6 @@ func (r *CloudStackMachineReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	err := r.Client.Get(ctx, req.NamespacedName, csMachine)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			log.Info("CloudStackMachine resource not found. Ignoring since object must be deleted")
-
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err

@@ -73,8 +73,6 @@ func (r *CloudStackClusterReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	err := r.Client.Get(ctx, req.NamespacedName, cscluster)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			log.Info("CloudStackCluster resource not found. Ignoring since object must be deleted")
-
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err

@@ -63,8 +63,6 @@ func (r *CloudStackAffinityGroupReconciler) Reconcile(ctx context.Context, req c
 	err := r.Client.Get(ctx, req.NamespacedName, csag)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			log.Info("CloudStackAffinityGroup resource not found. Ignoring since object must be deleted")
-
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err

@@ -70,8 +70,6 @@ func (r *CloudStackFailureDomainReconciler) Reconcile(ctx context.Context, req c
 	err := r.Client.Get(ctx, req.NamespacedName, csfd)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			log.Info("CloudStackFailureDomain resource not found. Ignoring since object must be deleted")
-
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err
