@@ -354,7 +354,6 @@ func (r *CloudStackMachineReconciler) reconcileNormal(ctx context.Context, scope
 		scope.SetReady()
 	case cloud.InstanceStateStopping, cloud.InstanceStateStopped:
 		scope.SetNotReady()
-		scope.Info("Instance is stopping or stopped", "instance-id", scope.GetInstanceID())
 		// If the machine doesn't have a node reference, it is a new instance, so requeue to check if it is operational.
 		// This is needed because in CloudStack, a new instance is initially in stopped state after creation.
 		if scope.Machine.Status.NodeRef == nil {
@@ -395,14 +394,14 @@ func (r *CloudStackMachineReconciler) reconcileNormal(ctx context.Context, scope
 		}
 		scope.SetAddresses(addresses)
 
-		// If the instance is not just created (previous state empty and current state stopped) or starting,
-		// reconcile the load balancer attachments.
-		if !(prevState == "" && vm.State == cloud.InstanceStateStopped) || vm.State != cloud.InstanceStateStarting {
+		// If the instance is just created or starting, skip the load balancer attachments
+		// reconciliation and requeue to check again later.
+		if prevState == "" || (scope.Machine.Status.NodeRef == nil && vm.State == cloud.InstanceStateStopped) || vm.State == cloud.InstanceStateStarting {
+			shouldRequeue = true
+		} else {
 			if err := r.reconcileLBattachments(scope); err != nil {
 				return ctrl.Result{}, err
 			}
-		} else {
-			shouldRequeue = true
 		}
 	}
 
