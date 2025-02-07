@@ -204,6 +204,10 @@ func getCloudConfigFromSecret(ctx context.Context, k8sClient client.Client, secr
 		return cloudConfig, err
 	}
 
+	if err := cloudConfig.Validate(); err != nil {
+		return cloudConfig, errors.Wrapf(err, "invalid cloud config")
+	}
+
 	return cloudConfig, nil
 }
 

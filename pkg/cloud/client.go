@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/apache/cloudstack-go/v2/cloudstack"
+	"github.com/hashicorp/go-multierror"
 	"github.com/jellydator/ttlcache/v3"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
@@ -54,6 +55,20 @@ type Config struct {
 	SecretKey string `yaml:"secret-key"`
 	VerifySSL string `yaml:"verify-ssl"`
 	ProjectID string `yaml:"project-id"`
+}
+
+func (c *Config) Validate() (err error) {
+	if c.APIUrl == "" {
+		err = multierror.Append(err, errors.New("api-url is required"))
+	}
+	if c.APIKey == "" {
+		err = multierror.Append(err, errors.New("api-key is required"))
+	}
+	if c.SecretKey == "" {
+		err = multierror.Append(err, errors.New("secret-key is required"))
+	}
+
+	return err
 }
 
 type client struct {
