@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/apache/cloudstack-go/v2/cloudstack"
+	"github.com/go-logr/logr"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
@@ -71,6 +72,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 			WatchFilterValue: "",
 		}
 		ctx = context.TODO()
+		ctx = logr.NewContext(ctx, ctrl.LoggerFrom(ctx))
 	}
 
 	teardown := func() {
@@ -372,8 +374,10 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		machineKey := client.ObjectKey{Namespace: ns.Name, Name: dummies.CSMachine1.Name}
 		machine := &infrav1.CloudStackMachine{}
 		g.Eventually(func() bool {
-			err := testEnv.Get(ctx, machineKey, machine)
-			return err == nil
+			if err := testEnv.Get(ctx, machineKey, machine); err == nil {
+				return len(machine.ObjectMeta.Finalizers) > 0
+			}
+			return false
 		}, timeout).Should(BeTrue())
 
 		result, err := reconciler.Reconcile(ctx, ctrl.Request{

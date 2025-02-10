@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/go-logr/logr"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -64,6 +65,7 @@ func TestCloudStackFailureDomainReconcilerIntegrationTests(t *testing.T) {
 			WatchFilterValue: "",
 		}
 		ctx = context.TODO()
+		ctx = logr.NewContext(ctx, ctrl.LoggerFrom(ctx))
 	}
 
 	teardown := func() {

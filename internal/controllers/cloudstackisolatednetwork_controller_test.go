@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/apache/cloudstack-go/v2/cloudstack"
+	"github.com/go-logr/logr"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,6 +65,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 			WatchFilterValue: "",
 		}
 		ctx = context.TODO()
+		ctx = logr.NewContext(ctx, ctrl.LoggerFrom(ctx))
 	}
 
 	teardown := func() {
