@@ -193,7 +193,7 @@ DEEPCOPY_GEN_INPUTS=$(shell find ./api -name "*test*" -prune -o -name "*zz_gener
 .PHONY: generate-deepcopy
 generate-deepcopy: $(DEEPCOPY_GEN_TARGETS) ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 api/%/zz_generated.deepcopy.go: $(CONTROLLER_GEN) $(DEEPCOPY_GEN_INPUTS)
-	CGO_ENABLED=0 $(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	CGO_ENABLED=0 $(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./api/..."
 
 MANIFEST_GEN_INPUTS=$(shell find ./api ./internal/controllers -type f -name "*test*" -prune -o -name "*zz_generated*" -prune -o -print)
 # Using a flag file here as config output is too complicated to be a target.
@@ -304,27 +304,12 @@ cluster-api/tilt-settings.json: hack/tilt-settings.json cluster-api
 
 KUBEBUILDER_ASSETS ?= $(shell $(SETUP_ENVTEST) use --use-env -p path $(KUBEBUILDER_ENVTEST_KUBERNETES_VERSION))
 
-DEEPCOPY_GEN_TARGETS_TEST=$(shell find test/fakes -type d -name "fakes" -exec echo {}\/zz_generated.deepcopy.go \;)
-DEEPCOPY_GEN_INPUTS_TEST=$(shell find test/fakes/* -name "*zz_generated*" -prune -o -type f -print)
-.PHONY: generate-deepcopy-test
-generate-deepcopy-test: $(DEEPCOPY_GEN_TARGETS_TEST) ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
-test/fakes/zz_generated.deepcopy.go: $(CONTROLLER_GEN) $(DEEPCOPY_GEN_INPUTS_TEST)
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
-
-MANIFEST_GEN_INPUTS_TEST=$(shell find test/fakes/* -name "*zz_generated*" -prune -o -type f -print)
-.PHONY: generate-manifest-test
-generate-manifest-test: config/.flag-test.mk ## Generates crd, webhook, rbac, and other configuration manifests from kubebuilder instructions in go comments.
-config/.flag-test.mk: $(CONTROLLER_GEN) $(MANIFEST_GEN_INPUTS_TEST)
-	$(CONTROLLER_GEN) crd:crdVersions=v1 rbac:roleName=manager-role webhook paths="./test/fakes" output:crd:artifacts:config=test/fakes
-	@touch config/.flag-test.mk
-
 .PHONY: setup-envtest
 setup-envtest: $(SETUP_ENVTEST) ## Set up envtest (download kubebuilder assets)
 	@echo KUBEBUILDER_ASSETS=$(KUBEBUILDER_ASSETS)
 
 .PHONY: test
-test: ## Run tests.
-test: generate-deepcopy-test generate-manifest-test generate-mocks setup-envtest $(GINKGO)
+test: generate-mocks setup-envtest $(GINKGO)
 	KUBEBUILDER_ASSETS="$(KUBEBUILDER_ASSETS)" $(GINKGO) --label-filter="!integ" --cover -coverprofile cover.out --covermode=atomic -v ./api/... ./pkg/...
 	KUBEBUILDER_ASSETS="$(KUBEBUILDER_ASSETS)" go test -v -coverprofile cover.out ./internal/controllers/...
 
@@ -372,7 +357,7 @@ clean: ## Cleans up everything.
 	rm -rf $(TOOLS_BIN_DIR)
 	rm -rf cluster-api
 	rm -rf test/e2e/data/infrastructure-cloudstack/*/*yaml
-	rm -rf config/.flag.mk config/.flag-test.mk .dockerflag.mk
+	rm -rf config/.flag.mk .dockerflag.mk
 
 ##@ Release
 ## --------------------------------------
