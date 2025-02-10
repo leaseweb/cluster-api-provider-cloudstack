@@ -119,7 +119,7 @@ func TestCloudStackFailureDomainReconcilerIntegrationTests(t *testing.T) {
 		g.Eventually(func() bool {
 			err := testEnv.Get(ctx, fdKey, fd)
 			return err == nil
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 
 		result, err := reconciler.Reconcile(ctx, ctrl.Request{
 			NamespacedName: types.NamespacedName{
@@ -137,7 +137,7 @@ func TestCloudStackFailureDomainReconcilerIntegrationTests(t *testing.T) {
 			return err == nil &&
 				updatedFD.Status.Ready &&
 				controllerutil.ContainsFinalizer(updatedFD, infrav1.FailureDomainFinalizer)
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 	})
 
 	t.Run("Should handle deletion when no owned resources exist", func(t *testing.T) {
@@ -191,7 +191,7 @@ func TestCloudStackFailureDomainReconcilerIntegrationTests(t *testing.T) {
 		g.Eventually(func() bool {
 			err := testEnv.Get(ctx, fdKey, fd)
 			return err == nil
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 
 		result, err := reconciler.Reconcile(ctx, ctrl.Request{
 			NamespacedName: types.NamespacedName{
@@ -209,7 +209,7 @@ func TestCloudStackFailureDomainReconcilerIntegrationTests(t *testing.T) {
 			return err == nil &&
 				updatedFD.Status.Ready &&
 				controllerutil.ContainsFinalizer(updatedFD, infrav1.FailureDomainFinalizer)
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 
 		// Delete the failure domain
 		g.Expect(testEnv.Delete(ctx, dummies.CSFailureDomain1)).To(Succeed())
@@ -217,7 +217,7 @@ func TestCloudStackFailureDomainReconcilerIntegrationTests(t *testing.T) {
 			err := testEnv.Get(ctx, fdKey, updatedFD)
 			return err == nil &&
 				updatedFD.DeletionTimestamp != nil
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 
 		// Reconcile the failure domain once more.
 		result, err = reconciler.Reconcile(ctx, ctrl.Request{
@@ -236,6 +236,6 @@ func TestCloudStackFailureDomainReconcilerIntegrationTests(t *testing.T) {
 				return errors.IsNotFound(err)
 			}
 			return false
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 	})
 }

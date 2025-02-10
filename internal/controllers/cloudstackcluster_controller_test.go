@@ -111,7 +111,7 @@ func TestCloudStackClusterReconcilerIntegrationTests(t *testing.T) {
 			getFailureDomains(ctx, g, testEnv, fds)
 			markFailureDomainsAsReady(ctx, g, testEnv, fds)
 			return nil
-		}, timeout).WithPolling(pollInterval).Should(Succeed())
+		}, timeout).Should(Succeed())
 
 		// Reconcile again to check if the CloudStackCluster controller sets Status.Ready to true.
 		result, err = reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: dummies.CSCluster.Name, Namespace: ns.Name}})
@@ -124,7 +124,7 @@ func TestCloudStackClusterReconcilerIntegrationTests(t *testing.T) {
 		g.Eventually(func() bool {
 			err := testEnv.Get(ctx, clusterKey, cluster)
 			return err == nil && cluster.Status.Ready
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 
 		g.Expect(cluster.GetFinalizers()).To(ContainElement(infrav1.ClusterFinalizer))
 	})

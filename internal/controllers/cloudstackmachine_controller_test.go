@@ -189,7 +189,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		g.Eventually(func() bool {
 			err := testEnv.Get(ctx, machineKey, machine)
 			return err == nil
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 
 		result, err := reconciler.Reconcile(ctx, ctrl.Request{
 			NamespacedName: types.NamespacedName{
@@ -247,7 +247,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 			}
 
 			return false
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 	})
 
 	t.Run("Should call DestroyVMInstance when CS machine deleted", func(t *testing.T) {
@@ -374,7 +374,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		g.Eventually(func() bool {
 			err := testEnv.Get(ctx, machineKey, machine)
 			return err == nil
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 
 		result, err := reconciler.Reconcile(ctx, ctrl.Request{
 			NamespacedName: types.NamespacedName{
@@ -395,7 +395,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 			}
 
 			return false
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 
 		g.Expect(testEnv.Delete(ctx, dummies.CSMachine1)).To(Succeed())
 		g.Eventually(func() bool {
@@ -403,7 +403,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 			err := testEnv.Get(ctx, machineKey, tempMachine)
 			return err == nil &&
 				tempMachine.DeletionTimestamp != nil
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 
 		result, err = reconciler.Reconcile(ctx, ctrl.Request{
 			NamespacedName: types.NamespacedName{
@@ -430,7 +430,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 			}
 
 			return false
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 	})
 }
 

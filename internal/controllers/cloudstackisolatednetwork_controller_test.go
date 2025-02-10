@@ -124,7 +124,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 		g.Eventually(func() bool {
 			err := testEnv.Get(ctx, isoNetKey, isoNet)
 			return err == nil
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 
 		result, err := reconciler.Reconcile(ctx, ctrl.Request{
 			NamespacedName: types.NamespacedName{
@@ -146,7 +146,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 			}
 
 			return false
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 	})
 
 	t.Run("Should succeed if API load balancer is disabled", func(t *testing.T) {
@@ -204,7 +204,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 		g.Eventually(func() bool {
 			err := testEnv.Get(ctx, isoNetKey, isoNet)
 			return err == nil
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 
 		result, err := reconciler.Reconcile(ctx, ctrl.Request{
 			NamespacedName: types.NamespacedName{
@@ -226,7 +226,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 			}
 
 			return false
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 	})
 
 	t.Run("Should skip IP assignment and load balancer reconciliation if the cluster is externally managed", func(t *testing.T) {
@@ -282,7 +282,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 		g.Eventually(func() bool {
 			err := testEnv.Get(ctx, isoNetKey, isoNet)
 			return err == nil
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 
 		result, err := reconciler.Reconcile(ctx, ctrl.Request{
 			NamespacedName: types.NamespacedName{
@@ -304,6 +304,6 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 			}
 
 			return false
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 	})
 }

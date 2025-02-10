@@ -33,7 +33,6 @@ import (
 
 const (
 	timeout             = 10 * time.Second
-	pollInterval        = 1 * time.Second
 	fakeEventBufferSize = 10
 )
 

@@ -127,7 +127,7 @@ func TestCloudStackAffinityGroupReconcilerIntegrationTests(t *testing.T) {
 		g.Eventually(func() bool {
 			err := testEnv.Get(ctx, affinityGroupKey, affinityGroup)
 			return err == nil && affinityGroup.Status.Ready
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 
 		g.Expect(affinityGroup.GetFinalizers()).To(ContainElement(infrav1.AffinityGroupFinalizer))
 	})
@@ -181,7 +181,7 @@ func TestCloudStackAffinityGroupReconcilerIntegrationTests(t *testing.T) {
 		g.Eventually(func() bool {
 			err := testEnv.Get(ctx, affinityGroupKey, affinityGroup)
 			return err == nil
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 
 		req := ctrl.Request{
 			NamespacedName: types.NamespacedName{
@@ -196,12 +196,19 @@ func TestCloudStackAffinityGroupReconcilerIntegrationTests(t *testing.T) {
 		g.Eventually(func() bool {
 			err := testEnv.Get(ctx, affinityGroupKey, affinityGroup)
 			return err == nil && affinityGroup.Status.Ready
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 
 		mockCSClient.EXPECT().FetchAffinityGroup(gomock.Any()).Do(func(arg1 interface{}) {
 			arg1.(*cloud.AffinityGroup).ID = ""
 		}).AnyTimes().Return(nil)
 		g.Expect(testEnv.Delete(ctx, dummies.CSAffinityGroup)).To(Succeed())
+		// Wait till the affinity group is marked for deletion
+		g.Eventually(func() bool {
+			if err := testEnv.Get(ctx, affinityGroupKey, affinityGroup); err != nil {
+				return false
+			}
+			return !affinityGroup.DeletionTimestamp.IsZero()
+		}, timeout).Should(BeTrue())
 		_, err = reconciler.Reconcile(ctx, req)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -211,6 +218,6 @@ func TestCloudStackAffinityGroupReconcilerIntegrationTests(t *testing.T) {
 				return errors.IsNotFound(err)
 			}
 			return false
-		}, timeout).WithPolling(pollInterval).Should(BeTrue())
+		}, timeout).Should(BeTrue())
 	})
 }
