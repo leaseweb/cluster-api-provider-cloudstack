@@ -77,7 +77,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		mockCtrl.Finish()
 	}
 
-	t.Run("Should call CreateVMInstance and set Status.Ready to true", func(t *testing.T) {
+	t.Run("Should call CreateVMInstance, go through the expected states and eventually set Status.Ready to true", func(t *testing.T) {
 		g := NewWithT(t)
 
 		setup(t)
@@ -87,31 +87,42 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 		dummies.SetDummyVars(ns.Name)
 
-		mockCSCUser.EXPECT().GetVMInstanceByID(gomock.AssignableToTypeOf(*dummies.CSMachine1.Spec.InstanceID)).
-			Return(nil, nil).Times(1)
-		mockCSCUser.EXPECT().GetVMInstanceByName(gomock.AssignableToTypeOf(dummies.CSMachine1.Name)).
-			Return(nil, nil).Times(1)
-		mockCSCUser.EXPECT().CreateVMInstance(
-			gomock.AssignableToTypeOf(&infrav1.CloudStackMachine{}),
-			gomock.AssignableToTypeOf(&clusterv1.Machine{}),
-			gomock.AssignableToTypeOf(&infrav1.CloudStackFailureDomain{}),
-			gomock.AssignableToTypeOf(&infrav1.CloudStackAffinityGroup{}),
-			gomock.AssignableToTypeOf([]byte{}),
-		).Return(&cloudstack.VirtualMachine{
-			Id:    *dummies.CSMachine1.Spec.InstanceID,
-			Name:  dummies.CSMachine1.Name,
-			State: cloud.InstanceStateRunning,
-		}, nil).Times(1)
-		mockCSCUser.EXPECT().GetInstanceAddresses(gomock.AssignableToTypeOf(&cloudstack.VirtualMachine{
-			Id:    *dummies.CSMachine1.Spec.InstanceID,
-			Name:  dummies.CSMachine1.Name,
-			State: cloud.InstanceStateRunning,
-		})).Return([]corev1.NodeAddress{
+		gomock.InOrder(
+			mockCSCUser.EXPECT().GetVMInstanceByID(gomock.AssignableToTypeOf(*dummies.CSMachine1.Spec.InstanceID)).
+				Return(nil, nil).Times(1),
+			mockCSCUser.EXPECT().GetVMInstanceByName(gomock.AssignableToTypeOf(dummies.CSMachine1.Name)).
+				Return(nil, nil).Times(1),
+			mockCSCUser.EXPECT().CreateVMInstance(
+				gomock.AssignableToTypeOf(&infrav1.CloudStackMachine{}),
+				gomock.AssignableToTypeOf(&clusterv1.Machine{}),
+				gomock.AssignableToTypeOf(&infrav1.CloudStackFailureDomain{}),
+				gomock.AssignableToTypeOf(&infrav1.CloudStackAffinityGroup{}),
+				gomock.AssignableToTypeOf([]byte{}),
+			).Return(&cloudstack.VirtualMachine{
+				Id:    *dummies.CSMachine1.Spec.InstanceID,
+				Name:  dummies.CSMachine1.Name,
+				State: cloud.InstanceStateStopped,
+			}, nil).Times(1),
+			mockCSCUser.EXPECT().GetVMInstanceByID(gomock.AssignableToTypeOf(*dummies.CSMachine1.Spec.InstanceID)).
+				Return(&cloudstack.VirtualMachine{
+					Id:    *dummies.CSMachine1.Spec.InstanceID,
+					Name:  dummies.CSMachine1.Name,
+					State: cloud.InstanceStateStarting,
+				}, nil).Times(1),
+			mockCSCUser.EXPECT().GetVMInstanceByID(gomock.AssignableToTypeOf(*dummies.CSMachine1.Spec.InstanceID)).
+				Return(&cloudstack.VirtualMachine{
+					Id:    *dummies.CSMachine1.Spec.InstanceID,
+					Name:  dummies.CSMachine1.Name,
+					State: cloud.InstanceStateRunning,
+				}, nil).Times(1),
+		)
+
+		mockCSCUser.EXPECT().GetInstanceAddresses(gomock.Any()).Return([]corev1.NodeAddress{
 			{
 				Type:    corev1.NodeInternalIP,
 				Address: "192.168.1.1",
 			},
-		}, nil).Times(1)
+		}, nil).AnyTimes()
 
 		// Create test objects
 		g.Expect(testEnv.Create(ctx, dummies.CAPICluster)).To(Succeed())
@@ -187,6 +198,42 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 			},
 		})
 		g.Expect(err).ToNot(HaveOccurred())
+		// The CloudStackMachine should be requeued because it is not operational (it is stopped).
+		g.Expect(result.RequeueAfter).ToNot(BeZero())
+
+		// Reconcile again (it is starting).
+		result, err = reconciler.Reconcile(ctx, ctrl.Request{
+			NamespacedName: types.NamespacedName{
+				Namespace: ns.Name,
+				Name:      dummies.CSMachine1.Name,
+			},
+		})
+		g.Expect(err).ToNot(HaveOccurred())
+		// The CloudStackMachine should be requeued because it is not operational (it is starting).
+		g.Expect(result.RequeueAfter).ToNot(BeZero())
+
+		// Set node ref on CAPI machine to simulate that the machine is operational.
+		g.Eventually(func() error {
+			ph, err := patch.NewHelper(dummies.CAPIMachine, testEnv.Client)
+			g.Expect(err).ToNot(HaveOccurred())
+			dummies.CAPIMachine.Status.NodeRef = &corev1.ObjectReference{
+				Kind:       "Node",
+				APIVersion: "v1",
+				Name:       "test-node",
+			}
+
+			return ph.Patch(ctx, dummies.CAPIMachine, patch.WithStatusObservedGeneration{})
+		}, timeout).Should(Succeed())
+
+		// Reconcile again (it is running).
+		result, err = reconciler.Reconcile(ctx, ctrl.Request{
+			NamespacedName: types.NamespacedName{
+				Namespace: ns.Name,
+				Name:      dummies.CSMachine1.Name,
+			},
+		})
+		g.Expect(err).ToNot(HaveOccurred())
+		// The CloudStackMachine should not be requeued because it is operational at this point.
 		g.Expect(result.RequeueAfter).To(BeZero())
 
 		// Eventually the machine should set ready to true.
@@ -275,6 +322,18 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 
 		// Create CAPI and CS machines.
 		g.Expect(testEnv.Create(ctx, dummies.CAPIMachine)).To(Succeed())
+		// Set the NodeRef on the CAPI machine to simulate that the machine is operational.
+		g.Eventually(func() error {
+			ph, err := patch.NewHelper(dummies.CAPIMachine, testEnv.Client)
+			g.Expect(err).ToNot(HaveOccurred())
+			dummies.CAPIMachine.Status.NodeRef = &corev1.ObjectReference{
+				Kind:       "Node",
+				APIVersion: "v1",
+				Name:       "test-node",
+			}
+
+			return ph.Patch(ctx, dummies.CAPIMachine, patch.WithStatusObservedGeneration{})
+		}, timeout).Should(Succeed())
 		g.Expect(testEnv.Create(ctx, dummies.CSMachine1)).To(Succeed())
 
 		// Fetch the CS Machine that was created.
@@ -294,6 +353,8 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 				UID:        "uniqueness",
 			})
 			controllerutil.AddFinalizer(dummies.CSMachine1, infrav1.MachineFinalizer)
+			// Set the instance state to running to simulate that the machine is operational.
+			dummies.CSMachine1.Status.InstanceState = cloud.InstanceStateRunning
 
 			return ph.Patch(ctx, dummies.CSMachine1, patch.WithStatusObservedGeneration{})
 		}, timeout).Should(Succeed())
