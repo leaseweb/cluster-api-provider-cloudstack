@@ -128,22 +128,16 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 
 		// Create test objects
 		g.Expect(testEnv.Create(ctx, dummies.CAPICluster)).To(Succeed())
+		// Set CAPI cluster as owner of the CloudStackCluster.
+		dummies.CSCluster.OwnerReferences = append(dummies.CSCluster.OwnerReferences, metav1.OwnerReference{
+			Kind:       "Cluster",
+			APIVersion: clusterv1.GroupVersion.String(),
+			Name:       dummies.CAPICluster.Name,
+			UID:        types.UID("cluster-uid"),
+		})
 		dummies.CSCluster.Spec.FailureDomains = dummies.CSCluster.Spec.FailureDomains[:1]
 		dummies.CSCluster.Spec.FailureDomains[0].Name = dummies.CSFailureDomain1.Spec.Name
 		g.Expect(testEnv.Create(ctx, dummies.CSCluster)).To(Succeed())
-		// Set owner ref from CAPI cluster to CS Cluster and patch back the CS Cluster.
-		g.Eventually(func() error {
-			ph, err := patch.NewHelper(dummies.CSCluster, testEnv.Client)
-			g.Expect(err).ToNot(HaveOccurred())
-			dummies.CSCluster.OwnerReferences = append(dummies.CSCluster.OwnerReferences, metav1.OwnerReference{
-				Kind:       "Cluster",
-				APIVersion: clusterv1.GroupVersion.String(),
-				Name:       dummies.CAPICluster.Name,
-				UID:        types.UID("cluster-uid"),
-			})
-
-			return ph.Patch(ctx, dummies.CSCluster, patch.WithStatusObservedGeneration{})
-		}, timeout).Should(Succeed())
 		g.Expect(testEnv.Create(ctx, dummies.ACSEndpointSecret1)).To(Succeed())
 		g.Expect(testEnv.Create(ctx, dummies.CSFailureDomain1)).To(Succeed())
 		g.Expect(testEnv.Create(ctx, dummies.CSISONet1)).To(Succeed())
@@ -298,22 +292,16 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 
 		// Create test objects
 		g.Expect(testEnv.Create(ctx, dummies.CAPICluster)).To(Succeed())
+		// Set CAPI cluster as owner of the CloudStackCluster.
+		dummies.CSCluster.OwnerReferences = append(dummies.CSCluster.OwnerReferences, metav1.OwnerReference{
+			Kind:       "Cluster",
+			APIVersion: clusterv1.GroupVersion.String(),
+			Name:       dummies.CAPICluster.Name,
+			UID:        types.UID("cluster-uid"),
+		})
 		dummies.CSCluster.Spec.FailureDomains = dummies.CSCluster.Spec.FailureDomains[:1]
 		dummies.CSCluster.Spec.FailureDomains[0].Name = dummies.CSFailureDomain1.Spec.Name
 		g.Expect(testEnv.Create(ctx, dummies.CSCluster)).To(Succeed())
-		// Set owner ref from CAPI cluster to CS Cluster and patch back the CS Cluster.
-		g.Eventually(func() error {
-			ph, err := patch.NewHelper(dummies.CSCluster, testEnv.Client)
-			g.Expect(err).ToNot(HaveOccurred())
-			dummies.CSCluster.OwnerReferences = append(dummies.CSCluster.OwnerReferences, metav1.OwnerReference{
-				Kind:       "Cluster",
-				APIVersion: clusterv1.GroupVersion.String(),
-				Name:       dummies.CAPICluster.Name,
-				UID:        types.UID("cluster-uid"),
-			})
-
-			return ph.Patch(ctx, dummies.CSCluster, patch.WithStatusObservedGeneration{})
-		}, timeout).Should(Succeed())
 		g.Expect(testEnv.Create(ctx, dummies.ACSEndpointSecret1)).To(Succeed())
 		g.Expect(testEnv.Create(ctx, dummies.CSFailureDomain1)).To(Succeed())
 		g.Expect(testEnv.Create(ctx, dummies.CSISONet1)).To(Succeed())
