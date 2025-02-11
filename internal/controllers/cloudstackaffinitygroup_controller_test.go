@@ -71,7 +71,7 @@ func TestCloudStackAffinityGroupReconcilerIntegrationTests(t *testing.T) {
 	teardown := func() {
 		mockCtrl.Finish()
 	}
-	t.Run("Should patch back the affinity group as ready after calling GetOrCreateAffinityGroup.", func(t *testing.T) {
+	t.Run("Should patch back the affinity group as ready after calling GetOrCreateAffinityGroup", func(t *testing.T) {
 		g := NewWithT(t)
 
 		setup(t)
@@ -127,7 +127,7 @@ func TestCloudStackAffinityGroupReconcilerIntegrationTests(t *testing.T) {
 		g.Expect(affinityGroup.GetFinalizers()).To(ContainElement(infrav1.AffinityGroupFinalizer))
 	})
 
-	t.Run("Should remove affinity group finalizer if corresponding affinity group is not present on Cloudstack.", func(t *testing.T) {
+	t.Run("Should remove affinity group finalizer if corresponding affinity group is not present on Cloudstack", func(t *testing.T) {
 		g := NewWithT(t)
 
 		setup(t)
