@@ -9,7 +9,7 @@ import (
 	"github.com/smallfish/simpleyaml"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -204,7 +204,7 @@ func SetDummyCSMachineVars(namespace string) {
 		},
 		Spec: infrav1.CloudStackMachineSpec{
 			Name:              "test-machine-1",
-			InstanceID:        pointer.String("Instance1"),
+			InstanceID:        ptr.To("Instance1"),
 			FailureDomainName: GetYamlVal("CLOUDSTACK_FD1_NAME"),
 			Template: infrav1.CloudStackResourceIdentifier{
 				Name: GetYamlVal("CLOUDSTACK_TEMPLATE_NAME"),
@@ -265,7 +265,7 @@ func SetDummyCAPCClusterVars(namespace string) {
 		ID:   "FakeAffinityGroupID"}
 	ISONet1 = infrav1.Network{Name: "isoguestnet1", Type: cloud.NetworkTypeIsolated, ID: "FakeIsolatedNetID1"}
 	APIServerLoadBalancer = &infrav1.APIServerLoadBalancer{
-		Enabled:         pointer.Bool(true),
+		Enabled:         ptr.To(true),
 		AdditionalPorts: []int{},
 		AllowedCIDRs:    []string{},
 	}
@@ -442,7 +442,7 @@ func SetDummyCAPIMachineVars(namespace string) {
 		},
 		Spec: clusterv1.MachineSpec{
 			ClusterName:   ClusterName,
-			FailureDomain: pointer.String("fd1"),
+			FailureDomain: ptr.To("fd1"),
 			InfrastructureRef: corev1.ObjectReference{
 				APIVersion: infrav1.GroupVersion.String(),
 				Kind:       "CloudStackMachine",

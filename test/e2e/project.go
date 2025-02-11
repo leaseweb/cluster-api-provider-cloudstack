@@ -1,12 +1,9 @@
 /*
-Copyright 2021 The Kubernetes Authors.
-
+Copyright 2020 The Kubernetes Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,19 +24,20 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 
-	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/cluster-api/util"
 )
 
-// ControlPlaneScaleSpec implements a test that verifies that ControlPlane scale operations are successful.
-func ControlPlaneScaleSpec(ctx context.Context, inputGetter func() CommonSpecInput) {
+// ProjectSpec implements a test that verifies that an app deployed to the workload cluster works.
+func ProjectSpec(ctx context.Context, inputGetter func() CommonSpecInput) {
 	var (
-		specName         = "horizontal-scale"
+		specName         = "project"
+		projectName      string
 		input            CommonSpecInput
 		namespace        *corev1.Namespace
 		cancelWatches    context.CancelFunc
 		clusterResources *clusterctl.ApplyClusterTemplateAndWaitResult
+		affinityIds      []string
 	)
 
 	BeforeEach(func() {
@@ -49,17 +47,25 @@ func ControlPlaneScaleSpec(ctx context.Context, inputGetter func() CommonSpecInp
 		Expect(input.ClusterctlConfigPath).To(BeAnExistingFile(), "Invalid argument. input.ClusterctlConfigPath must be an existing file when calling %s spec", specName)
 		Expect(input.BootstrapClusterProxy).ToNot(BeNil(), "Invalid argument. input.BootstrapClusterProxy can't be nil when calling %s spec", specName)
 		Expect(os.MkdirAll(input.ArtifactFolder, 0750)).To(Succeed(), "Invalid argument. input.ArtifactFolder can't be created for %s spec", specName)
+
 		Expect(input.E2EConfig.Variables).To(HaveKey(KubernetesVersion))
-		Expect(input.E2EConfig.Variables).To(HaveValidVersion(input.E2EConfig.GetVariable(KubernetesVersion)))
 
 		// Setup a Namespace where to host objects for this spec and create a watcher for the namespace events.
 		namespace, cancelWatches = setupSpecNamespace(ctx, specName, input.BootstrapClusterProxy, input.ArtifactFolder)
 		clusterResources = new(clusterctl.ApplyClusterTemplateAndWaitResult)
+
+		Expect(ctx).NotTo(BeNil(), "ctx is required for %s spec", specName)
+		input = inputGetter()
+
+		projectName = os.Getenv("CLOUDSTACK_PROJECT_NAME")
+		csClient := CreateCloudStackClient(ctx, input.BootstrapClusterProxy.GetKubeconfigPath())
+		project, _, err := csClient.Project.GetProjectByName(projectName)
+		if (err != nil) || (project == nil) {
+			Skip("Failed to fetch project")
+		}
 	})
 
-	It("Should successfully scale machine replicas up and down horizontally", func() {
-		By("Creating a workload cluster")
-
+	It("Should create a cluster in a project", func() {
 		clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
 			ClusterProxy:    input.BootstrapClusterProxy,
 			CNIManifestPath: input.E2EConfig.GetVariable(CNIPath),
@@ -68,7 +74,7 @@ func ControlPlaneScaleSpec(ctx context.Context, inputGetter func() CommonSpecInp
 				ClusterctlConfigPath:     input.ClusterctlConfigPath,
 				KubeconfigPath:           input.BootstrapClusterProxy.GetKubeconfigPath(),
 				InfrastructureProvider:   clusterctl.DefaultInfrastructureProvider,
-				Flavor:                   clusterctl.DefaultFlavor,
+				Flavor:                   specName,
 				Namespace:                namespace.Name,
 				ClusterName:              fmt.Sprintf("%s-%s", specName, util.RandomString(6)),
 				KubernetesVersion:        input.E2EConfig.GetVariable(KubernetesVersion),
@@ -80,54 +86,19 @@ func ControlPlaneScaleSpec(ctx context.Context, inputGetter func() CommonSpecInp
 			WaitForMachineDeployments:    input.E2EConfig.GetIntervals(specName, "wait-worker-nodes"),
 		}, clusterResources)
 
-		By("Scaling the MachineDeployment out to 3")
-		framework.ScaleAndWaitMachineDeployment(ctx, framework.ScaleAndWaitMachineDeploymentInput{
-			ClusterProxy:              input.BootstrapClusterProxy,
-			Cluster:                   clusterResources.Cluster,
-			MachineDeployment:         clusterResources.MachineDeployments[0],
-			Replicas:                  3,
-			WaitForMachineDeployments: input.E2EConfig.GetIntervals(specName, "wait-worker-nodes"),
-		})
-		By("Scaling the MachineDeployment down to 2")
-		framework.ScaleAndWaitMachineDeployment(ctx, framework.ScaleAndWaitMachineDeploymentInput{
-			ClusterProxy:              input.BootstrapClusterProxy,
-			Cluster:                   clusterResources.Cluster,
-			MachineDeployment:         clusterResources.MachineDeployments[0],
-			Replicas:                  2,
-			WaitForMachineDeployments: input.E2EConfig.GetIntervals(specName, "wait-worker-nodes"),
-		})
-
-		By("Scaling the MachineDeployment down to 0")
-		framework.ScaleAndWaitMachineDeployment(ctx, framework.ScaleAndWaitMachineDeploymentInput{
-			ClusterProxy:              input.BootstrapClusterProxy,
-			Cluster:                   clusterResources.Cluster,
-			MachineDeployment:         clusterResources.MachineDeployments[0],
-			Replicas:                  0,
-			WaitForMachineDeployments: input.E2EConfig.GetIntervals(specName, "wait-worker-nodes"),
-		})
-
-		By("Scaling the ControlPlane out to 3")
-		framework.ScaleAndWaitControlPlane(ctx, framework.ScaleAndWaitControlPlaneInput{
-			ClusterProxy:        input.BootstrapClusterProxy,
-			Cluster:             clusterResources.Cluster,
-			ControlPlane:        clusterResources.ControlPlane,
-			Replicas:            3,
-			WaitForControlPlane: input.E2EConfig.GetIntervals(specName, "wait-control-plane"),
-		})
-		By("Scaling the ControlPlane down to 1")
-		framework.ScaleAndWaitControlPlane(ctx, framework.ScaleAndWaitControlPlaneInput{
-			ClusterProxy:        input.BootstrapClusterProxy,
-			Cluster:             clusterResources.Cluster,
-			ControlPlane:        clusterResources.ControlPlane,
-			Replicas:            1,
-			WaitForControlPlane: input.E2EConfig.GetIntervals(specName, "wait-control-plane"),
-		})
-
-		By("PASSED!")
+		csClient := CreateCloudStackClient(ctx, input.BootstrapClusterProxy.GetKubeconfigPath())
+		affinityIds = CheckAffinityGroupInProject(csClient, clusterResources.Cluster.Name, "pro", projectName)
 	})
 
 	AfterEach(func() {
 		// Dumps all the resources in the spec namespace, then cleanups the cluster object and the spec namespace itself.
 		dumpSpecResourcesAndCleanup(ctx, specName, input.BootstrapClusterProxy, input.ArtifactFolder, namespace, cancelWatches, clusterResources.Cluster, input.E2EConfig.GetIntervals, input.SkipCleanup)
+
+		csClient := CreateCloudStackClient(ctx, input.BootstrapClusterProxy.GetKubeconfigPath())
+		err := CheckAffinityGroupsDeletedInProject(csClient, affinityIds, projectName)
+		if err != nil {
+			Fail(err.Error())
+		}
+		By("PASSED!")
 	})
 }
