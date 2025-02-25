@@ -20,9 +20,9 @@ import (
 	"errors"
 
 	"github.com/apache/cloudstack-go/v2/cloudstack"
-	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.uber.org/mock/gomock"
 
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
@@ -49,7 +49,7 @@ var _ = Describe("AffinityGroup Unit Tests", func() {
 		ags = mockClient.AffinityGroup.(*cloudstack.MockAffinityGroupServiceIface)
 		vms = mockClient.VirtualMachine.(*cloudstack.MockVirtualMachineServiceIface)
 		client = cloud.NewClientFromCSAPIClient(mockClient, nil)
-		dummies.SetDummyVars()
+		dummies.SetDummyVars("default")
 	})
 
 	AfterEach(func() {
@@ -141,8 +141,8 @@ var _ = Describe("AffinityGroup Unit Tests", func() {
 			Ω(client.ResolveZone(&dummies.CSFailureDomain1.Spec.Zone)).Should(Succeed())
 			dummies.CSMachine1.Spec.DiskOffering.Name = ""
 
-			Ω(client.GetOrCreateVMInstance(
-				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, "",
+			Ω(client.CreateVMInstance(
+				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, nil,
 			)).Should(Succeed())
 
 			Ω(client.GetOrCreateAffinityGroup(dummies.AffinityGroup)).Should(Succeed())

@@ -91,9 +91,9 @@ GOLANGCI_LINT := $(abspath $(TOOLS_BIN_DIR)/$(GOLANGCI_LINT_BIN)-$(GOLANGCI_LINT
 GOLANGCI_LINT_PKG := github.com/golangci/golangci-lint/cmd/golangci-lint
 
 MOCKGEN_BIN := mockgen
-MOCKGEN_VER := v1.6.0
+MOCKGEN_VER := v0.5.0
 MOCKGEN := $(abspath $(TOOLS_BIN_DIR)/$(MOCKGEN_BIN)-$(MOCKGEN_VER))
-MOCKGEN_PKG := github.com/golang/mock/mockgen
+MOCKGEN_PKG := go.uber.org/mock/mockgen
 
 KUBECTL := $(TOOLS_BIN_DIR)/kubectl
 
@@ -177,8 +177,8 @@ lint: $(GOLANGCI_LINT) generate-mocks ## Run linting for the project.
 
 .PHONY: modules
 modules: ## Runs go mod to ensure proper vendoring.
-	go mod tidy -compat=1.22
-	cd $(TOOLS_DIR); go mod tidy -compat=1.22
+	go mod tidy -compat=1.23
+	cd $(TOOLS_DIR); go mod tidy -compat=1.23
 
 .PHONY: generate-all
 generate-all: generate-mocks generate-conversion generate-deepcopy generate-manifests
@@ -193,9 +193,9 @@ DEEPCOPY_GEN_INPUTS=$(shell find ./api -name "*test*" -prune -o -name "*zz_gener
 .PHONY: generate-deepcopy
 generate-deepcopy: $(DEEPCOPY_GEN_TARGETS) ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 api/%/zz_generated.deepcopy.go: $(CONTROLLER_GEN) $(DEEPCOPY_GEN_INPUTS)
-	CGO_ENABLED=0 $(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	CGO_ENABLED=0 $(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./api/..."
 
-MANIFEST_GEN_INPUTS=$(shell find ./api ./controllers -type f -name "*test*" -prune -o -name "*zz_generated*" -prune -o -print)
+MANIFEST_GEN_INPUTS=$(shell find ./api ./internal/controllers -type f -name "*test*" -prune -o -name "*zz_generated*" -prune -o -print)
 # Using a flag file here as config output is too complicated to be a target.
 # The following triggers manifest building if $(IMG) differs from that found in config/default/manager_image_patch.yaml.
 $(shell	grep -qs "$(IMG)" config/default/manager_image_patch_edited.yaml || rm -f config/.flag.mk)
@@ -203,7 +203,7 @@ $(shell	grep -qs "$(IMG)" config/default/manager_image_patch_edited.yaml || rm -
 generate-manifests: config/.flag.mk ## Generates crd, webhook, rbac, and other configuration manifests from kubebuilder instructions in go comments.
 config/.flag.mk: $(CONTROLLER_GEN) $(MANIFEST_GEN_INPUTS)
 	sed -e 's@image: .*@image: '"$(IMG)"'@' config/default/manager_image_patch.yaml > config/default/manager_image_patch_edited.yaml
-	$(CONTROLLER_GEN) crd:crdVersions=v1 rbac:roleName=manager-role webhook paths="{./,./api/...,./controllers/...}" output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) crd:crdVersions=v1 rbac:roleName=manager-role webhook paths="{./,./api/...,./internal/controllers/...}" output:crd:artifacts:config=config/crd/bases
 	@touch config/.flag.mk
 
 .PHONY: generate-conversion
@@ -222,7 +222,7 @@ generate-conversion: $(CONVERSION_GEN) ## Generate code to convert api/v1beta1 a
 ## Build
 ## --------------------------------------
 
-MANAGER_BIN_INPUTS=$(shell find ./controllers ./api ./pkg -name "*mock*" -prune -o -name "*test*" -prune -o -type f -print) main.go go.mod go.sum
+MANAGER_BIN_INPUTS=$(shell find ./internal/controllers ./api ./pkg -name "*mock*" -prune -o -name "*test*" -prune -o -type f -print) main.go go.mod go.sum
 .PHONY: build
 build: binaries generate-deepcopy generate-manifests release-manifests ## Build manager binary.
 $(BIN_DIR)/manager: $(MANAGER_BIN_INPUTS)
@@ -304,28 +304,14 @@ cluster-api/tilt-settings.json: hack/tilt-settings.json cluster-api
 
 KUBEBUILDER_ASSETS ?= $(shell $(SETUP_ENVTEST) use --use-env -p path $(KUBEBUILDER_ENVTEST_KUBERNETES_VERSION))
 
-DEEPCOPY_GEN_TARGETS_TEST=$(shell find test/fakes -type d -name "fakes" -exec echo {}\/zz_generated.deepcopy.go \;)
-DEEPCOPY_GEN_INPUTS_TEST=$(shell find test/fakes/* -name "*zz_generated*" -prune -o -type f -print)
-.PHONY: generate-deepcopy-test
-generate-deepcopy-test: $(DEEPCOPY_GEN_TARGETS_TEST) ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
-test/fakes/zz_generated.deepcopy.go: $(CONTROLLER_GEN) $(DEEPCOPY_GEN_INPUTS_TEST)
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
-
-MANIFEST_GEN_INPUTS_TEST=$(shell find test/fakes/* -name "*zz_generated*" -prune -o -type f -print)
-.PHONY: generate-manifest-test
-generate-manifest-test: config/.flag-test.mk ## Generates crd, webhook, rbac, and other configuration manifests from kubebuilder instructions in go comments.
-config/.flag-test.mk: $(CONTROLLER_GEN) $(MANIFEST_GEN_INPUTS_TEST)
-	$(CONTROLLER_GEN) crd:crdVersions=v1 rbac:roleName=manager-role webhook paths="./test/fakes" output:crd:artifacts:config=test/fakes
-	@touch config/.flag-test.mk
-
 .PHONY: setup-envtest
 setup-envtest: $(SETUP_ENVTEST) ## Set up envtest (download kubebuilder assets)
 	@echo KUBEBUILDER_ASSETS=$(KUBEBUILDER_ASSETS)
 
 .PHONY: test
-test: ## Run tests.
-test: generate-deepcopy-test generate-manifest-test generate-mocks setup-envtest $(GINKGO)
-	KUBEBUILDER_ASSETS="$(KUBEBUILDER_ASSETS)" $(GINKGO) --label-filter="!integ" --cover -coverprofile cover.out --covermode=atomic -v ./api/... ./controllers/... ./pkg/...
+test: generate-mocks setup-envtest $(GINKGO)
+	KUBEBUILDER_ASSETS="$(KUBEBUILDER_ASSETS)" $(GINKGO) --label-filter="!integ" --cover -coverprofile cover.out --covermode=atomic -v ./api/... ./pkg/...
+	KUBEBUILDER_ASSETS="$(KUBEBUILDER_ASSETS)" go test -v -coverprofile cover.out ./internal/controllers/...
 
 .PHONY: test-pkg
 test-pkg: $(GINKGO)  ## Run pkg tests.
@@ -371,7 +357,7 @@ clean: ## Cleans up everything.
 	rm -rf $(TOOLS_BIN_DIR)
 	rm -rf cluster-api
 	rm -rf test/e2e/data/infrastructure-cloudstack/*/*yaml
-	rm -rf config/.flag.mk config/.flag-test.mk .dockerflag.mk
+	rm -rf config/.flag.mk .dockerflag.mk
 
 ##@ Release
 ## --------------------------------------

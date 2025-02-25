@@ -28,7 +28,7 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/cluster-api/api/v1beta1"
 	controlplanev1 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/patch"
@@ -124,8 +124,8 @@ func InvalidResourceSpec(ctx context.Context, inputGetter func() CommonSpecInput
 					Namespace:                namespace.Name,
 					ClusterName:              generateClusterName(),
 					KubernetesVersion:        input.E2EConfig.GetVariable(KubernetesVersion),
-					ControlPlaneMachineCount: pointer.Int64Ptr(1),
-					WorkerMachineCount:       pointer.Int64Ptr(1),
+					ControlPlaneMachineCount: ptr.To[int64](1),
+					WorkerMachineCount:       ptr.To[int64](1),
 				},
 				WaitForClusterIntervals:      input.E2EConfig.GetIntervals(specName, "wait-cluster"),
 				WaitForControlPlaneIntervals: input.E2EConfig.GetIntervals(specName, "wait-control-plane"),
@@ -181,8 +181,8 @@ func testInvalidResource(ctx context.Context, input CommonSpecInput, flavor stri
 		Namespace:                namespace.Name,
 		ClusterName:              clusterName,
 		KubernetesVersion:        input.E2EConfig.GetVariable(KubernetesVersion),
-		ControlPlaneMachineCount: pointer.Int64Ptr(1),
-		WorkerMachineCount:       pointer.Int64Ptr(1),
+		ControlPlaneMachineCount: ptr.To[int64](1),
+		WorkerMachineCount:       ptr.To[int64](1),
 		InfrastructureProvider:   clusterctl.DefaultInfrastructureProvider,
 		LogFolder:                logFolder,
 	})

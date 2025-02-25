@@ -20,7 +20,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/test/helpers"
+	helpers "sigs.k8s.io/cluster-api-provider-cloudstack/test/helpers/cloud"
 )
 
 var _ = Describe("Test helper methods", func() {

@@ -39,9 +39,9 @@ var _ = Describe("CloudStackCluster webhooks", func() {
 
 	BeforeEach(func() { // Reset test vars to initial state.
 		ctx = context.Background()
-		dummies.SetDummyVars()                       // Reset cluster var.
+		dummies.SetDummyVars("default")              // Reset cluster var.
 		_ = k8sClient.Delete(ctx, dummies.CSCluster) // Delete any remnants.
-		dummies.SetDummyVars()                       // Reset again since the k8s client can set this on delete.
+		dummies.SetDummyVars("default")              // Reset again since the k8s client can set this on delete.
 	})
 
 	Context("When creating a CloudStackCluster", func() {

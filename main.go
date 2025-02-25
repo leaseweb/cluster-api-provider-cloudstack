@@ -50,8 +50,8 @@ import (
 	infrav1b1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta1"
 	infrav1b2 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta2"
 	infrav1b3 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/controllers"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/controllers/utils"
+	"sigs.k8s.io/cluster-api-provider-cloudstack/internal/controllers"
+	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/scope"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/version"
 )
 
@@ -91,10 +91,11 @@ var (
 	logOptions                  = logs.NewOptions()
 	showVersion                 bool
 
-	cloudStackClusterConcurrency       int
-	cloudStackMachineConcurrency       int
-	cloudStackAffinityGroupConcurrency int
-	cloudStackFailureDomainConcurrency int
+	cloudStackClusterConcurrency         int
+	cloudStackMachineConcurrency         int
+	cloudStackAffinityGroupConcurrency   int
+	cloudStackFailureDomainConcurrency   int
+	cloudStackIsolatedNetworkConcurrency int
 )
 
 func initFlags(fs *pflag.FlagSet) {
@@ -143,6 +144,10 @@ func initFlags(fs *pflag.FlagSet) {
 
 	fs.IntVar(&cloudStackFailureDomainConcurrency, "cloudstackfailuredomain-concurrency", 5,
 		"Maximum concurrent reconciles for CloudStackFailureDomain resources",
+	)
+
+	fs.IntVar(&cloudStackIsolatedNetworkConcurrency, "cloudstackisolatednetwork-concurrency", 5,
+		"Maximum concurrent reconciles for CloudStackIsolatedNetwork resources",
 	)
 
 	fs.DurationVar(&syncPeriod, "sync-period", 10*time.Minute,
@@ -269,22 +274,12 @@ func main() {
 		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 
-	// Register reconcilers with the controller manager.
-	base := utils.ReconcilerBase{
-		K8sClient:        mgr.GetClient(),
-		Recorder:         mgr.GetEventRecorderFor("capc-controller-manager"),
-		Scheme:           mgr.GetScheme(),
-		WatchFilterValue: watchFilterValue,
-	}
-
 	// Setup the context that's going to be used in controllers and for the manager.
 	ctx := ctrl.SetupSignalHandler()
 
 	setupChecks(mgr)
-	setupReconcilers(ctx, base, mgr)
+	setupReconcilers(ctx, mgr)
 	setupWebhooks(mgr)
-
-	infrav1b3.K8sClient = base.K8sClient
 
 	// +kubebuilder:scaffold:builder
 	setupLog.Info("starting manager", "version", version.Get().String())
@@ -306,24 +301,54 @@ func setupChecks(mgr ctrl.Manager) {
 	}
 }
 
-func setupReconcilers(ctx context.Context, base utils.ReconcilerBase, mgr manager.Manager) {
-	if err := (&controllers.CloudStackClusterReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackClusterConcurrency}); err != nil {
+func setupReconcilers(ctx context.Context, mgr manager.Manager) {
+	scopeFactory := scope.NewClientScopeFactory(10)
+	if err := (&controllers.CloudStackClusterReconciler{
+		Client:           mgr.GetClient(),
+		Scheme:           mgr.GetScheme(),
+		Recorder:         mgr.GetEventRecorderFor("cloudstackcluster-controller"),
+		WatchFilterValue: watchFilterValue,
+	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackClusterConcurrency}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CloudStackCluster")
 		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
-	if err := (&controllers.CloudStackMachineReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackMachineConcurrency}); err != nil {
+	if err := (&controllers.CloudStackMachineReconciler{
+		Client:           mgr.GetClient(),
+		Scheme:           mgr.GetScheme(),
+		Recorder:         mgr.GetEventRecorderFor("cloudstackmachine-controller"),
+		WatchFilterValue: watchFilterValue,
+		ScopeFactory:     scopeFactory,
+	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackMachineConcurrency}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CloudStackMachine")
 		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
-	if err := (&controllers.CloudStackIsoNetReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "CloudStackIsoNetReconciler")
+	if err := (&controllers.CloudStackIsolatedNetworkReconciler{
+		Client:           mgr.GetClient(),
+		Scheme:           mgr.GetScheme(),
+		Recorder:         mgr.GetEventRecorderFor("cloudstackisolatednetwork-controller"),
+		WatchFilterValue: watchFilterValue,
+		ScopeFactory:     scopeFactory,
+	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackIsolatedNetworkConcurrency}); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "CloudStackIsolatedNetwork")
 		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
-	if err := (&controllers.CloudStackAffinityGroupReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackAffinityGroupConcurrency}); err != nil {
+	if err := (&controllers.CloudStackAffinityGroupReconciler{
+		Client:           mgr.GetClient(),
+		Scheme:           mgr.GetScheme(),
+		Recorder:         mgr.GetEventRecorderFor("cloudstackaffinitygroup-controller"),
+		WatchFilterValue: watchFilterValue,
+		ScopeFactory:     scopeFactory,
+	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackAffinityGroupConcurrency}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CloudStackAffinityGroup")
 		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
-	if err := (&controllers.CloudStackFailureDomainReconciler{ReconcilerBase: base}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackFailureDomainConcurrency}); err != nil {
+	if err := (&controllers.CloudStackFailureDomainReconciler{
+		Client:           mgr.GetClient(),
+		Scheme:           mgr.GetScheme(),
+		Recorder:         mgr.GetEventRecorderFor("cloudstackfailuredomain-controller"),
+		WatchFilterValue: watchFilterValue,
+		ScopeFactory:     scopeFactory,
+	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackFailureDomainConcurrency}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CloudStackFailureDomain")
 		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}

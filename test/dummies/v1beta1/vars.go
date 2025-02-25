@@ -1,14 +1,14 @@
 package dummies
 
 import (
+	"fmt"
 	"os"
 
 	csapi "github.com/apache/cloudstack-go/v2/cloudstack"
-	"github.com/onsi/gomega"
-	"github.com/smallfish/simpleyaml"
+	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	capcv1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 	capiv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -16,9 +16,18 @@ import (
 
 // GetYamlVal fetches the values in test/e2e/config/cloudstack.yaml by yaml node. A common config file.
 func GetYamlVal(variable string) string {
-	val, err := CSConf.Get("variables").Get(variable).String()
-	gomega.Ω(err).ShouldNot(gomega.HaveOccurred())
-	return val
+	// Access the variables map and get the requested variable
+	variables, ok := CSConf["variables"].(map[string]interface{})
+	if !ok {
+		panic("variables section not found in config")
+	}
+
+	value, ok := variables[variable].(string)
+	if !ok {
+		panic(fmt.Sprintf("variable %s not found or not a string", variable))
+	}
+
+	return value
 }
 
 var ( // Declare exported dummy vars.
@@ -75,7 +84,7 @@ var ( // Declare exported dummy vars.
 	PublicIPID         string
 	EndPointHost       string
 	EndPointPort       int32
-	CSConf             *simpleyaml.Yaml
+	CSConf             map[string]any
 	DiskOffering       capcv1.CloudStackResourceDiskOffering
 )
 
@@ -86,7 +95,7 @@ func SetDummyVars() {
 	if err != nil {
 		panic(err)
 	}
-	CSConf, err = simpleyaml.NewYaml(source)
+	err = yaml.Unmarshal(source, &CSConf)
 	if err != nil {
 		panic(err)
 	}
@@ -195,7 +204,7 @@ func SetDummyCSMachineVars() {
 				Kind: "Secret",
 				Name: "IdentitySecret",
 			},
-			InstanceID: pointer.String("Instance1"),
+			InstanceID: ptr.To("Instance1"),
 			Template: capcv1.CloudStackResourceIdentifier{
 				Name: GetYamlVal("CLOUDSTACK_TEMPLATE_NAME"),
 			},
@@ -220,6 +229,8 @@ func SetDummyCSMachineVars() {
 }
 
 func SetDummyZoneVars() {
+	Net1 = capcv1.Network{Name: GetYamlVal("CLOUDSTACK_NETWORK_NAME"), Type: cloud.NetworkTypeShared}
+	Net2 = capcv1.Network{Name: "SharedGuestNet2", Type: cloud.NetworkTypeShared, ID: "FakeSharedNetID2"}
 	Zone1 = capcv1.Zone{Network: Net1}
 	Zone1.Name = GetYamlVal("CLOUDSTACK_ZONE_NAME")
 	Zone2 = capcv1.Zone{Network: Net2}
@@ -256,8 +267,6 @@ func SetDummyCAPCClusterVars() {
 		ID:   "FakeAffinityGroupID"}
 	CSAffinityGroup = &capcv1.CloudStackAffinityGroup{
 		Spec: capcv1.CloudStackAffinityGroupSpec{Name: AffinityGroup.Name, Type: AffinityGroup.Type, ID: AffinityGroup.ID}}
-	Net1 = capcv1.Network{Name: GetYamlVal("CLOUDSTACK_NETWORK_NAME"), Type: cloud.NetworkTypeShared}
-	Net2 = capcv1.Network{Name: "SharedGuestNet2", Type: cloud.NetworkTypeShared, ID: "FakeSharedNetID2"}
 	ISONet1 = capcv1.Network{Name: "IsoGuestNet1", Type: cloud.NetworkTypeIsolated, ID: "FakeIsolatedNetID1"}
 	CSCluster = &capcv1.CloudStackCluster{
 		TypeMeta: metav1.TypeMeta{
@@ -314,7 +323,7 @@ func SetDummyCAPIClusterVars() {
 			InfrastructureRef: &corev1.ObjectReference{
 				APIVersion: capcv1.GroupVersion.String(),
 				Kind:       "CloudStackCluster",
-				Name:       "somename",
+				Name:       CSClusterName,
 			},
 		},
 	}
@@ -340,7 +349,7 @@ func SetClusterSpecToNet(net *capcv1.Network) {
 
 func SetDummyCAPIMachineVars() {
 	CAPIMachine = &capiv1.Machine{
-		Spec: capiv1.MachineSpec{FailureDomain: pointer.String(Zone1.ID)},
+		Spec: capiv1.MachineSpec{FailureDomain: ptr.To(Zone1.ID)},
 	}
 }
 

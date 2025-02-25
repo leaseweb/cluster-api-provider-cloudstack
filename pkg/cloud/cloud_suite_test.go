@@ -28,7 +28,7 @@ import (
 
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/test/helpers"
+	helpers "sigs.k8s.io/cluster-api-provider-cloudstack/test/helpers/cloud"
 )
 
 var (
@@ -71,8 +71,8 @@ func TestCloud(t *testing.T) {
 			Ω(newUser.APIKey).ShouldNot(BeEmpty())
 
 			// Switch to test account user.
-			realCloudClient, connectionErr = realCloudClient.NewClientInDomainAndAccount(
-				newAccount.Domain.Name, newAccount.Name)
+			realCloudClient, connectionErr = cloud.NewClientInDomainAndAccount(
+				realCloudClient, newAccount.Domain.Name, newAccount.Name)
 			Ω(connectionErr).ShouldNot(HaveOccurred())
 		}
 	})

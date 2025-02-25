@@ -64,9 +64,33 @@ func (r *CloudStackMachine) ConvertFrom(srcRaw conversion.Hub) error {
 }
 
 func Convert_v1beta3_CloudStackMachineSpec_To_v1beta2_CloudStackMachineSpec(in *v1beta3.CloudStackMachineSpec, out *CloudStackMachineSpec, s machineryconversion.Scope) error {
+	if in.DiskOffering != nil {
+		out.DiskOffering = CloudStackResourceDiskOffering{
+			CustomSize: in.DiskOffering.CustomSize,
+			MountPath:  in.DiskOffering.MountPath,
+			Device:     in.DiskOffering.Device,
+			Filesystem: in.DiskOffering.Filesystem,
+			Label:      in.DiskOffering.Label,
+		}
+	}
+
 	return autoConvert_v1beta3_CloudStackMachineSpec_To_v1beta2_CloudStackMachineSpec(in, out, s)
 }
 
 func Convert_v1beta2_CloudStackMachineSpec_To_v1beta3_CloudStackMachineSpec(in *CloudStackMachineSpec, out *v1beta3.CloudStackMachineSpec, s machineryconversion.Scope) error {
+	if in.DiskOffering != (CloudStackResourceDiskOffering{}) {
+		out.DiskOffering = &v1beta3.CloudStackResourceDiskOffering{
+			CustomSize: in.DiskOffering.CustomSize,
+			MountPath:  in.DiskOffering.MountPath,
+			Device:     in.DiskOffering.Device,
+			Filesystem: in.DiskOffering.Filesystem,
+			Label:      in.DiskOffering.Label,
+		}
+	}
+
 	return autoConvert_v1beta2_CloudStackMachineSpec_To_v1beta3_CloudStackMachineSpec(in, out, s)
+}
+
+func Convert_v1beta3_CloudStackMachineStatus_To_v1beta2_CloudStackMachineStatus(in *v1beta3.CloudStackMachineStatus, out *CloudStackMachineStatus, s machineryconversion.Scope) error {
+	return autoConvert_v1beta3_CloudStackMachineStatus_To_v1beta2_CloudStackMachineStatus(in, out, s)
 }
