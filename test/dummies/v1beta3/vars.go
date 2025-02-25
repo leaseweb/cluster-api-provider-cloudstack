@@ -1,12 +1,13 @@
 package dummies
 
 import (
+	"fmt"
 	"os"
 	"path"
 	goruntime "runtime"
 
 	csapi "github.com/apache/cloudstack-go/v2/cloudstack"
-	"github.com/smallfish/simpleyaml"
+	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -17,12 +18,18 @@ import (
 
 // GetYamlVal fetches the values in test/e2e/config/cloudstack.yaml by yaml node. A common config file.
 func GetYamlVal(variable string) string {
-	val, err := CSConf.Get("variables").Get(variable).String()
-	if err != nil {
-		panic(err)
+	// Access the variables map and get the requested variable
+	variables, ok := CSConf["variables"].(map[string]interface{})
+	if !ok {
+		panic("variables section not found in config")
 	}
 
-	return val
+	value, ok := variables[variable].(string)
+	if !ok {
+		panic(fmt.Sprintf("variable %s not found or not a string", variable))
+	}
+
+	return value
 }
 
 var ( // Declare exported dummy vars.
@@ -87,7 +94,7 @@ var ( // Declare exported dummy vars.
 	PublicIPID            string
 	EndPointHost          string
 	EndPointPort          int32
-	CSConf                *simpleyaml.Yaml
+	CSConf                map[string]any
 	DiskOffering          *infrav1.CloudStackResourceDiskOffering
 	BootstrapSecret       *corev1.Secret
 	BootstrapSecretName   string
@@ -102,7 +109,7 @@ func SetDummyVars(namespace string) {
 	if err != nil {
 		panic(err)
 	}
-	CSConf, err = simpleyaml.NewYaml(source)
+	err = yaml.Unmarshal(source, &CSConf)
 	if err != nil {
 		panic(err)
 	}
