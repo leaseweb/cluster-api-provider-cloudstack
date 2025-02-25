@@ -88,9 +88,7 @@ func (c *client) GetVMInstanceByID(id string) (*cloudstack.VirtualMachine, error
 		return nil, err
 	} else if response == nil {
 		return nil, ErrNotFound
-	}
-
-	if response.Count == 0 {
+	} else if response.Count == 0 {
 		return nil, ErrNotFound
 	} else if response.Count > 1 {
 		return nil, fmt.Errorf("found more than one VM Instance with ID %s", id)
@@ -116,9 +114,7 @@ func (c *client) GetVMInstanceByName(name string) (*cloudstack.VirtualMachine, e
 		return nil, err
 	} else if response == nil {
 		return nil, ErrNotFound
-	}
-
-	if response.Count == 0 {
+	} else if response.Count == 0 {
 		return nil, ErrNotFound
 	} else if response.Count > 1 {
 		return nil, fmt.Errorf("found more than one VM Instance with name %s", name)
