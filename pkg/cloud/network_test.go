@@ -21,9 +21,9 @@ import (
 	"fmt"
 
 	csapi "github.com/apache/cloudstack-go/v2/cloudstack"
-	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.uber.org/mock/gomock"
 
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
@@ -45,7 +45,7 @@ var _ = Describe("Network", func() {
 		ns = mockClient.Network.(*csapi.MockNetworkServiceIface)
 		rs = mockClient.Resourcetags.(*csapi.MockResourcetagsServiceIface)
 		client = cloud.NewClientFromCSAPIClient(mockClient, nil)
-		dummies.SetDummyVars()
+		dummies.SetDummyVars("default")
 	})
 
 	AfterEach(func() {

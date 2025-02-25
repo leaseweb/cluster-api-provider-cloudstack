@@ -32,7 +32,7 @@ var _ = Describe("CloudStackMachine webhook", func() {
 	requiredRegex := "admission webhook.*denied the request.*Required value\\: %s"
 
 	BeforeEach(func() { // Reset test vars to initial state.
-		dummies.SetDummyVars()
+		dummies.SetDummyVars("default")
 		ctx = context.Background()
 		_ = k8sClient.Delete(ctx, dummies.CSMachine1) // Clear out any remaining machines. Ignore errors.
 	})

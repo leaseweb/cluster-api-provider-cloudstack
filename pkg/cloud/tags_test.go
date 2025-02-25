@@ -18,10 +18,10 @@ package cloud_test
 
 import (
 	csapi "github.com/apache/cloudstack-go/v2/cloudstack"
-	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+	"go.uber.org/mock/gomock"
 
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
@@ -41,7 +41,7 @@ var _ = Describe("Tag Unit Tests", func() {
 	)
 
 	BeforeEach(func() {
-		dummies.SetDummyVars()
+		dummies.SetDummyVars("default")
 		mockCtrl = gomock.NewController(GinkgoT())
 		mockClient = csapi.NewMockClient(mockCtrl)
 		rs = mockClient.Resourcetags.(*csapi.MockResourcetagsServiceIface)

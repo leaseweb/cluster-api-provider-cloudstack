@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/apache/cloudstack-go/v2/cloudstack"
+	"github.com/hashicorp/go-multierror"
 	"github.com/jellydator/ttlcache/v3"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
@@ -43,7 +44,8 @@ type Client interface {
 	ZoneIFace
 	IsoNetworkIface
 	UserCredIFace
-	NewClientInDomainAndAccount(domain string, account string, options ...ClientOption) (Client, error)
+	GetConfig() Config
+	GetUser() *User
 }
 
 // Config is the cloud-config ini structure.
@@ -55,6 +57,20 @@ type Config struct {
 	ProjectID string `yaml:"project-id"`
 }
 
+func (c *Config) Validate() (err error) {
+	if c.APIUrl == "" {
+		err = multierror.Append(err, errors.New("api-url is required"))
+	}
+	if c.APIKey == "" {
+		err = multierror.Append(err, errors.New("api-key is required"))
+	}
+	if c.SecretKey == "" {
+		err = multierror.Append(err, errors.New("secret-key is required"))
+	}
+
+	return err
+}
+
 type client struct {
 	cs            *cloudstack.CloudStackClient
 	csAsync       *cloudstack.CloudStackClient
@@ -62,6 +78,8 @@ type client struct {
 	user          *User
 	customMetrics metrics.ACSCustomMetrics
 }
+
+var _ Client = &client{}
 
 type SecretConfig struct {
 	APIVersion string            `yaml:"apiVersion"`
@@ -227,32 +245,33 @@ func NewClientFromConf(conf Config, clientConfig *corev1.ConfigMap, options ...C
 }
 
 // NewClientInDomainAndAccount returns a new client in the specified domain and account.
-func (c *client) NewClientInDomainAndAccount(domain string, account string, options ...ClientOption) (Client, error) {
+func NewClientInDomainAndAccount(c Client, domain string, account string, options ...ClientOption) (Client, error) {
 	user := &User{}
 	user.Account.Domain.Path = domain
 	user.Account.Name = account
 
-	oldUser := c.user
-	c.user = user
+	client := c.(*client)
+	oldUser := client.user
+	client.user = user
 	for _, fn := range options {
-		if err := fn(c); err != nil {
+		if err := fn(client); err != nil {
 			return nil, err
 		}
 	}
-	user = c.user
-	c.user = oldUser
+	user = client.user
+	client.user = oldUser
 
-	if found, err := c.GetUserWithKeys(user); err != nil {
+	if found, err := client.GetUserWithKeys(user); err != nil {
 		return nil, err
 	} else if !found {
 		return nil, errors.Errorf(
 			"could not find sufficient user (with API keys) in domain/account %s/%s", domain, account)
 	}
-	c.config.APIKey = user.APIKey
-	c.config.SecretKey = user.SecretKey
-	c.user = user
+	client.config.APIKey = user.APIKey
+	client.config.SecretKey = user.SecretKey
+	client.user = user
 
-	return NewClientFromConf(c.config, nil)
+	return NewClientFromConf(client.config, nil)
 }
 
 // NewClientFromCSAPIClient creates a client from a CloudStack-Go API client. Used only for testing.
@@ -279,6 +298,14 @@ func NewClientFromCSAPIClient(cs *cloudstack.CloudStackClient, user *User) Clien
 	}
 
 	return c
+}
+
+func (c *client) GetUser() *User {
+	return c.user
+}
+
+func (c *client) GetConfig() Config {
+	return c.config
 }
 
 // generateClientCacheKey generates a cache key from a Config.

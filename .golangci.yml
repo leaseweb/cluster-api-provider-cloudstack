@@ -160,7 +160,7 @@ linters:
 
 run:
   timeout: 10m
-  go: "1.22"
+  go: "1.23"
   build-tags:
     - tools
     - e2e

@@ -27,6 +27,7 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
@@ -34,25 +35,185 @@ import (
 )
 
 const (
-	// State of the virtual machine. Possible values are: Running, Stopped, Present, Destroyed, Expunged.
-	// Present is used for the state equal not destroyed.
-	VMStateRunning   = "Running"
-	VMStateStopped   = "Stopped"
-	VMStatePresent   = "Present"
-	VMStateDestroyed = "Destroyed"
-	VMStateExpunged  = "Expunged"
-	VMStateError     = "Error"
+	// State of the virtual machine.
+	InstanceStateStarting  = "Starting"
+	InstanceStateRunning   = "Running"
+	InstanceStateStopping  = "Stopping"
+	InstanceStateStopped   = "Stopped"
+	InstanceStateDestroyed = "Destroyed"
+	InstanceStateExpunging = "Expunging"
+	InstanceStateMigrating = "Migrating"
+	InstanceStateError     = "Error"
+	InstanceStateUnknown   = "Unknown"
+	InstanceStateShutdown  = "Shutdown"
 
 	// LimitUnlimited is used in account/domain limit checks.
 	LimitUnlimited = "Unlimited"
 )
 
-var ErrNotFound = errors.New("not found")
+var (
+	ErrNotFound = errors.New("not found")
+
+	// InstanceRunningStates are the states that indicate the instance is running.
+	InstanceRunningStates = sets.NewString(InstanceStateStarting, InstanceStateRunning)
+	// InstanceOperationalStates are the states that indicate the instance is operational, and supports all operations.
+	InstanceOperationalStates = InstanceRunningStates.Union(sets.NewString(InstanceStateStopping, InstanceStateStopped))
+	// InstanceKnownStates are the states that are known to the CloudStack API.
+	InstanceKnownStates = InstanceOperationalStates.Union(sets.NewString(InstanceStateDestroyed, InstanceStateExpunging, InstanceStateMigrating, InstanceStateError, InstanceStateShutdown))
+)
 
 type VMIface interface {
-	GetOrCreateVMInstance(csMachine *infrav1.CloudStackMachine, capiMachine *clusterv1.Machine, fd *infrav1.CloudStackFailureDomain, affinity *infrav1.CloudStackAffinityGroup, userData string) error
 	ResolveVMInstanceDetails(csMachine *infrav1.CloudStackMachine) error
+	GetVMInstanceByID(id string) (*cloudstack.VirtualMachine, error)
+	GetVMInstanceByName(name string) (*cloudstack.VirtualMachine, error)
+	CreateVMInstance(csMachine *infrav1.CloudStackMachine, capiMachine *clusterv1.Machine, fd *infrav1.CloudStackFailureDomain, affinity *infrav1.CloudStackAffinityGroup, userData []byte) (*cloudstack.VirtualMachine, error)
+	GetInstanceAddresses(vm *cloudstack.VirtualMachine) ([]corev1.NodeAddress, error)
 	DestroyVMInstance(csMachine *infrav1.CloudStackMachine) error
+}
+
+// GetVMInstanceByID returns the VM instance with the given instance ID.
+func (c *client) GetVMInstanceByID(id string) (*cloudstack.VirtualMachine, error) {
+	if id == "" {
+		return nil, errors.New("instance ID is required")
+	}
+
+	params := c.cs.VirtualMachine.NewListVirtualMachinesParams()
+	params.SetId(id)
+	setIfNotEmpty(c.user.Project.ID, params.SetProjectid)
+
+	response, err := c.cs.VirtualMachine.ListVirtualMachines(params)
+	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "no match found") {
+		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
+		return nil, err
+	} else if response == nil {
+		return nil, ErrNotFound
+	} else if response.Count == 0 {
+		return nil, ErrNotFound
+	} else if response.Count > 1 {
+		return nil, fmt.Errorf("found more than one VM Instance with ID %s", id)
+	}
+
+	return response.VirtualMachines[0], nil
+}
+
+// GetVMInstanceByName returns the VM instance with the given name.
+func (c *client) GetVMInstanceByName(name string) (*cloudstack.VirtualMachine, error) {
+	if name == "" {
+		return nil, errors.New("instance name is required")
+	}
+
+	params := c.cs.VirtualMachine.NewListVirtualMachinesParams()
+	params.SetName(name)
+	setIfNotEmpty(c.user.Project.ID, params.SetProjectid)
+
+	response, err := c.cs.VirtualMachine.ListVirtualMachines(params)
+	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "no match found") {
+		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
+		return nil, err
+	} else if response == nil {
+		return nil, ErrNotFound
+	} else if response.Count == 0 {
+		return nil, ErrNotFound
+	} else if response.Count > 1 {
+		return nil, fmt.Errorf("found more than one VM Instance with name %s", name)
+	}
+
+	return response.VirtualMachines[0], nil
+}
+
+// CreateVMInstance creates a new VM instance and returns the created VM instance.
+func (c *client) CreateVMInstance(csMachine *infrav1.CloudStackMachine, capiMachine *clusterv1.Machine, fd *infrav1.CloudStackFailureDomain, affinity *infrav1.CloudStackAffinityGroup, userData []byte) (*cloudstack.VirtualMachine, error) {
+	offering, err := c.resolveServiceOffering(csMachine, fd.Spec.Zone.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.checkLimits(offering)
+	if err != nil {
+		return nil, err
+	}
+
+	templateID, err := c.resolveTemplate(csMachine, fd.Spec.Zone.ID)
+	if err != nil {
+		return nil, err
+	}
+	diskOfferingID, err := c.resolveDiskOffering(csMachine, fd.Spec.Zone.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	p := c.cs.VirtualMachine.NewDeployVirtualMachineParams(offering.Id, templateID, fd.Spec.Zone.ID)
+	p.SetNetworkids([]string{fd.Spec.Zone.Network.ID})
+	setIfNotEmpty(csMachine.Name, p.SetName)
+	setIfNotEmpty(capiMachine.Name, p.SetDisplayname)
+	setIfNotEmpty(diskOfferingID, p.SetDiskofferingid)
+	setIfNotEmpty(c.user.Project.ID, p.SetProjectid)
+	if csMachine.Spec.DiskOffering != nil {
+		setIntIfPositive(csMachine.Spec.DiskOffering.CustomSize, p.SetSize)
+	}
+
+	setIfNotEmpty(csMachine.Spec.SSHKey, p.SetKeypair)
+
+	if csMachine.CompressUserdata() {
+		userData, err = GzipBytes(userData)
+		if err != nil {
+			return nil, err
+		}
+	}
+	setIfNotEmpty(base64.StdEncoding.EncodeToString(userData), p.SetUserdata)
+
+	if len(csMachine.Spec.AffinityGroupIDs) > 0 {
+		p.SetAffinitygroupids(csMachine.Spec.AffinityGroupIDs)
+	} else if !strings.EqualFold(csMachine.Spec.Affinity, "no") && csMachine.Spec.Affinity != "" {
+		p.SetAffinitygroupids([]string{affinity.Spec.ID})
+	}
+
+	if csMachine.Spec.Details != nil {
+		p.SetDetails(csMachine.Spec.Details)
+	}
+
+	response, err := c.cs.VirtualMachine.DeployVirtualMachine(p)
+	if err != nil {
+		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
+		// CloudStack may have created the VM even though it reported an error. We attempt to
+		// retrieve the VM so we can populate the CloudStackMachine for the user to manually
+		// clean up.
+		vm, findErr := findVirtualMachine(c.cs.VirtualMachine, c.user.Project.ID, templateID, fd, csMachine)
+		if findErr != nil {
+			if errors.Is(findErr, ErrNotFound) {
+				// We didn't find a VM so return the original error.
+				return nil, err
+			}
+			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(findErr)
+
+			return nil, fmt.Errorf("%w; find virtual machine: %w", err, findErr)
+		}
+
+		csMachine.Spec.InstanceID = ptr.To(vm.Id)
+		csMachine.Status.InstanceState = vm.State
+
+		return nil, fmt.Errorf("incomplete vm deployment (vm_id=%v): %w", vm.Id, err)
+	}
+
+	return c.GetVMInstanceByID(response.Id)
+}
+
+// GetInstanceAddresses returns the addresses of the default NIC of the VM instance.
+func (c *client) GetInstanceAddresses(vm *cloudstack.VirtualMachine) ([]corev1.NodeAddress, error) {
+	addresses := []corev1.NodeAddress{}
+	if len(vm.Nic) > 0 {
+		for _, nic := range vm.Nic {
+			if nic.Isdefault && nic.Ipaddress != "" {
+				addresses = append(addresses, corev1.NodeAddress{Type: corev1.NodeInternalIP, Address: nic.Ipaddress})
+			}
+		}
+	} else {
+		return addresses, errors.New("instance does not have any NIC (yet)")
+	}
+	return addresses, nil
 }
 
 // Set infrastructure spec and status from the CloudStack API's virtual machine metrics type.
@@ -225,6 +386,7 @@ func (c *client) resolveDiskOffering(csMachine *infrav1.CloudStackMachine, zoneI
 	return verifyDiskoffering(csMachine, c, diskOfferingID, retErr)
 }
 
+// verifyDiskoffering verifies the disk offering and returns the disk offering ID.
 func verifyDiskoffering(csMachine *infrav1.CloudStackMachine, c *client, diskOfferingID string, retErr error) (string, error) {
 	csDiskOffering, count, err := c.cs.DiskOffering.GetDiskOfferingByID(diskOfferingID, cloudstack.WithProject(c.user.Project.ID))
 	if err != nil {
@@ -357,119 +519,6 @@ func (c *client) checkLimits(
 	}
 
 	return nil
-}
-
-// deployVM will create a VM instance, and sets the infrastructure machine spec and status accordingly.
-func (c *client) deployVM(
-	csMachine *infrav1.CloudStackMachine,
-	capiMachine *clusterv1.Machine,
-	fd *infrav1.CloudStackFailureDomain,
-	affinity *infrav1.CloudStackAffinityGroup,
-	offering *cloudstack.ServiceOffering,
-	userData string,
-) error {
-	templateID, err := c.resolveTemplate(csMachine, fd.Spec.Zone.ID)
-	if err != nil {
-		return err
-	}
-	diskOfferingID, err := c.resolveDiskOffering(csMachine, fd.Spec.Zone.ID)
-	if err != nil {
-		return err
-	}
-
-	p := c.cs.VirtualMachine.NewDeployVirtualMachineParams(offering.Id, templateID, fd.Spec.Zone.ID)
-	p.SetNetworkids([]string{fd.Spec.Zone.Network.ID})
-	setIfNotEmpty(csMachine.Name, p.SetName)
-	setIfNotEmpty(capiMachine.Name, p.SetDisplayname)
-	setIfNotEmpty(diskOfferingID, p.SetDiskofferingid)
-	setIfNotEmpty(c.user.Project.ID, p.SetProjectid)
-	if csMachine.Spec.DiskOffering != nil {
-		setIntIfPositive(csMachine.Spec.DiskOffering.CustomSize, p.SetSize)
-	}
-
-	setIfNotEmpty(csMachine.Spec.SSHKey, p.SetKeypair)
-
-	if csMachine.CompressUserdata() {
-		userData, err = compress(userData)
-		if err != nil {
-			return err
-		}
-	}
-	userData = base64.StdEncoding.EncodeToString([]byte(userData))
-	setIfNotEmpty(userData, p.SetUserdata)
-
-	if len(csMachine.Spec.AffinityGroupIDs) > 0 {
-		p.SetAffinitygroupids(csMachine.Spec.AffinityGroupIDs)
-	} else if !strings.EqualFold(csMachine.Spec.Affinity, "no") && csMachine.Spec.Affinity != "" {
-		p.SetAffinitygroupids([]string{affinity.Spec.ID})
-	}
-
-	if csMachine.Spec.Details != nil {
-		p.SetDetails(csMachine.Spec.Details)
-	}
-
-	deployVMResp, err := c.cs.VirtualMachine.DeployVirtualMachine(p)
-	if err != nil {
-		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
-
-		// CloudStack may have created the VM even though it reported an error. We attempt to
-		// retrieve the VM so we can populate the CloudStackMachine for the user to manually
-		// clean up.
-		vm, findErr := findVirtualMachine(c.cs.VirtualMachine, c.user.Project.ID, templateID, fd, csMachine)
-		if findErr != nil {
-			if errors.Is(findErr, ErrNotFound) {
-				// We didn't find a VM so return the original error.
-				return err
-			}
-			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(findErr)
-
-			return fmt.Errorf("%w; find virtual machine: %w", err, findErr)
-		}
-
-		csMachine.Spec.InstanceID = ptr.To(vm.Id)
-		csMachine.Status.InstanceState = vm.State
-
-		return fmt.Errorf("incomplete vm deployment (vm_id=%v): %w", vm.Id, err)
-	}
-
-	csMachine.Spec.InstanceID = ptr.To(deployVMResp.Id)
-	csMachine.Status.Status = ptr.To(metav1.StatusSuccess)
-
-	return nil
-}
-
-// GetOrCreateVMInstance will fetch or create a VM instance, and sets the infrastructure machine spec
-// and status accordingly.
-func (c *client) GetOrCreateVMInstance(
-	csMachine *infrav1.CloudStackMachine,
-	capiMachine *clusterv1.Machine,
-	fd *infrav1.CloudStackFailureDomain,
-	affinity *infrav1.CloudStackAffinityGroup,
-	userData string,
-) error {
-	// Check if VM instance already exists.
-	if err := c.ResolveVMInstanceDetails(csMachine); err == nil ||
-		!strings.Contains(strings.ToLower(err.Error()), "no match") {
-		return err
-	}
-
-	offering, err := c.resolveServiceOffering(csMachine, fd.Spec.Zone.ID)
-	if err != nil {
-		return err
-	}
-
-	err = c.checkLimits(offering)
-	if err != nil {
-		return err
-	}
-
-	if err := c.deployVM(csMachine, capiMachine, fd, affinity, offering, userData); err != nil {
-		return err
-	}
-
-	// ResolveVMInstanceDetails uses a VM metrics request response to fill the CloudStack machine status.
-	// The deployment response is insufficient.
-	return c.ResolveVMInstanceDetails(csMachine)
 }
 
 // findVirtualMachine retrieves a virtual machine by matching its expected name, template, failure
