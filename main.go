@@ -359,6 +359,10 @@ func setupWebhooks(mgr ctrl.Manager) {
 		setupLog.Error(err, "unable to create webhook", "webhook", "CloudStackCluster")
 		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
+	if err := (&infrav1b3.CloudStackClusterTemplate{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "CloudStackClusterTemplate")
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
+	}
 	if err := (&infrav1b3.CloudStackMachine{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "CloudStackMachine")
 		klog.FlushAndExit(klog.ExitFlushTimeout, 1)

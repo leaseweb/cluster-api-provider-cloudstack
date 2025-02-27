@@ -53,48 +53,15 @@ var (
 // Default implements webhook.Defaulter so a webhook will be registered for the type.
 func (r *CloudStackCluster) Default() {
 	cloudstackclusterlog.V(1).Info("entered api default setting webhook", "api resource name", r.Name)
-	// No defaulted values supported yet.
+
+	defaultCloudStackClusterSpec(&r.Spec)
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
 func (r *CloudStackCluster) ValidateCreate() (admission.Warnings, error) {
 	cloudstackclusterlog.V(1).Info("entered validate create webhook", "api resource name", r.Name)
 
-	var errorList field.ErrorList
-
-	// Require FailureDomains and their respective sub-fields.
-	if len(r.Spec.FailureDomains) == 0 {
-		errorList = append(errorList, field.Required(field.NewPath("spec", "FailureDomains"), "FailureDomains"))
-	} else {
-		for _, fdSpec := range r.Spec.FailureDomains { // Require failureDomain names meet k8s qualified name spec.
-			for _, errMsg := range validation.IsDNS1123Subdomain(fdSpec.Name) {
-				errorList = append(errorList, field.Invalid(
-					field.NewPath("spec", "failureDomains", "name"), fdSpec.Name, errMsg))
-			}
-			if fdSpec.Zone.Network.Name == "" && fdSpec.Zone.Network.ID == "" {
-				errorList = append(errorList, field.Required(
-					field.NewPath("spec", "failureDomains", "Zone", "Network"),
-					"each Zone requires a Network specification"))
-			}
-			if fdSpec.ACSEndpoint.Name == "" || fdSpec.ACSEndpoint.Namespace == "" {
-				errorList = append(errorList, field.Required(
-					field.NewPath("spec", "failureDomains", "ACSEndpoint"),
-					"Name and Namespace are required"))
-			}
-			if fdSpec.Zone.Network.CIDR != "" {
-				if _, errMsg := ValidateCIDR(fdSpec.Zone.Network.CIDR); errMsg != nil {
-					errorList = append(errorList, field.Invalid(
-						field.NewPath("spec", "failureDomains", "Zone", "Network"), fdSpec.Zone.Network.CIDR, "must be valid CIDR: "+errMsg.Error()))
-				}
-			}
-			if fdSpec.Zone.Network.Domain != "" {
-				for _, errMsg := range validation.IsDNS1123Subdomain(fdSpec.Zone.Network.Domain) {
-					errorList = append(errorList, field.Invalid(
-						field.NewPath("spec", "failureDomains", "Zone", "Network"), fdSpec.Zone.Network.Domain, errMsg))
-				}
-			}
-		}
-	}
+	errorList := validateCloudStackClusterSpec(r.Spec)
 
 	return nil, webhookutil.AggregateObjErrors(r.GroupVersionKind().GroupKind(), r.Name, errorList)
 }
@@ -189,4 +156,50 @@ func ValidateCIDR(cidr string) (*net.IPNet, error) {
 	}
 
 	return net, nil
+}
+
+func defaultCloudStackClusterSpec(s *CloudStackClusterSpec) {
+	if s.ControlPlaneEndpoint.Port == 0 {
+		s.ControlPlaneEndpoint.Port = 6443
+	}
+}
+
+func validateCloudStackClusterSpec(s CloudStackClusterSpec) field.ErrorList {
+	var errorList field.ErrorList
+
+	// Require FailureDomains and their respective sub-fields.
+	if len(s.FailureDomains) == 0 {
+		errorList = append(errorList, field.Required(field.NewPath("spec", "FailureDomains"), "FailureDomains"))
+	} else {
+		for _, fdSpec := range s.FailureDomains { // Require failureDomain names meet k8s qualified name spec.
+			for _, errMsg := range validation.IsDNS1123Subdomain(fdSpec.Name) {
+				errorList = append(errorList, field.Invalid(
+					field.NewPath("spec", "failureDomains", "name"), fdSpec.Name, errMsg))
+			}
+			if fdSpec.Zone.Network.Name == "" && fdSpec.Zone.Network.ID == "" {
+				errorList = append(errorList, field.Required(
+					field.NewPath("spec", "failureDomains", "Zone", "Network"),
+					"each Zone requires a Network specification"))
+			}
+			if fdSpec.ACSEndpoint.Name == "" || fdSpec.ACSEndpoint.Namespace == "" {
+				errorList = append(errorList, field.Required(
+					field.NewPath("spec", "failureDomains", "ACSEndpoint"),
+					"Name and Namespace are required"))
+			}
+			if fdSpec.Zone.Network.CIDR != "" {
+				if _, errMsg := ValidateCIDR(fdSpec.Zone.Network.CIDR); errMsg != nil {
+					errorList = append(errorList, field.Invalid(
+						field.NewPath("spec", "failureDomains", "Zone", "Network"), fdSpec.Zone.Network.CIDR, "must be valid CIDR: "+errMsg.Error()))
+				}
+			}
+			if fdSpec.Zone.Network.Domain != "" {
+				for _, errMsg := range validation.IsDNS1123Subdomain(fdSpec.Zone.Network.Domain) {
+					errorList = append(errorList, field.Invalid(
+						field.NewPath("spec", "failureDomains", "Zone", "Network"), fdSpec.Zone.Network.Domain, errMsg))
+				}
+			}
+		}
+	}
+
+	return errorList
 }

@@ -22,6 +22,12 @@ func (*CloudStackCluster) Hub() {}
 // Hub marks CloudStackClusterList as a conversion hub.
 func (*CloudStackClusterList) Hub() {}
 
+// Hub marks CloudStackClusterTemplate as a conversion hub.
+func (*CloudStackClusterTemplate) Hub() {}
+
+// Hub marks CloudStackClusterTemplateList as a conversion hub.
+func (*CloudStackClusterTemplateList) Hub() {}
+
 // Hub marks CloudStackMachine as a conversion hub.
 func (*CloudStackMachine) Hub() {}
 
