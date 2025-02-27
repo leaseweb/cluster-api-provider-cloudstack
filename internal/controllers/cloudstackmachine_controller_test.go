@@ -358,6 +358,9 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, dummies.CSFailureDomain1, dummies.CSISONet1, dummies.BootstrapSecret, dummies.CAPIMachine, dummies.CSMachine1, ns)).To(Succeed())
 		}()
 
+		// Check that the CAPI and CloudStack cluster are ready before reconciling.
+		checkClusterReady(ctx, g, testEnv.Client)
+
 		// Check that the machine was created correctly before reconciling.
 		machineKey := client.ObjectKey{Namespace: ns.Name, Name: dummies.CSMachine1.Name}
 		machine := &infrav1.CloudStackMachine{}

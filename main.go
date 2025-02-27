@@ -355,15 +355,19 @@ func setupReconcilers(ctx context.Context, mgr manager.Manager) {
 }
 
 func setupWebhooks(mgr ctrl.Manager) {
-	if err := (&infrav1b3.CloudStackCluster{}).SetupWebhookWithManager(mgr); err != nil {
+	if err := (&infrav1b3.CloudStackClusterWebhook{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "CloudStackCluster")
 		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
-	if err := (&infrav1b3.CloudStackMachine{}).SetupWebhookWithManager(mgr); err != nil {
+	if err := (&infrav1b3.CloudStackClusterTemplateWebhook{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "CloudStackClusterTemplate")
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
+	}
+	if err := (&infrav1b3.CloudStackMachineWebhook{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "CloudStackMachine")
 		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
-	if err := (&infrav1b3.CloudStackMachineTemplate{}).SetupWebhookWithManager(mgr); err != nil {
+	if err := (&infrav1b3.CloudStackMachineTemplateWebhook{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "CloudStackMachineTemplate")
 		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}

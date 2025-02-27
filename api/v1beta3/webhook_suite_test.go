@@ -102,10 +102,10 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).NotTo(HaveOccurred())
 
-	Ω((&infrav1.CloudStackCluster{}).SetupWebhookWithManager(mgr)).Should(Succeed())
-	Ω((&infrav1.CloudStackMachine{}).SetupWebhookWithManager(mgr)).Should(Succeed())
-	Ω((&infrav1.CloudStackMachineTemplate{}).SetupWebhookWithManager(mgr)).Should(Succeed())
-
+	Ω((&infrav1.CloudStackClusterWebhook{}).SetupWebhookWithManager(mgr)).Should(Succeed())
+	Ω((&infrav1.CloudStackMachineWebhook{}).SetupWebhookWithManager(mgr)).Should(Succeed())
+	Ω((&infrav1.CloudStackMachineTemplateWebhook{}).SetupWebhookWithManager(mgr)).Should(Succeed())
+	Ω((&infrav1.CloudStackClusterTemplateWebhook{}).SetupWebhookWithManager(mgr)).Should(Succeed())
 	//+kubebuilder:scaffold:webhook
 
 	go func() {

@@ -61,13 +61,16 @@ func setup() {
 		panic(err)
 	}
 
-	if err := (&infrav1.CloudStackCluster{}).SetupWebhookWithManager(testEnv); err != nil {
+	if err := (&infrav1.CloudStackClusterWebhook{}).SetupWebhookWithManager(testEnv); err != nil {
 		panic(fmt.Sprintf("Unable to setup CloudStackCluster webhook: %v", err))
 	}
-	if err := (&infrav1.CloudStackMachine{}).SetupWebhookWithManager(testEnv); err != nil {
+	if err := (&infrav1.CloudStackClusterTemplateWebhook{}).SetupWebhookWithManager(testEnv); err != nil {
+		panic(fmt.Sprintf("Unable to setup CloudStackClusterTemplate webhook: %v", err))
+	}
+	if err := (&infrav1.CloudStackMachineWebhook{}).SetupWebhookWithManager(testEnv); err != nil {
 		panic(fmt.Sprintf("Unable to setup CloudStackMachine webhook: %v", err))
 	}
-	if err := (&infrav1.CloudStackMachineTemplate{}).SetupWebhookWithManager(testEnv); err != nil {
+	if err := (&infrav1.CloudStackMachineTemplateWebhook{}).SetupWebhookWithManager(testEnv); err != nil {
 		panic(fmt.Sprintf("Unable to setup CloudStackMachineTemplate webhook: %v", err))
 	}
 

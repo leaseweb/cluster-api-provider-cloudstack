@@ -62,6 +62,7 @@ type CloudStackIsolatedNetworkStatus struct {
 	LBRuleID string `json:"loadBalancerRuleID,omitempty"`
 
 	// The IDs of the lb rule used to assign VMs to the lb.
+	//+listType=set
 	LoadBalancerRuleIDs []string `json:"loadBalancerRuleIDs,omitempty"`
 
 	// APIServerLoadBalancer describes the api server load balancer if one exists
