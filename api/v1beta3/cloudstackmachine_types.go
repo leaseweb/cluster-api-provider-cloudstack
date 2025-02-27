@@ -66,6 +66,7 @@ type CloudStackMachineSpec struct {
 	Details map[string]string `json:"details,omitempty"`
 
 	// Optional affinitygroupids for deployVirtualMachine
+	//+listType=set
 	//+optional
 	AffinityGroupIDs []string `json:"affinityGroupIDs,omitempty"`
 

@@ -504,6 +504,7 @@ spec:
                         items:
                           type: string
                         type: array
+                        x-kubernetes-list-type: set
                       cloudstackAffinityRef:
                         description: |-
                           Mutually exclusive parameter with AffinityGroupIDs.

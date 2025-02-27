@@ -30,6 +30,10 @@ var K8sClient client.Client
 
 // CloudStackClusterSpec defines the desired state of CloudStackCluster.
 type CloudStackClusterSpec struct {
+	// FailureDomains is a list of failure domains for the cluster.
+	//+listType=map
+	//+listMapKey=name
+	//+listMapKeyType=string
 	FailureDomains []CloudStackFailureDomainSpec `json:"failureDomains"`
 
 	// The kubernetes control plane endpoint.

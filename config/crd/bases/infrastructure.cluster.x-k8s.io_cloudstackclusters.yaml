@@ -417,6 +417,7 @@ spec:
                 - port
                 type: object
               failureDomains:
+                description: FailureDomains is a list of failure domains for the cluster.
                 items:
                   description: CloudStackFailureDomainSpec defines the desired state
                     of CloudStackFailureDomain.
@@ -489,6 +490,9 @@ spec:
                   - zone
                   type: object
                 type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
             required:
             - controlPlaneEndpoint
             - failureDomains
