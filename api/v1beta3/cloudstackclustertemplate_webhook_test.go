@@ -26,7 +26,10 @@ import (
 	utilfeature "k8s.io/component-base/featuregate/testing"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/feature"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
+
+var ctx = ctrl.SetupSignalHandler()
 
 func TestCloudStackClusterTemplateFeatureGateEnabled(t *testing.T) {
 	defer utilfeature.SetFeatureGateDuringTest(t, feature.Gates, feature.ClusterTopology, true)()
@@ -79,11 +82,14 @@ func TestCloudStackClusterTemplateFeatureGateEnabled(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := tt.template.ValidateCreate()
+			webhook := &CloudStackClusterTemplateWebhook{}
+			warnings, err := webhook.ValidateCreate(ctx, tt.template)
 			if tt.wantError {
 				g.Expect(err).To(HaveOccurred())
+				g.Expect(warnings).To(BeEmpty())
 			} else {
 				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(warnings).To(BeEmpty())
 			}
 		})
 	}
@@ -104,7 +110,8 @@ func TestCloudStackClusterTemplateFeatureGateDisabled(t *testing.T) {
 			},
 		},
 	}
-	warnings, err := cct.ValidateCreate()
+	webhook := &CloudStackClusterTemplateWebhook{}
+	warnings, err := webhook.ValidateCreate(ctx, cct)
 	g.Expect(err).To(HaveOccurred())
 	g.Expect(warnings).To(BeEmpty())
 }
@@ -156,7 +163,8 @@ func TestCloudStackClusterTemplateValidationMetadata(t *testing.T) {
 					},
 				},
 			}
-			warnings, err := cct.ValidateCreate()
+			webhook := &CloudStackClusterTemplateWebhook{}
+			warnings, err := webhook.ValidateCreate(ctx, cct)
 			if tt.expectErr {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(warnings).To(BeEmpty())
@@ -193,7 +201,8 @@ func TestCloudStackClusterTemplateValidateUpdate(t *testing.T) {
 		},
 	}
 
-	warnings, err := modifiedCct.ValidateUpdate(cct)
+	webhook := &CloudStackClusterTemplateWebhook{}
+	warnings, err := webhook.ValidateUpdate(ctx, cct, modifiedCct)
 	g.Expect(err).To(MatchError(MatchRegexp(invalidRegex, "CloudStackClusterTemplate spec.template.spec field is immutable. Please create new resource instead.")))
 	g.Expect(warnings).To(BeEmpty())
 }

@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta3
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
@@ -31,49 +32,67 @@ import (
 
 const cloudStackClusterTemplateImmutableMsg = "CloudStackClusterTemplate spec.template.spec field is immutable. Please create new resource instead."
 
-func (r *CloudStackClusterTemplate) SetupWebhookWithManager(mgr ctrl.Manager) error {
+type CloudStackClusterTemplateWebhook struct{}
+
+func (r *CloudStackClusterTemplateWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
+		For(&CloudStackClusterTemplate{}).
+		WithDefaulter(r).
+		WithValidator(r).
 		Complete()
 }
 
 //+kubebuilder:webhook:path=/mutate-infrastructure-cluster-x-k8s-io-v1beta3-cloudstackclustertemplate,mutating=true,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=cloudstackclustertemplates,verbs=create;update,versions=v1beta3,name=mcloudstackclustertemplate.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Defaulter = &CloudStackClusterTemplate{}
+var _ webhook.CustomDefaulter = &CloudStackClusterTemplateWebhook{}
 
-// Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (r *CloudStackClusterTemplate) Default() {
-	defaultCloudStackClusterSpec(&r.Spec.Template.Spec)
+// Default implements webhook.CustomDefaulter so a webhook will be registered for the type.
+func (r *CloudStackClusterTemplateWebhook) Default(ctx context.Context, objRaw runtime.Object) error {
+	obj, ok := objRaw.(*CloudStackClusterTemplate)
+	if !ok {
+		return apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackClusterTemplate but got a %T", objRaw))
+	}
+	defaultCloudStackClusterSpec(&obj.Spec.Template.Spec)
+
+	return nil
 }
 
 //+kubebuilder:webhook:path=/validate-infrastructure-cluster-x-k8s-io-v1beta3-cloudstackclustertemplate,mutating=false,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=cloudstackclustertemplates,verbs=create;update,versions=v1beta3,name=vcloudstackclustertemplate.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Validator = &CloudStackClusterTemplate{}
+var _ webhook.CustomValidator = &CloudStackClusterTemplateWebhook{}
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (r *CloudStackClusterTemplate) ValidateCreate() (admission.Warnings, error) {
-	allErrs := validateCloudStackClusterSpec(r.Spec.Template.Spec)
+// ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type.
+func (r *CloudStackClusterTemplateWebhook) ValidateCreate(ctx context.Context, objRaw runtime.Object) (admission.Warnings, error) {
+	obj, ok := objRaw.(*CloudStackClusterTemplate)
+	if !ok {
+		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackClusterTemplate but got a %T", objRaw))
+	}
+	allErrs := validateCloudStackClusterSpec(obj.Spec.Template.Spec)
 
-	return nil, webhookutil.AggregateObjErrors(r.GroupVersionKind().GroupKind(), r.Name, allErrs)
+	return nil, webhookutil.AggregateObjErrors(obj.GroupVersionKind().GroupKind(), obj.Name, allErrs)
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *CloudStackClusterTemplate) ValidateUpdate(oldRaw runtime.Object) (admission.Warnings, error) {
+// ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type.
+func (r *CloudStackClusterTemplateWebhook) ValidateUpdate(ctx context.Context, oldRaw runtime.Object, newRaw runtime.Object) (admission.Warnings, error) {
 	var allErrs field.ErrorList
-	old, ok := oldRaw.(*CloudStackClusterTemplate)
+	newObj, ok := newRaw.(*CloudStackClusterTemplate)
+	if !ok {
+		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackClusterTemplate but got a %T", newRaw))
+	}
+	oldObj, ok := oldRaw.(*CloudStackClusterTemplate)
 	if !ok {
 		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackClusterTemplate but got a %T", oldRaw))
 	}
 
-	if !reflect.DeepEqual(r.Spec.Template.Spec, old.Spec.Template.Spec) {
-		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "template", "spec"), r,
+	if !reflect.DeepEqual(newObj.Spec.Template.Spec, oldObj.Spec.Template.Spec) {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "template", "spec"), newObj,
 			cloudStackClusterTemplateImmutableMsg))
 	}
 
-	return nil, webhookutil.AggregateObjErrors(r.GroupVersionKind().GroupKind(), r.Name, allErrs)
+	return nil, webhookutil.AggregateObjErrors(newObj.GroupVersionKind().GroupKind(), newObj.Name, allErrs)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *CloudStackClusterTemplate) ValidateDelete() (admission.Warnings, error) {
+func (r *CloudStackClusterTemplateWebhook) ValidateDelete(ctx context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }

@@ -17,28 +17,29 @@ limitations under the License.
 package v1beta3
 
 import (
+	"context"
 	"fmt"
 	"net"
 
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/cluster-api/util/annotations"
 	ctrl "sigs.k8s.io/controller-runtime"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/webhookutil"
 )
 
-// log is for logging in this package.
-var cloudstackclusterlog = logf.Log.WithName("cloudstackcluster-resource")
+type CloudStackClusterWebhook struct{}
 
-func (r *CloudStackCluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
+func (r *CloudStackClusterWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
+		For(&CloudStackCluster{}).
+		WithDefaulter(r).
+		WithValidator(r).
 		Complete()
 }
 
@@ -46,37 +47,47 @@ func (r *CloudStackCluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:webhook:verbs=create;update,path=/mutate-infrastructure-cluster-x-k8s-io-v1beta3-cloudstackcluster,mutating=true,failurePolicy=fail,matchPolicy=Equivalent,groups=infrastructure.cluster.x-k8s.io,resources=cloudstackclusters,versions=v1beta3,name=default.cloudstackcluster.infrastructure.cluster.x-k8s.io,sideEffects=None,admissionReviewVersions=v1;v1beta1
 
 var (
-	_ webhook.Defaulter = &CloudStackCluster{}
-	_ webhook.Validator = &CloudStackCluster{}
+	_ webhook.CustomDefaulter = &CloudStackClusterWebhook{}
+	_ webhook.CustomValidator = &CloudStackClusterWebhook{}
 )
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (r *CloudStackCluster) Default() {
-	cloudstackclusterlog.V(1).Info("entered api default setting webhook", "api resource name", r.Name)
+func (r *CloudStackClusterWebhook) Default(ctx context.Context, objRaw runtime.Object) error {
+	obj, ok := objRaw.(*CloudStackCluster)
+	if !ok {
+		return apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackCluster but got a %T", objRaw))
+	}
 
-	defaultCloudStackClusterSpec(&r.Spec)
+	defaultCloudStackClusterSpec(&obj.Spec)
+
+	return nil
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (r *CloudStackCluster) ValidateCreate() (admission.Warnings, error) {
-	cloudstackclusterlog.V(1).Info("entered validate create webhook", "api resource name", r.Name)
+func (r *CloudStackClusterWebhook) ValidateCreate(ctx context.Context, objRaw runtime.Object) (admission.Warnings, error) {
+	obj, ok := objRaw.(*CloudStackCluster)
+	if !ok {
+		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackCluster but got a %T", objRaw))
+	}
 
-	errorList := validateCloudStackClusterSpec(r.Spec)
+	errorList := validateCloudStackClusterSpec(obj.Spec)
 
-	return nil, webhookutil.AggregateObjErrors(r.GroupVersionKind().GroupKind(), r.Name, errorList)
+	return nil, webhookutil.AggregateObjErrors(obj.GroupVersionKind().GroupKind(), obj.Name, errorList)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *CloudStackCluster) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
-	cloudstackclusterlog.V(1).Info("entered validate update webhook", "api resource name", r.Name)
-
-	spec := r.Spec
-
-	oldCluster, ok := old.(*CloudStackCluster)
+func (r *CloudStackClusterWebhook) ValidateUpdate(ctx context.Context, oldRaw runtime.Object, newRaw runtime.Object) (admission.Warnings, error) {
+	old, ok := oldRaw.(*CloudStackCluster)
 	if !ok {
-		return nil, errors.NewBadRequest(fmt.Sprintf("expected a CloudStackCluster but got a %T", old))
+		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackCluster but got a %T", oldRaw))
 	}
-	oldSpec := oldCluster.Spec
+	new, ok := newRaw.(*CloudStackCluster)
+	if !ok {
+		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackCluster but got a %T", newRaw))
+	}
+	spec := new.Spec
+
+	oldSpec := old.Spec
 
 	errorList := field.ErrorList(nil)
 
@@ -92,20 +103,18 @@ func (r *CloudStackCluster) ValidateUpdate(old runtime.Object) (admission.Warnin
 			"controlplaneendpoint.port", errorList)
 	}
 
-	if annotations.IsExternallyManaged(oldCluster) && !annotations.IsExternallyManaged(r) {
+	if annotations.IsExternallyManaged(old) && !annotations.IsExternallyManaged(new) {
 		errorList = append(errorList,
 			field.Forbidden(field.NewPath("metadata", "annotations"),
 				"removal of externally managed (managed-by) annotation is not allowed"),
 		)
 	}
 
-	return nil, webhookutil.AggregateObjErrors(r.GroupVersionKind().GroupKind(), r.Name, errorList)
+	return nil, webhookutil.AggregateObjErrors(new.GroupVersionKind().GroupKind(), new.Name, errorList)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *CloudStackCluster) ValidateDelete() (admission.Warnings, error) {
-	cloudstackclusterlog.V(1).Info("entered validate delete webhook", "api resource name", r.Name)
-	// No deletion validations.  Deletion webhook not enabled.
+func (r *CloudStackClusterWebhook) ValidateDelete(ctx context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }
 
