@@ -32,6 +32,8 @@ import (
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/webhookutil"
 )
 
+const cloudStackMachineTemplateImmutableMsg = "CloudStackMachineTemplate spec.template.spec field is immutable. Please create new resource instead."
+
 // log is for logging in this package.
 var cloudstackmachinetemplatelog = logf.Log.WithName("cloudstackmachinetemplate-resource")
 
@@ -81,36 +83,21 @@ func (r *CloudStackMachineTemplate) ValidateCreate() (admission.Warnings, error)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *CloudStackMachineTemplate) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func (r *CloudStackMachineTemplate) ValidateUpdate(oldRaw runtime.Object) (admission.Warnings, error) {
 	cloudstackmachinetemplatelog.V(1).Info("entered validate update webhook", "api resource name", r.Name)
 
-	oldMachineTemplate, ok := old.(*CloudStackMachineTemplate)
+	var allErrs field.ErrorList
+	old, ok := oldRaw.(*CloudStackMachineTemplate)
 	if !ok {
-		return nil, errors.NewBadRequest(fmt.Sprintf("expected a CloudStackMachineTemplate but got a %T", old))
+		return nil, errors.NewBadRequest(fmt.Sprintf("expected a CloudStackMachineTemplate but got a %T", oldRaw))
 	}
 
-	// CloudStackMachineTemplateSpec.CloudStackMachineTemplateResource.CloudStackMachineSpec.
-	spec := r.Spec.Template.Spec
-	oldSpec := oldMachineTemplate.Spec.Template.Spec
-
-	errorList := field.ErrorList(nil)
-	errorList = webhookutil.EnsureEqualStrings(spec.Offering.ID, oldSpec.Offering.ID, "offering", errorList)
-	errorList = webhookutil.EnsureEqualStrings(spec.Offering.Name, oldSpec.Offering.Name, "offering", errorList)
-	if spec.DiskOffering != nil {
-		errorList = webhookutil.EnsureEqualStrings(spec.DiskOffering.ID, oldSpec.DiskOffering.ID, "diskOffering", errorList)
-		errorList = webhookutil.EnsureEqualStrings(spec.DiskOffering.Name, oldSpec.DiskOffering.Name, "diskOffering", errorList)
-	}
-	errorList = webhookutil.EnsureEqualStrings(spec.SSHKey, oldSpec.SSHKey, "sshkey", errorList)
-	errorList = webhookutil.EnsureEqualStrings(spec.Template.ID, oldSpec.Template.ID, "template", errorList)
-	errorList = webhookutil.EnsureEqualStrings(spec.Template.Name, oldSpec.Template.Name, "template", errorList)
-	errorList = webhookutil.EnsureEqualMapStringString(spec.Details, oldSpec.Details, "details", errorList)
-	errorList = webhookutil.EnsureEqualStrings(spec.Affinity, oldSpec.Affinity, "affinity", errorList)
-
-	if !reflect.DeepEqual(spec.AffinityGroupIDs, oldSpec.AffinityGroupIDs) { // Equivalent to other Ensure funcs.
-		errorList = append(errorList, field.Forbidden(field.NewPath("spec", "AffinityGroupIDs"), "AffinityGroupIDs"))
+	if !reflect.DeepEqual(r.Spec.Template.Spec, old.Spec.Template.Spec) {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "template", "spec"), r,
+			cloudStackMachineTemplateImmutableMsg))
 	}
 
-	return nil, webhookutil.AggregateObjErrors(r.GroupVersionKind().GroupKind(), r.Name, errorList)
+	return nil, webhookutil.AggregateObjErrors(r.GroupVersionKind().GroupKind(), r.Name, allErrs)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
