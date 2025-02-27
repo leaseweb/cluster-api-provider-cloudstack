@@ -81,7 +81,7 @@ func TestCloudStackClusterTemplateFeatureGateEnabled(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(_ *testing.T) {
 			webhook := &CloudStackClusterTemplateWebhook{}
 			warnings, err := webhook.ValidateCreate(ctx, tt.template)
 			if tt.wantError {

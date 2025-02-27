@@ -45,7 +45,7 @@ func (r *CloudStackMachineWebhook) SetupWebhookWithManager(mgr ctrl.Manager) err
 var _ webhook.CustomValidator = &CloudStackMachineWebhook{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (r *CloudStackMachineWebhook) ValidateCreate(ctx context.Context, objRaw runtime.Object) (admission.Warnings, error) {
+func (r *CloudStackMachineWebhook) ValidateCreate(_ context.Context, objRaw runtime.Object) (admission.Warnings, error) {
 	obj, ok := objRaw.(*CloudStackMachine)
 	if !ok {
 		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackMachine but got a %T", objRaw))
@@ -63,44 +63,44 @@ func (r *CloudStackMachineWebhook) ValidateCreate(ctx context.Context, objRaw ru
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *CloudStackMachineWebhook) ValidateUpdate(ctx context.Context, oldRaw runtime.Object, newRaw runtime.Object) (admission.Warnings, error) {
-	old, ok := oldRaw.(*CloudStackMachine)
+func (r *CloudStackMachineWebhook) ValidateUpdate(_ context.Context, oldRaw runtime.Object, newRaw runtime.Object) (admission.Warnings, error) {
+	oldObj, ok := oldRaw.(*CloudStackMachine)
 	if !ok {
 		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackMachine but got a %T", oldRaw))
 	}
-	new, ok := newRaw.(*CloudStackMachine)
+	newObj, ok := newRaw.(*CloudStackMachine)
 	if !ok {
 		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackMachine but got a %T", newRaw))
 	}
 	var errorList field.ErrorList
 
-	oldSpec := old.Spec
+	oldSpec := oldObj.Spec
 
-	errorList = webhookutil.EnsureEqualStrings(new.Spec.Offering.ID, oldSpec.Offering.ID, "offering", errorList)
-	errorList = webhookutil.EnsureEqualStrings(new.Spec.Offering.Name, oldSpec.Offering.Name, "offering", errorList)
-	if new.Spec.DiskOffering != nil {
-		errorList = webhookutil.EnsureEqualStrings(new.Spec.DiskOffering.ID, oldSpec.DiskOffering.ID, "diskOffering", errorList)
-		errorList = webhookutil.EnsureEqualStrings(new.Spec.DiskOffering.Name, oldSpec.DiskOffering.Name, "diskOffering", errorList)
-		errorList = webhookutil.EnsureIntFieldsAreNotNegative(new.Spec.DiskOffering.CustomSize, "customSizeInGB", errorList)
-		errorList = webhookutil.EnsureEqualStrings(new.Spec.DiskOffering.MountPath, oldSpec.DiskOffering.MountPath, "mountPath", errorList)
-		errorList = webhookutil.EnsureEqualStrings(new.Spec.DiskOffering.Device, oldSpec.DiskOffering.Device, "device", errorList)
-		errorList = webhookutil.EnsureEqualStrings(new.Spec.DiskOffering.Filesystem, oldSpec.DiskOffering.Filesystem, "filesystem", errorList)
-		errorList = webhookutil.EnsureEqualStrings(new.Spec.DiskOffering.Label, oldSpec.DiskOffering.Label, "label", errorList)
+	errorList = webhookutil.EnsureEqualStrings(newObj.Spec.Offering.ID, oldSpec.Offering.ID, "offering", errorList)
+	errorList = webhookutil.EnsureEqualStrings(newObj.Spec.Offering.Name, oldSpec.Offering.Name, "offering", errorList)
+	if newObj.Spec.DiskOffering != nil {
+		errorList = webhookutil.EnsureEqualStrings(newObj.Spec.DiskOffering.ID, oldSpec.DiskOffering.ID, "diskOffering", errorList)
+		errorList = webhookutil.EnsureEqualStrings(newObj.Spec.DiskOffering.Name, oldSpec.DiskOffering.Name, "diskOffering", errorList)
+		errorList = webhookutil.EnsureIntFieldsAreNotNegative(newObj.Spec.DiskOffering.CustomSize, "customSizeInGB", errorList)
+		errorList = webhookutil.EnsureEqualStrings(newObj.Spec.DiskOffering.MountPath, oldSpec.DiskOffering.MountPath, "mountPath", errorList)
+		errorList = webhookutil.EnsureEqualStrings(newObj.Spec.DiskOffering.Device, oldSpec.DiskOffering.Device, "device", errorList)
+		errorList = webhookutil.EnsureEqualStrings(newObj.Spec.DiskOffering.Filesystem, oldSpec.DiskOffering.Filesystem, "filesystem", errorList)
+		errorList = webhookutil.EnsureEqualStrings(newObj.Spec.DiskOffering.Label, oldSpec.DiskOffering.Label, "label", errorList)
 	}
-	errorList = webhookutil.EnsureEqualStrings(new.Spec.SSHKey, oldSpec.SSHKey, "sshkey", errorList)
-	errorList = webhookutil.EnsureEqualStrings(new.Spec.Template.ID, oldSpec.Template.ID, "template", errorList)
-	errorList = webhookutil.EnsureEqualStrings(new.Spec.Template.Name, oldSpec.Template.Name, "template", errorList)
-	errorList = webhookutil.EnsureEqualMapStringString(new.Spec.Details, oldSpec.Details, "details", errorList)
-	errorList = webhookutil.EnsureEqualStrings(new.Spec.Affinity, oldSpec.Affinity, "affinity", errorList)
+	errorList = webhookutil.EnsureEqualStrings(newObj.Spec.SSHKey, oldSpec.SSHKey, "sshkey", errorList)
+	errorList = webhookutil.EnsureEqualStrings(newObj.Spec.Template.ID, oldSpec.Template.ID, "template", errorList)
+	errorList = webhookutil.EnsureEqualStrings(newObj.Spec.Template.Name, oldSpec.Template.Name, "template", errorList)
+	errorList = webhookutil.EnsureEqualMapStringString(newObj.Spec.Details, oldSpec.Details, "details", errorList)
+	errorList = webhookutil.EnsureEqualStrings(newObj.Spec.Affinity, oldSpec.Affinity, "affinity", errorList)
 
-	if !reflect.DeepEqual(new.Spec.AffinityGroupIDs, oldSpec.AffinityGroupIDs) { // Equivalent to other Ensure funcs.
+	if !reflect.DeepEqual(newObj.Spec.AffinityGroupIDs, oldSpec.AffinityGroupIDs) { // Equivalent to other Ensure funcs.
 		errorList = append(errorList, field.Forbidden(field.NewPath("spec", "AffinityGroupIDs"), "AffinityGroupIDs"))
 	}
 
-	return nil, webhookutil.AggregateObjErrors(new.GroupVersionKind().GroupKind(), new.Name, errorList)
+	return nil, webhookutil.AggregateObjErrors(newObj.GroupVersionKind().GroupKind(), newObj.Name, errorList)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *CloudStackMachineWebhook) ValidateDelete(ctx context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (r *CloudStackMachineWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }

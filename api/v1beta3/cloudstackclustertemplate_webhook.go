@@ -24,10 +24,11 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/webhookutil"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
+	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/webhookutil"
 )
 
 const cloudStackClusterTemplateImmutableMsg = "CloudStackClusterTemplate spec.template.spec field is immutable. Please create new resource instead."
@@ -47,7 +48,7 @@ func (r *CloudStackClusterTemplateWebhook) SetupWebhookWithManager(mgr ctrl.Mana
 var _ webhook.CustomDefaulter = &CloudStackClusterTemplateWebhook{}
 
 // Default implements webhook.CustomDefaulter so a webhook will be registered for the type.
-func (r *CloudStackClusterTemplateWebhook) Default(ctx context.Context, objRaw runtime.Object) error {
+func (r *CloudStackClusterTemplateWebhook) Default(_ context.Context, objRaw runtime.Object) error {
 	obj, ok := objRaw.(*CloudStackClusterTemplate)
 	if !ok {
 		return apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackClusterTemplate but got a %T", objRaw))
@@ -62,7 +63,7 @@ func (r *CloudStackClusterTemplateWebhook) Default(ctx context.Context, objRaw r
 var _ webhook.CustomValidator = &CloudStackClusterTemplateWebhook{}
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type.
-func (r *CloudStackClusterTemplateWebhook) ValidateCreate(ctx context.Context, objRaw runtime.Object) (admission.Warnings, error) {
+func (r *CloudStackClusterTemplateWebhook) ValidateCreate(_ context.Context, objRaw runtime.Object) (admission.Warnings, error) {
 	obj, ok := objRaw.(*CloudStackClusterTemplate)
 	if !ok {
 		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackClusterTemplate but got a %T", objRaw))
@@ -73,7 +74,7 @@ func (r *CloudStackClusterTemplateWebhook) ValidateCreate(ctx context.Context, o
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type.
-func (r *CloudStackClusterTemplateWebhook) ValidateUpdate(ctx context.Context, oldRaw runtime.Object, newRaw runtime.Object) (admission.Warnings, error) {
+func (r *CloudStackClusterTemplateWebhook) ValidateUpdate(_ context.Context, oldRaw runtime.Object, newRaw runtime.Object) (admission.Warnings, error) {
 	var allErrs field.ErrorList
 	newObj, ok := newRaw.(*CloudStackClusterTemplate)
 	if !ok {
@@ -93,6 +94,6 @@ func (r *CloudStackClusterTemplateWebhook) ValidateUpdate(ctx context.Context, o
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *CloudStackClusterTemplateWebhook) ValidateDelete(ctx context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (r *CloudStackClusterTemplateWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }

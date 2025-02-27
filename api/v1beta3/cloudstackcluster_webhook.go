@@ -52,7 +52,7 @@ var (
 )
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (r *CloudStackClusterWebhook) Default(ctx context.Context, objRaw runtime.Object) error {
+func (r *CloudStackClusterWebhook) Default(_ context.Context, objRaw runtime.Object) error {
 	obj, ok := objRaw.(*CloudStackCluster)
 	if !ok {
 		return apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackCluster but got a %T", objRaw))
@@ -64,7 +64,7 @@ func (r *CloudStackClusterWebhook) Default(ctx context.Context, objRaw runtime.O
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (r *CloudStackClusterWebhook) ValidateCreate(ctx context.Context, objRaw runtime.Object) (admission.Warnings, error) {
+func (r *CloudStackClusterWebhook) ValidateCreate(_ context.Context, objRaw runtime.Object) (admission.Warnings, error) {
 	obj, ok := objRaw.(*CloudStackCluster)
 	if !ok {
 		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackCluster but got a %T", objRaw))
@@ -76,18 +76,18 @@ func (r *CloudStackClusterWebhook) ValidateCreate(ctx context.Context, objRaw ru
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *CloudStackClusterWebhook) ValidateUpdate(ctx context.Context, oldRaw runtime.Object, newRaw runtime.Object) (admission.Warnings, error) {
-	old, ok := oldRaw.(*CloudStackCluster)
+func (r *CloudStackClusterWebhook) ValidateUpdate(_ context.Context, oldRaw runtime.Object, newRaw runtime.Object) (admission.Warnings, error) {
+	oldObj, ok := oldRaw.(*CloudStackCluster)
 	if !ok {
 		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackCluster but got a %T", oldRaw))
 	}
-	new, ok := newRaw.(*CloudStackCluster)
+	newObj, ok := newRaw.(*CloudStackCluster)
 	if !ok {
 		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackCluster but got a %T", newRaw))
 	}
-	spec := new.Spec
+	spec := newObj.Spec
 
-	oldSpec := old.Spec
+	oldSpec := oldObj.Spec
 
 	errorList := field.ErrorList(nil)
 
@@ -103,18 +103,18 @@ func (r *CloudStackClusterWebhook) ValidateUpdate(ctx context.Context, oldRaw ru
 			"controlplaneendpoint.port", errorList)
 	}
 
-	if annotations.IsExternallyManaged(old) && !annotations.IsExternallyManaged(new) {
+	if annotations.IsExternallyManaged(oldObj) && !annotations.IsExternallyManaged(newObj) {
 		errorList = append(errorList,
 			field.Forbidden(field.NewPath("metadata", "annotations"),
 				"removal of externally managed (managed-by) annotation is not allowed"),
 		)
 	}
 
-	return nil, webhookutil.AggregateObjErrors(new.GroupVersionKind().GroupKind(), new.Name, errorList)
+	return nil, webhookutil.AggregateObjErrors(newObj.GroupVersionKind().GroupKind(), newObj.Name, errorList)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *CloudStackClusterWebhook) ValidateDelete(ctx context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (r *CloudStackClusterWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }
 
