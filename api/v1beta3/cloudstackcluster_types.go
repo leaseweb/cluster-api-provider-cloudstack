@@ -53,9 +53,12 @@ type CloudStackClusterStatus struct {
 	Ready bool `json:"ready"`
 }
 
-//+kubebuilder:object:root=true
+//+kubebuilder:resource:path=cloudstackclusters,scope=Namespaced,categories=cluster-api,shortName=cscluster
 //+kubebuilder:subresource:status
 //+kubebuilder:storageversion
+//+kubebuilder:object:root=true
+//+kubebuilder:printcolumn:name="Cluster",type="string",JSONPath=".metadata.labels['cluster\\.x-k8s\\.io/cluster-name']",description="Cluster"
+//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="Time duration since creation of CloudStackCluster"
 
 // CloudStackCluster is the Schema for the cloudstackclusters API.
 type CloudStackCluster struct {

@@ -8,9 +8,13 @@ metadata:
 spec:
   group: infrastructure.cluster.x-k8s.io
   names:
+    categories:
+    - cluster-api
     kind: CloudStackMachineTemplate
     listKind: CloudStackMachineTemplateList
     plural: cloudstackmachinetemplates
+    shortNames:
+    - csmt
     singular: cloudstackmachinetemplate
   scope: Namespaced
   versions:
@@ -426,7 +430,12 @@ spec:
     storage: false
     subresources:
       status: {}
-  - name: v1beta3
+  - additionalPrinterColumns:
+    - description: Time duration since creation of CloudStackMachineTemplate
+      jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1beta3
     schema:
       openAPIV3Schema:
         description: CloudStackMachineTemplate is the Schema for the cloudstackmachinetemplates
@@ -642,5 +651,4 @@ spec:
         type: object
     served: true
     storage: true
-    subresources:
-      status: {}
+    subresources: {}
