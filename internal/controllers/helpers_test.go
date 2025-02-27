@@ -17,10 +17,15 @@ limitations under the License.
 package controllers
 
 import (
+	"context"
+
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/types"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
 )
 
@@ -28,6 +33,40 @@ import (
 func setClusterReady(g *WithT, client client.Client) {
 	setCAPIClusterReady(g, client)
 	setCloudStackClusterReady(g, client)
+}
+
+// checkClusterReady checks if the CAPI and CloudStack cluster are ready.
+func checkClusterReady(ctx context.Context, g *WithT, client client.Client) {
+	checkCAPIClusterReady(ctx, g, client)
+	checkCloudStackClusterReady(ctx, g, client)
+}
+
+// checkCAPIClusterReady checks if the CAPI cluster is ready.
+func checkCAPIClusterReady(ctx context.Context, g *WithT, client client.Client) {
+	g.Eventually(func() bool {
+		capiCluster := &clusterv1.Cluster{}
+		if err := client.Get(ctx, types.NamespacedName{Namespace: dummies.CAPICluster.Namespace, Name: dummies.CAPICluster.Name}, capiCluster); err == nil {
+			if capiCluster.Status.InfrastructureReady {
+				return true
+			}
+		}
+
+		return false
+	}, timeout).Should(BeTrue())
+}
+
+// checkCloudStackClusterReady checks if the CloudStack cluster is ready.
+func checkCloudStackClusterReady(ctx context.Context, g *WithT, client client.Client) {
+	g.Eventually(func() bool {
+		csCluster := &infrav1.CloudStackCluster{}
+		if err := client.Get(ctx, types.NamespacedName{Namespace: dummies.CSCluster.Namespace, Name: dummies.CSCluster.Name}, csCluster); err == nil {
+			if csCluster.Status.Ready {
+				return true
+			}
+		}
+
+		return false
+	}, timeout).Should(BeTrue())
 }
 
 // setCAPIClusterReady patches the cluster with ready status true.
