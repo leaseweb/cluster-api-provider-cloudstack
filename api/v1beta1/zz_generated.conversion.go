@@ -764,6 +764,7 @@ func autoConvert_v1beta3_CloudStackMachineStatus_To_v1beta1_CloudStackMachineSta
 	// WARNING: in.Reason requires manual conversion: does not exist in peer-type
 	// WARNING: in.FailureReason requires manual conversion: does not exist in peer-type
 	// WARNING: in.FailureMessage requires manual conversion: does not exist in peer-type
+	// WARNING: in.Conditions requires manual conversion: does not exist in peer-type
 	return nil
 }
 
