@@ -55,6 +55,20 @@ type CloudStackClusterStatus struct {
 	// Reflects the readiness of the CS cluster.
 	//+optional
 	Ready bool `json:"ready"`
+
+	// Conditions defines current service state of the CloudStackCluster.
+	//+optional
+	Conditions clusterv1.Conditions `json:"conditions,omitempty"`
+}
+
+// GetConditions returns the conditions for the CloudStackCluster.
+func (r *CloudStackCluster) GetConditions() clusterv1.Conditions {
+	return r.Status.Conditions
+}
+
+// SetConditions sets the conditions for the CloudStackCluster.
+func (r *CloudStackCluster) SetConditions(conditions clusterv1.Conditions) {
+	r.Status.Conditions = conditions
 }
 
 //+kubebuilder:resource:path=cloudstackclusters,scope=Namespaced,categories=cluster-api,shortName=cscluster

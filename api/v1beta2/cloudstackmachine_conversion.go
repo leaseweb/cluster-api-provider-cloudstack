@@ -17,6 +17,9 @@ limitations under the License.
 package v1beta2
 
 import (
+	unsafe "unsafe"
+
+	corev1 "k8s.io/api/core/v1"
 	machineryconversion "k8s.io/apimachinery/pkg/conversion"
 	utilconversion "sigs.k8s.io/cluster-api/util/conversion"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
@@ -91,6 +94,13 @@ func Convert_v1beta2_CloudStackMachineSpec_To_v1beta3_CloudStackMachineSpec(in *
 	return autoConvert_v1beta2_CloudStackMachineSpec_To_v1beta3_CloudStackMachineSpec(in, out, s)
 }
 
-func Convert_v1beta3_CloudStackMachineStatus_To_v1beta2_CloudStackMachineStatus(in *v1beta3.CloudStackMachineStatus, out *CloudStackMachineStatus, s machineryconversion.Scope) error {
-	return autoConvert_v1beta3_CloudStackMachineStatus_To_v1beta2_CloudStackMachineStatus(in, out, s)
+func Convert_v1beta3_CloudStackMachineStatus_To_v1beta2_CloudStackMachineStatus(in *v1beta3.CloudStackMachineStatus, out *CloudStackMachineStatus, _ machineryconversion.Scope) error {
+	out.Ready = in.Ready
+	out.Addresses = *(*[]corev1.NodeAddress)(unsafe.Pointer(&in.Addresses))
+	out.InstanceState = in.InstanceState
+	out.InstanceStateLastUpdated = in.InstanceStateLastUpdated
+	out.Status = (*string)(unsafe.Pointer(in.Status))
+	out.Reason = (*string)(unsafe.Pointer(in.Reason))
+
+	return nil
 }

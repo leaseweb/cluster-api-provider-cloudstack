@@ -32,6 +32,7 @@ import (
 	capierrors "sigs.k8s.io/cluster-api/errors"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
+	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -154,7 +155,31 @@ func (s *MachineScope) IsReady() bool {
 
 // PatchObject persists the machine configuration and status.
 func (s *MachineScope) PatchObject() error {
-	return s.patchHelper.Patch(context.TODO(), s.CloudStackMachine)
+	// Always update the readyCondition by summarizing the state of other conditions.
+	// A step counter is added to represent progress during the provisioning process (instead we are hiding during the deletion process).
+	// At a later stage, we will add more conditions indicating the readiness of other resources security groups etc.
+	applicableConditions := []clusterv1.ConditionType{
+		infrav1.InstanceReadyCondition,
+	}
+
+	if s.IsControlPlane() {
+		applicableConditions = append(applicableConditions, infrav1.LoadBalancerAttachedCondition)
+	}
+
+	conditions.SetSummary(s.CloudStackMachine,
+		conditions.WithConditions(applicableConditions...),
+		conditions.WithStepCounterIf(s.CloudStackMachine.ObjectMeta.DeletionTimestamp.IsZero()),
+	)
+
+	return s.patchHelper.Patch(
+		context.TODO(),
+		s.CloudStackMachine,
+		patch.WithOwnedConditions{Conditions: []clusterv1.ConditionType{
+			clusterv1.ReadyCondition,
+			infrav1.InstanceReadyCondition,
+			infrav1.LoadBalancerAttachedCondition,
+		}},
+	)
 }
 
 // Close the MachineScope by updating the machine spec, machine status.
