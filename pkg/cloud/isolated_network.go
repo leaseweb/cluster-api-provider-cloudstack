@@ -803,10 +803,11 @@ func (c *client) AssignVMToLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedN
 		}
 
 		if !found {
-			// Assign to Load Balancer.
-			p := c.cs.LoadBalancer.NewAssignToLoadBalancerRuleParams(lbRuleID)
+			// Assign to Load Balancer. Use the async client to wait for the operation to complete,
+			// so we can return a bool indicating whether an instance was actually assigned.
+			p := c.csAsync.LoadBalancer.NewAssignToLoadBalancerRuleParams(lbRuleID)
 			p.SetVirtualmachineids([]string{instanceID})
-			if resp, err := c.cs.LoadBalancer.AssignToLoadBalancerRule(p); err != nil {
+			if resp, err := c.csAsync.LoadBalancer.AssignToLoadBalancerRule(p); err != nil {
 				c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
 				return false, err
@@ -841,10 +842,11 @@ func (c *client) RemoveVMFromLoadBalancerRules(isoNet *infrav1.CloudStackIsolate
 		}
 
 		if found {
-			// Remove from Load Balancer.
-			p := c.cs.LoadBalancer.NewRemoveFromLoadBalancerRuleParams(lbRuleID)
+			// Remove from Load Balancer. Use the async client to wait for the operation to complete,
+			// so we can return a bool indicating whether an instance was actually removed.
+			p := c.csAsync.LoadBalancer.NewRemoveFromLoadBalancerRuleParams(lbRuleID)
 			p.SetVirtualmachineids([]string{instanceID})
-			if resp, err := c.cs.LoadBalancer.RemoveFromLoadBalancerRule(p); err != nil {
+			if resp, err := c.csAsync.LoadBalancer.RemoveFromLoadBalancerRule(p); err != nil {
 				c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
 				return false, err
