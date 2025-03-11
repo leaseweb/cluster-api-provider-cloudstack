@@ -21,6 +21,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/errors"
 )
 
@@ -178,6 +179,20 @@ type CloudStackMachineStatus struct {
 	// controller's output.
 	// +optional
 	FailureMessage *string `json:"failureMessage,omitempty"`
+
+	// Conditions defines current service state of the CloudStackMachine.
+	//+optional
+	Conditions clusterv1.Conditions `json:"conditions,omitempty"`
+}
+
+// GetConditions returns the conditions for the CloudStackMachine.
+func (r *CloudStackMachine) GetConditions() clusterv1.Conditions {
+	return r.Status.Conditions
+}
+
+// SetConditions sets the conditions for the CloudStackMachine.
+func (r *CloudStackMachine) SetConditions(conditions clusterv1.Conditions) {
+	r.Status.Conditions = conditions
 }
 
 // TimeSinceLastStateChange returns the amount of time that's elapsed since the state was last updated.  If the state

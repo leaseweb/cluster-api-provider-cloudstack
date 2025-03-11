@@ -31,6 +31,7 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
+	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/predicates"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -126,12 +127,6 @@ func (r *CloudStackClusterReconciler) Reconcile(ctx context.Context, req ctrl.Re
 }
 
 func (r *CloudStackClusterReconciler) reconcileDelete(ctx context.Context, scope *scope.ClusterScope) (ctrl.Result, error) {
-	// Skip deletion if finalizer is not present.
-	if !controllerutil.ContainsFinalizer(scope.CloudStackCluster, infrav1.ClusterFinalizer) {
-		scope.Info("No finalizer on CloudStackCluster, skipping deletion reconciliation")
-		return ctrl.Result{}, nil
-	}
-
 	scope.Info("Reconcile CloudStackCluster deletion")
 
 	fds := &infrav1.CloudStackFailureDomainList{}
@@ -171,6 +166,7 @@ func (r *CloudStackClusterReconciler) reconcileNormal(ctx context.Context, scope
 		metaHashName := infrav1.FailureDomainHashedMetaName(fdSpec.Name, scope.KubernetesClusterName())
 		if err := r.CreateFailureDomain(ctx, scope, fdSpec); err != nil {
 			if !apierrors.IsAlreadyExists(err) {
+				conditions.MarkFalse(scope.CloudStackCluster, infrav1.FailureDomainsReadyCondition, infrav1.FailureDomainsErrorReason, clusterv1.ConditionSeverityError, err.Error())
 				return ctrl.Result{}, errors.Wrap(err, "creating CloudStackFailureDomains")
 			}
 		}
@@ -184,20 +180,26 @@ func (r *CloudStackClusterReconciler) reconcileNormal(ctx context.Context, scope
 
 	fds := &infrav1.CloudStackFailureDomainList{}
 	if err := r.GetFailureDomains(ctx, scope, fds); err != nil {
+		conditions.MarkFalse(scope.CloudStackCluster, infrav1.FailureDomainsReadyCondition, infrav1.FailureDomainsErrorReason, clusterv1.ConditionSeverityError, err.Error())
 		return ctrl.Result{}, err
 	}
 
 	// Delete any failure domains that are no longer listed under the CloudStackCluster's spec.
 	if err := r.DeleteRemovedFailureDomains(ctx, scope, fds); err != nil {
+		conditions.MarkFalse(scope.CloudStackCluster, infrav1.FailureDomainsReadyCondition, infrav1.FailureDomainsDeletionFailedReason, clusterv1.ConditionSeverityError, err.Error())
 		return ctrl.Result{}, err
 	}
 
 	// Verify that all required failure domains are present and ready.
 	if err := r.VerifyFailureDomainsExist(scope, fds); err != nil {
+		conditions.MarkFalse(scope.CloudStackCluster, infrav1.FailureDomainsReadyCondition, infrav1.FailureDomainsNotReadyReason, clusterv1.ConditionSeverityWarning, err.Error())
 		scope.Info(fmt.Sprintf("%s, requeueing.", err.Error()))
 
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
+
+	// Mark failure domains as ready
+	conditions.MarkTrue(scope.CloudStackCluster, infrav1.FailureDomainsReadyCondition)
 
 	scope.SetReady()
 

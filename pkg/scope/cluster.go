@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -112,7 +113,26 @@ func (s *ClusterScope) SetNotReady() {
 
 // PatchObject persists the cluster configuration and status.
 func (s *ClusterScope) PatchObject() error {
-	return s.patchHelper.Patch(context.TODO(), s.CloudStackCluster)
+	// Always update the readyCondition by summarizing the state of other conditions.
+	// A step counter is added to represent progress during the provisioning process (disabled during deletion).
+	// At a later stage, we will add more conditions indicating the readiness of other resources like networks, loadbalancers, etc.
+	applicableConditions := []clusterv1.ConditionType{
+		infrav1.FailureDomainsReadyCondition,
+	}
+
+	conditions.SetSummary(s.CloudStackCluster,
+		conditions.WithConditions(applicableConditions...),
+		conditions.WithStepCounterIf(s.CloudStackCluster.DeletionTimestamp.IsZero()),
+	)
+
+	return s.patchHelper.Patch(
+		context.TODO(),
+		s.CloudStackCluster,
+		patch.WithOwnedConditions{Conditions: []clusterv1.ConditionType{
+			clusterv1.ReadyCondition,
+			infrav1.FailureDomainsReadyCondition,
+		}},
+	)
 }
 
 // Close the ClusterScope by updating the cluster spec, cluster status.
