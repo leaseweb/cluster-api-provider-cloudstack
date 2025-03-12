@@ -100,7 +100,13 @@ func (r *CloudStackIsolatedNetworkReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, err
 	}
 
-	clientScope, err := r.ScopeFactory.NewClientScopeForFailureDomainByName(ctx, r.Client, csin.Spec.FailureDomainName, csin.Namespace, cluster.Name)
+	fd, err := GetFailureDomainByName(ctx, r.Client, csin.Spec.FailureDomainName, csin.Namespace, cluster.Name)
+	if err != nil {
+		log.Error(err, "Failed to get failure domain", "fdname", csin.Spec.FailureDomainName)
+		return ctrl.Result{}, err
+	}
+
+	clientScope, err := r.ScopeFactory.NewClientScopeForFailureDomain(ctx, r.Client, fd)
 	if err != nil {
 		log.Error(err, "Failed to create client scope")
 		return ctrl.Result{}, err
@@ -112,7 +118,7 @@ func (r *CloudStackIsolatedNetworkReconciler) Reconcile(ctx context.Context, req
 		Logger:                    log,
 		Cluster:                   cluster,
 		CloudStackCluster:         csCluster,
-		CloudStackFailureDomain:   clientScope.FailureDomain(),
+		CloudStackFailureDomain:   fd,
 		CloudStackIsolatedNetwork: csin,
 		CSClients:                 clientScope.CSClients(),
 		ControllerName:            "cloudstackisolatednetwork",

@@ -69,14 +69,12 @@ func NewCSClients(csClient, csUser cloud.Client) CSClients {
 
 type Scope interface {
 	CSClients() CSClientsProvider
-	FailureDomain() *infrav1.CloudStackFailureDomain
 	ProjectID() string
 }
 
 // ClientScopeFactory instantiates a new Scope using credentials from a failure domain.
 type ClientScopeFactory interface {
 	NewClientScopeForFailureDomain(ctx context.Context, k8sClient client.Client, fd *infrav1.CloudStackFailureDomain) (Scope, error)
-	NewClientScopeForFailureDomainByName(ctx context.Context, k8sClient client.Client, name, namespace, clusterName string) (Scope, error)
 }
 
 type clientScopeFactory struct {
@@ -112,18 +110,9 @@ func (s *clientScopeFactory) NewClientScopeForFailureDomain(ctx context.Context,
 	return NewClientScope(s.clientCache, fd, cloudConfig, clientConfig)
 }
 
-func (s *clientScopeFactory) NewClientScopeForFailureDomainByName(ctx context.Context, k8sClient client.Client, name, namespace, clusterName string) (scope Scope, err error) {
-	fd, err := getFailureDomainByName(ctx, k8sClient, name, namespace, clusterName)
-	if err != nil {
-		return nil, err
-	}
-	return s.NewClientScopeForFailureDomain(ctx, k8sClient, fd)
-}
-
 type clientScope struct {
-	clients       CSClients
-	failureDomain *infrav1.CloudStackFailureDomain
-	projectID     string
+	clients   CSClients
+	projectID string
 }
 
 func getScopeCacheKey(clientConfig cloud.Config) string {
@@ -151,9 +140,8 @@ func NewClientScope(cache *cache.LRUExpireCache, fd *infrav1.CloudStackFailureDo
 	}
 
 	scope = &clientScope{
-		clients:       NewCSClients(csClient, csUser),
-		failureDomain: fd,
-		projectID:     fd.Spec.Project,
+		clients:   NewCSClients(csClient, csUser),
+		projectID: fd.Spec.Project,
 	}
 	cache.Add(key, scope, ClientCacheTTL)
 
@@ -164,22 +152,8 @@ func (s *clientScope) CSClients() CSClientsProvider {
 	return s.clients
 }
 
-func (s *clientScope) FailureDomain() *infrav1.CloudStackFailureDomain {
-	return s.failureDomain
-}
-
 func (s *clientScope) ProjectID() string {
 	return s.projectID
-}
-
-// getFailureDomainByName gets the CloudStack Failure Domain by name.
-func getFailureDomainByName(ctx context.Context, k8sClient client.Client, name, namespace, clusterName string) (*infrav1.CloudStackFailureDomain, error) {
-	fd := &infrav1.CloudStackFailureDomain{}
-	metaHashName := infrav1.FailureDomainHashedMetaName(name, clusterName)
-	if err := k8sClient.Get(ctx, client.ObjectKey{Name: metaHashName, Namespace: namespace}, fd); err != nil {
-		return nil, errors.Wrapf(err, "failed to get failure domain with name %s", name)
-	}
-	return fd, nil
 }
 
 // getCloudConfigFromSecret gets the CloudStack credentials from a k8s secret referenced by the failure domain ACSEndpoint.

@@ -136,17 +136,3 @@ func (s *AffinityGroupScope) PatchObject() error {
 func (s *AffinityGroupScope) Close() error {
 	return s.PatchObject()
 }
-
-// FailureDomain returns the failure domain of the affinity group.
-func (s *AffinityGroupScope) FailureDomain(ctx context.Context) (*infrav1.CloudStackFailureDomain, error) {
-	if s.CloudStackFailureDomain != nil {
-		return s.CloudStackFailureDomain, nil
-	}
-
-	fd, err := getFailureDomainByName(ctx, s.client, s.FailureDomainName(), s.Namespace(), s.KubernetesClusterName())
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get failure domain with name %s", s.FailureDomainName())
-	}
-	s.CloudStackFailureDomain = fd
-	return fd, nil
-}

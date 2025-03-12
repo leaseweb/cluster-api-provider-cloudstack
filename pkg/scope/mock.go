@@ -29,9 +29,8 @@ import (
 )
 
 type MockClientScopeFactory struct {
-	csClients     *MockCSClients
-	failureDomain *infrav1.CloudStackFailureDomain
-	projectID     string
+	csClients *MockCSClients
+	projectID string
 }
 
 func NewMockClientScopeFactory(mockCtrl *gomock.Controller, projectID string) *MockClientScopeFactory {
@@ -46,17 +45,8 @@ func (m *MockClientScopeFactory) NewClientScopeForFailureDomain(_ context.Contex
 	if fd == nil {
 		return nil, errors.New("failure domain is nil")
 	}
-	m.failureDomain = fd
 
 	return m, nil
-}
-
-func (m *MockClientScopeFactory) NewClientScopeForFailureDomainByName(ctx context.Context, k8sClient client.Client, name, namespace, clusterName string) (Scope, error) {
-	fd, err := getFailureDomainByName(ctx, k8sClient, name, namespace, clusterName)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get failure domain with name %s", name)
-	}
-	return m.NewClientScopeForFailureDomain(ctx, k8sClient, fd)
 }
 
 // ProjectID returns the CloudStack project ID, if any.
@@ -67,11 +57,6 @@ func (m *MockClientScopeFactory) ProjectID() string {
 // CSClients returns the CloudStack clients.
 func (m *MockClientScopeFactory) CSClients() CSClientsProvider {
 	return m.csClients
-}
-
-// FailureDomain returns the CloudStack Failure Domain.
-func (m *MockClientScopeFactory) FailureDomain() *infrav1.CloudStackFailureDomain {
-	return m.failureDomain
 }
 
 // MockCSClientsProvider extends CSClientsProvider to provide access to mock clients for testing.

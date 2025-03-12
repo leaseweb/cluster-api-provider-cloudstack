@@ -86,7 +86,13 @@ func (r *CloudStackAffinityGroupReconciler) Reconcile(ctx context.Context, req c
 		return ctrl.Result{}, nil
 	}
 
-	clientScope, err := r.ScopeFactory.NewClientScopeForFailureDomainByName(ctx, r.Client, csag.Spec.FailureDomainName, csag.Namespace, cluster.Name)
+	fd, err := GetFailureDomainByName(ctx, r.Client, csag.Spec.FailureDomainName, csag.Namespace, cluster.Name)
+	if err != nil {
+		log.Error(err, "Failed to get failure domain", "fdname", csag.Spec.FailureDomainName)
+		return ctrl.Result{}, err
+	}
+
+	clientScope, err := r.ScopeFactory.NewClientScopeForFailureDomain(ctx, r.Client, fd)
 	if err != nil {
 		log.Error(err, "Failed to create client scope")
 		return ctrl.Result{}, err

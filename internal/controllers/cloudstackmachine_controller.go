@@ -138,7 +138,13 @@ func (r *CloudStackMachineReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		csMachine.Labels[infrav1.FailureDomainLabelName] = infrav1.FailureDomainHashedMetaName(fdName, csCluster.Name)
 	}
 
-	clientScope, err := r.ScopeFactory.NewClientScopeForFailureDomainByName(ctx, r.Client, csMachine.Spec.FailureDomainName, csMachine.Namespace, cluster.Name)
+	fd, err := GetFailureDomainByName(ctx, r.Client, csMachine.Spec.FailureDomainName, csMachine.Namespace, cluster.Name)
+	if err != nil {
+		log.Error(err, "Failed to get failure domain", "fdname", csMachine.Spec.FailureDomainName)
+		return ctrl.Result{}, err
+	}
+
+	clientScope, err := r.ScopeFactory.NewClientScopeForFailureDomain(ctx, r.Client, fd)
 	if err != nil {
 		log.Error(err, "Failed to create client scope")
 		return ctrl.Result{}, err
@@ -152,7 +158,7 @@ func (r *CloudStackMachineReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		CloudStackCluster:       csCluster,
 		Machine:                 machine,
 		CloudStackMachine:       csMachine,
-		CloudStackFailureDomain: clientScope.FailureDomain(),
+		CloudStackFailureDomain: fd,
 		CSClients:               clientScope.CSClients(),
 		ControllerName:          "cloudstackmachine",
 	})
@@ -829,6 +835,7 @@ func (r *CloudStackMachineReconciler) SetupWithManager(ctx context.Context, mgr 
 	cloudStackIsolatedNetworkToControlPlaneCloudStackMachines := r.CloudStackIsolatedNetworkToControlPlaneCloudStackMachines(log)
 
 	err := ctrl.NewControllerManagedBy(mgr).
+		Named("cloudstackmachine").
 		For(&infrav1.CloudStackMachine{}).
 		WithOptions(options).
 		Watches(

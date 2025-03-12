@@ -197,17 +197,3 @@ func (s *IsolatedNetworkScope) SetAPIServerLoadBalancer(loadBalancer *infrav1.Lo
 func (s *IsolatedNetworkScope) APIServerLoadBalancer() *infrav1.LoadBalancer {
 	return s.CloudStackIsolatedNetwork.Status.APIServerLoadBalancer
 }
-
-// FailureDomain returns the failure domain of the isolated network.
-func (s *IsolatedNetworkScope) FailureDomain(ctx context.Context) (*infrav1.CloudStackFailureDomain, error) {
-	if s.CloudStackFailureDomain != nil {
-		return s.CloudStackFailureDomain, nil
-	}
-
-	fd, err := getFailureDomainByName(ctx, s.client, s.FailureDomainName(), s.Namespace(), s.KubernetesClusterName())
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get failure domain with name %s", s.FailureDomainName())
-	}
-	s.CloudStackFailureDomain = fd
-	return fd, nil
-}

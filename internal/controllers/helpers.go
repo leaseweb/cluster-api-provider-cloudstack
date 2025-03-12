@@ -17,10 +17,16 @@ limitations under the License.
 package controllers
 
 import (
+	"context"
+
+	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 )
 
 // GetOwnerClusterName returns the name of the owning Cluster by finding a clusterv1.Cluster in the ownership references.
@@ -60,4 +66,15 @@ func GetManagementOwnerRef(capiMachine *clusterv1.Machine) *metav1.OwnerReferenc
 	}
 
 	return fetchOwnerRef(capiMachine.OwnerReferences, "MachineSet")
+}
+
+// GetFailureDomainByName gets the CloudStack Failure Domain by name.
+func GetFailureDomainByName(ctx context.Context, k8sClient client.Client, name, namespace, clusterName string) (*infrav1.CloudStackFailureDomain, error) {
+	fd := &infrav1.CloudStackFailureDomain{}
+	metaHashName := infrav1.FailureDomainHashedMetaName(name, clusterName)
+	if err := k8sClient.Get(ctx, client.ObjectKey{Name: metaHashName, Namespace: namespace}, fd); err != nil {
+		return nil, errors.Wrapf(err, "failed to get failure domain with name %s", name)
+	}
+
+	return fd, nil
 }
