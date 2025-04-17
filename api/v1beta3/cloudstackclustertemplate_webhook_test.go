@@ -32,7 +32,7 @@ import (
 var ctx = ctrl.SetupSignalHandler()
 
 func TestCloudStackClusterTemplateFeatureGateEnabled(t *testing.T) {
-	defer utilfeature.SetFeatureGateDuringTest(t, feature.Gates, feature.ClusterTopology, true)()
+	utilfeature.SetFeatureGateDuringTest(t, feature.Gates, feature.ClusterTopology, true)
 	g := NewWithT(t)
 
 	tests := []struct {
@@ -96,7 +96,7 @@ func TestCloudStackClusterTemplateFeatureGateEnabled(t *testing.T) {
 }
 
 func TestCloudStackClusterTemplateFeatureGateDisabled(t *testing.T) {
-	defer utilfeature.SetFeatureGateDuringTest(t, feature.Gates, feature.ClusterTopology, false)()
+	utilfeature.SetFeatureGateDuringTest(t, feature.Gates, feature.ClusterTopology, false)
 	g := NewWithT(t)
 
 	cct := &CloudStackClusterTemplate{
@@ -117,7 +117,7 @@ func TestCloudStackClusterTemplateFeatureGateDisabled(t *testing.T) {
 }
 
 func TestCloudStackClusterTemplateValidationMetadata(t *testing.T) {
-	defer utilfeature.SetFeatureGateDuringTest(t, feature.Gates, feature.ClusterTopology, true)()
+	utilfeature.SetFeatureGateDuringTest(t, feature.Gates, feature.ClusterTopology, true)
 
 	tests := []struct {
 		name        string
@@ -177,7 +177,7 @@ func TestCloudStackClusterTemplateValidationMetadata(t *testing.T) {
 }
 
 func TestCloudStackClusterTemplateValidateUpdate(t *testing.T) {
-	defer utilfeature.SetFeatureGateDuringTest(t, feature.Gates, feature.ClusterTopology, true)()
+	utilfeature.SetFeatureGateDuringTest(t, feature.Gates, feature.ClusterTopology, true)
 	g := NewWithT(t)
 
 	invalidRegex := ".*is invalid\\:.*Invalid value\\: \\S+?\\{.*\\}\\: %s"
