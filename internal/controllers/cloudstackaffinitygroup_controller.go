@@ -178,7 +178,7 @@ func (r *CloudStackAffinityGroupReconciler) SetupWithManager(ctx context.Context
 	err := ctrl.NewControllerManagedBy(mgr).
 		For(&infrav1.CloudStackAffinityGroup{}).
 		WithOptions(options).
-		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(log.GetLogger(), r.WatchFilterValue)).
+		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(r.Scheme, log.GetLogger(), r.WatchFilterValue)).
 		Complete(r)
 	if err != nil {
 		return errors.Wrap(err, "failed setting up with a controller manager")

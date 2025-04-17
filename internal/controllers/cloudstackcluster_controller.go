@@ -293,7 +293,7 @@ func (r *CloudStackClusterReconciler) SetupWithManager(ctx context.Context, mgr 
 	err := ctrl.NewControllerManagedBy(mgr).
 		For(&infrav1.CloudStackCluster{}).
 		WithOptions(options).
-		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(log.GetLogger(), r.WatchFilterValue)).
+		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(r.Scheme, log.GetLogger(), r.WatchFilterValue)).
 		WithEventFilter(
 			predicate.Funcs{
 				UpdateFunc: func(e event.UpdateEvent) bool {
@@ -320,10 +320,10 @@ func (r *CloudStackClusterReconciler) SetupWithManager(ctx context.Context, mgr 
 			&clusterv1.Cluster{},
 			handler.EnqueueRequestsFromMapFunc(util.ClusterToInfrastructureMapFunc(ctx, infrav1.GroupVersion.WithKind("CloudStackCluster"), mgr.GetClient(), &infrav1.CloudStackCluster{})),
 			builder.WithPredicates(
-				predicates.ClusterUnpaused(log.GetLogger()),
+				predicates.ClusterUnpaused(r.Scheme, log.GetLogger()),
 			),
 		).
-		WithEventFilter(predicates.ResourceIsNotExternallyManaged(log.GetLogger())).
+		WithEventFilter(predicates.ResourceIsNotExternallyManaged(r.Scheme, log.GetLogger())).
 		Complete(r)
 	if err != nil {
 		return errors.Wrap(err, "failed setting up with a controller manager")

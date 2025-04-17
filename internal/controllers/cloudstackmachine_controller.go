@@ -36,7 +36,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	capierrors "sigs.k8s.io/cluster-api/errors"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
 	"sigs.k8s.io/cluster-api/util/conditions"
@@ -62,6 +61,7 @@ const (
 	CSMachineCreationSuccess = "Created new CloudStack instance %s"
 	CSMachineCreationFailed  = "Failed to create new CloudStack instance: %s"
 	MachineInstanceRunning   = "Machine instance is Running..."
+	UpdateMachineError       = "UpdateError"
 )
 
 // CloudStackMachineReconciler reconciles a CloudStackMachine object.
@@ -412,7 +412,7 @@ func (r *CloudStackMachineReconciler) reconcileNormal(ctx context.Context, scope
 		// so set the failure reason and message and do not requeue.
 		// If it does have a node reference, it could be a temporary condition.
 		if scope.Machine.Status.NodeRef == nil {
-			scope.SetFailureReason(capierrors.UpdateMachineError)
+			scope.SetFailureReason(UpdateMachineError)
 			scope.SetFailureMessage(errors.Errorf("CloudStack instance state %s is unexpected", vm.State))
 		}
 		shouldRequeue = true
@@ -421,7 +421,7 @@ func (r *CloudStackMachineReconciler) reconcileNormal(ctx context.Context, scope
 		scope.Info("Unexpected instance termination", "state", vm.State, "instance-id", scope.GetInstanceID())
 		r.Recorder.Eventf(scope.CloudStackMachine, corev1.EventTypeWarning, "InstanceUnexpectedTermination", "Unexpected CloudStack instance termination")
 		conditions.MarkFalse(scope.CloudStackMachine, infrav1.InstanceReadyCondition, infrav1.InstanceTerminatedReason, clusterv1.ConditionSeverityError, "")
-		scope.SetFailureReason(capierrors.UpdateMachineError)
+		scope.SetFailureReason(UpdateMachineError)
 		scope.SetFailureMessage(errors.Errorf("CloudStack instance state %s is unexpected", vm.State))
 	default:
 		scope.SetNotReady()
@@ -846,7 +846,7 @@ func (r *CloudStackMachineReconciler) SetupWithManager(ctx context.Context, mgr 
 			&infrav1.CloudStackCluster{},
 			handler.EnqueueRequestsFromMapFunc(cloudStackClusterToCloudStackMachinesMapper),
 		).
-		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(log.GetLogger(), r.WatchFilterValue)).
+		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(r.Scheme, log.GetLogger(), r.WatchFilterValue)).
 		WithEventFilter(
 			predicate.Funcs{
 				// Avoid reconciling if the event triggering the reconciliation is related to incremental status updates
@@ -873,7 +873,7 @@ func (r *CloudStackMachineReconciler) SetupWithManager(ctx context.Context, mgr 
 			// Watch for cluster pause/unpause events
 			&clusterv1.Cluster{},
 			handler.EnqueueRequestsFromMapFunc(requeueCloudStackMachinesForUnpausedCluster),
-			builder.WithPredicates(predicates.ClusterUnpausedAndInfrastructureReady(log.GetLogger())),
+			builder.WithPredicates(predicates.ClusterPausedTransitionsOrInfrastructureReady(r.Scheme, log.GetLogger())),
 		).
 		Watches(
 			// This watch is here to assign VM's to loadbalancer rules
