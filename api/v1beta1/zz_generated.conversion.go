@@ -756,12 +756,15 @@ func Convert_v1beta1_CloudStackMachineStatus_To_v1beta3_CloudStackMachineStatus(
 }
 
 func autoConvert_v1beta3_CloudStackMachineStatus_To_v1beta1_CloudStackMachineStatus(in *v1beta3.CloudStackMachineStatus, out *CloudStackMachineStatus, s conversion.Scope) error {
+	out.Ready = in.Ready
 	out.Addresses = *(*[]corev1.NodeAddress)(unsafe.Pointer(&in.Addresses))
 	out.InstanceState = InstanceState(in.InstanceState)
 	out.InstanceStateLastUpdated = in.InstanceStateLastUpdated
-	out.Ready = in.Ready
 	// WARNING: in.Status requires manual conversion: does not exist in peer-type
 	// WARNING: in.Reason requires manual conversion: does not exist in peer-type
+	// WARNING: in.FailureReason requires manual conversion: does not exist in peer-type
+	// WARNING: in.FailureMessage requires manual conversion: does not exist in peer-type
+	// WARNING: in.Conditions requires manual conversion: does not exist in peer-type
 	return nil
 }
 

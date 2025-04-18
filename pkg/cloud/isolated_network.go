@@ -45,7 +45,8 @@ type IsoNetworkIface interface {
 	GetFirewallRules(isoNet *infrav1.CloudStackIsolatedNetwork) ([]*cloudstack.FirewallRule, error)
 	ReconcileFirewallRules(isoNet *infrav1.CloudStackIsolatedNetwork, csCluster *infrav1.CloudStackCluster) error
 
-	AssignVMToLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNetwork, instanceID string) error
+	AssignVMToLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNetwork, instanceID string) (bool, error)
+	RemoveVMFromLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNetwork, instanceID string) (bool, error)
 	DeleteNetwork(net infrav1.Network) error
 	DisposeIsoNetResources(isoNet *infrav1.CloudStackIsolatedNetwork, csCluster *infrav1.CloudStackCluster) error
 }
@@ -778,9 +779,11 @@ func (c *client) ReconcileLoadBalancer(
 }
 
 // AssignVMToLoadBalancerRules assigns a VM to the load balancing rules listed in isoNet.Status.LoadBalancerRuleIDs,
-// if not already assigned.
-func (c *client) AssignVMToLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNetwork, instanceID string) error {
-	var found bool
+// if not already assigned. It returns a bool indicating whether an instance was actually assigned, and an error in case an error occurred.
+func (c *client) AssignVMToLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNetwork, instanceID string) (bool, error) {
+	var assigned, found bool
+	assigned = false
+
 	for _, lbRuleID := range isoNet.Status.LoadBalancerRuleIDs {
 		// Check that the instance isn't already in LB rotation.
 		found = false
@@ -789,7 +792,7 @@ func (c *client) AssignVMToLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedN
 		if err != nil {
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
-			return err
+			return false, err
 		}
 		for _, instance := range lbRuleInstances.LoadBalancerRuleInstances {
 			if instance.Id == instanceID { // Already assigned to load balancer.
@@ -800,18 +803,60 @@ func (c *client) AssignVMToLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedN
 		}
 
 		if !found {
-			// Assign to Load Balancer.
-			p := c.cs.LoadBalancer.NewAssignToLoadBalancerRuleParams(lbRuleID)
+			// Assign to Load Balancer. Use the async client to wait for the operation to complete,
+			// so we can return a bool indicating whether an instance was actually assigned.
+			p := c.csAsync.LoadBalancer.NewAssignToLoadBalancerRuleParams(lbRuleID)
 			p.SetVirtualmachineids([]string{instanceID})
-			if _, err = c.cs.LoadBalancer.AssignToLoadBalancerRule(p); err != nil {
+			if resp, err := c.csAsync.LoadBalancer.AssignToLoadBalancerRule(p); err != nil {
 				c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
-				return err
+				return false, err
+			} else if resp != nil && resp.Success {
+				assigned = true
 			}
 		}
 	}
 
-	return nil
+	return assigned, nil
+}
+
+// RemoveVMFromLoadBalancerRules removes a VM from the load balancing rules listed in isoNet.Status.LoadBalancerRuleIDs,
+// if not already removed. It returns a bool indicating whether an instance was actually removed, and an error in case an error occurred.
+func (c *client) RemoveVMFromLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNetwork, instanceID string) (bool, error) {
+	for _, lbRuleID := range isoNet.Status.LoadBalancerRuleIDs {
+		// Check that the instance isn't already in LB rotation.
+		found := false
+		lbRuleInstances, err := c.cs.LoadBalancer.ListLoadBalancerRuleInstances(
+			c.cs.LoadBalancer.NewListLoadBalancerRuleInstancesParams(lbRuleID))
+		if err != nil {
+			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
+			return false, err
+		}
+		for _, instance := range lbRuleInstances.LoadBalancerRuleInstances {
+			if instance.Id == instanceID { // Already assigned to load balancer.
+				found = true
+
+				break
+			}
+		}
+
+		if found {
+			// Remove from Load Balancer. Use the async client to wait for the operation to complete,
+			// so we can return a bool indicating whether an instance was actually removed.
+			p := c.csAsync.LoadBalancer.NewRemoveFromLoadBalancerRuleParams(lbRuleID)
+			p.SetVirtualmachineids([]string{instanceID})
+			if resp, err := c.csAsync.LoadBalancer.RemoveFromLoadBalancerRule(p); err != nil {
+				c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
+
+				return false, err
+			} else if resp != nil && resp.Success {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
 }
 
 // DeleteNetwork deletes an isolated network.

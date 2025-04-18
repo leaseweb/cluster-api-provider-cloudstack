@@ -17,52 +17,47 @@ limitations under the License.
 package v1beta3
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/webhookutil"
 )
 
-// log is for logging in this package.
-var cloudstackmachinetemplatelog = logf.Log.WithName("cloudstackmachinetemplate-resource")
+const cloudStackMachineTemplateImmutableMsg = "CloudStackMachineTemplate spec.template.spec field is immutable. Please create new resource instead."
 
-func (r *CloudStackMachineTemplate) SetupWebhookWithManager(mgr ctrl.Manager) error {
+type CloudStackMachineTemplateWebhook struct{}
+
+func (r *CloudStackMachineTemplateWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
+		For(&CloudStackMachineTemplate{}).
+		WithValidator(r).
 		Complete()
 }
 
 // +kubebuilder:webhook:verbs=create;update,path=/validate-infrastructure-cluster-x-k8s-io-v1beta3-cloudstackmachinetemplate,mutating=false,failurePolicy=fail,matchPolicy=Equivalent,groups=infrastructure.cluster.x-k8s.io,resources=cloudstackmachinetemplates,versions=v1beta3,name=validation.cloudstackmachinetemplate.infrastructure.cluster.x-k8s.io,sideEffects=None,admissionReviewVersions=v1;v1beta1
-// +kubebuilder:webhook:verbs=create;update,path=/mutate-infrastructure-cluster-x-k8s-io-v1beta3-cloudstackmachinetemplate,mutating=true,failurePolicy=fail,matchPolicy=Equivalent,groups=infrastructure.cluster.x-k8s.io,resources=cloudstackmachinetemplates,versions=v1beta3,name=default.cloudstackmachinetemplate.infrastructure.cluster.x-k8s.io,sideEffects=None,admissionReviewVersions=v1;v1beta1
 
-var (
-	_ webhook.Defaulter = &CloudStackMachineTemplate{}
-	_ webhook.Validator = &CloudStackMachineTemplate{}
-)
+var _ webhook.CustomValidator = &CloudStackMachineTemplateWebhook{}
 
-// Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (r *CloudStackMachineTemplate) Default() {
-	cloudstackmachinetemplatelog.V(1).Info("entered default setting webhook", "api resource name", r.Name)
-	// No defaulted values supported yet.
-}
-
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (r *CloudStackMachineTemplate) ValidateCreate() (admission.Warnings, error) {
-	cloudstackmachinetemplatelog.V(1).Info("entered validate create webhook", "api resource name", r.Name)
+// ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type.
+func (r *CloudStackMachineTemplateWebhook) ValidateCreate(_ context.Context, objRaw runtime.Object) (admission.Warnings, error) {
+	obj, ok := objRaw.(*CloudStackMachineTemplate)
+	if !ok {
+		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackMachineTemplate but got a %T", objRaw))
+	}
 
 	var errorList field.ErrorList
 
 	// CloudStackMachineTemplateSpec.CloudStackMachineSpec.
-	spec := r.Spec.Template.Spec
+	spec := obj.Spec.Template.Spec
 
 	affinity := strings.ToLower(spec.Affinity)
 	if !(affinity == "" || affinity == "no" || affinity == "pro" || affinity == "anti" || affinity == "soft-pro" || affinity == "soft-anti") {
@@ -77,45 +72,30 @@ func (r *CloudStackMachineTemplate) ValidateCreate() (admission.Warnings, error)
 	errorList = webhookutil.EnsureAtLeastOneFieldExists(spec.Offering.ID, spec.Offering.Name, "Offering", errorList)
 	errorList = webhookutil.EnsureAtLeastOneFieldExists(spec.Template.ID, spec.Template.Name, "Template", errorList)
 
-	return nil, webhookutil.AggregateObjErrors(r.GroupVersionKind().GroupKind(), r.Name, errorList)
+	return nil, webhookutil.AggregateObjErrors(obj.GroupVersionKind().GroupKind(), obj.Name, errorList)
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *CloudStackMachineTemplate) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
-	cloudstackmachinetemplatelog.V(1).Info("entered validate update webhook", "api resource name", r.Name)
-
-	oldMachineTemplate, ok := old.(*CloudStackMachineTemplate)
+// ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type.
+func (r *CloudStackMachineTemplateWebhook) ValidateUpdate(_ context.Context, oldRaw runtime.Object, newRaw runtime.Object) (admission.Warnings, error) {
+	obj, ok := newRaw.(*CloudStackMachineTemplate)
 	if !ok {
-		return nil, errors.NewBadRequest(fmt.Sprintf("expected a CloudStackMachineTemplate but got a %T", old))
+		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackMachineTemplate but got a %T", newRaw))
+	}
+	oldObj, ok := oldRaw.(*CloudStackMachineTemplate)
+	if !ok {
+		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackMachineTemplate but got a %T", oldRaw))
+	}
+	var allErrs field.ErrorList
+
+	if !reflect.DeepEqual(obj.Spec.Template.Spec, oldObj.Spec.Template.Spec) {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "template", "spec"), obj,
+			cloudStackMachineTemplateImmutableMsg))
 	}
 
-	// CloudStackMachineTemplateSpec.CloudStackMachineTemplateResource.CloudStackMachineSpec.
-	spec := r.Spec.Template.Spec
-	oldSpec := oldMachineTemplate.Spec.Template.Spec
-
-	errorList := field.ErrorList(nil)
-	errorList = webhookutil.EnsureEqualStrings(spec.Offering.ID, oldSpec.Offering.ID, "offering", errorList)
-	errorList = webhookutil.EnsureEqualStrings(spec.Offering.Name, oldSpec.Offering.Name, "offering", errorList)
-	if spec.DiskOffering != nil {
-		errorList = webhookutil.EnsureEqualStrings(spec.DiskOffering.ID, oldSpec.DiskOffering.ID, "diskOffering", errorList)
-		errorList = webhookutil.EnsureEqualStrings(spec.DiskOffering.Name, oldSpec.DiskOffering.Name, "diskOffering", errorList)
-	}
-	errorList = webhookutil.EnsureEqualStrings(spec.SSHKey, oldSpec.SSHKey, "sshkey", errorList)
-	errorList = webhookutil.EnsureEqualStrings(spec.Template.ID, oldSpec.Template.ID, "template", errorList)
-	errorList = webhookutil.EnsureEqualStrings(spec.Template.Name, oldSpec.Template.Name, "template", errorList)
-	errorList = webhookutil.EnsureEqualMapStringString(spec.Details, oldSpec.Details, "details", errorList)
-	errorList = webhookutil.EnsureEqualStrings(spec.Affinity, oldSpec.Affinity, "affinity", errorList)
-
-	if !reflect.DeepEqual(spec.AffinityGroupIDs, oldSpec.AffinityGroupIDs) { // Equivalent to other Ensure funcs.
-		errorList = append(errorList, field.Forbidden(field.NewPath("spec", "AffinityGroupIDs"), "AffinityGroupIDs"))
-	}
-
-	return nil, webhookutil.AggregateObjErrors(r.GroupVersionKind().GroupKind(), r.Name, errorList)
+	return nil, webhookutil.AggregateObjErrors(obj.GroupVersionKind().GroupKind(), obj.Name, allErrs)
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *CloudStackMachineTemplate) ValidateDelete() (admission.Warnings, error) {
-	cloudstackmachinetemplatelog.V(1).Info("entered validate delete webhook", "api resource name", r.Name)
-	// No deletion validations.  Deletion webhook not enabled.
+// ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type.
+func (r *CloudStackMachineTemplateWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }

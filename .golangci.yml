@@ -160,7 +160,7 @@ linters:
 
 run:
   timeout: 10m
-  go: "1.22"
+  go: "1.23"
   build-tags:
     - tools
     - e2e
@@ -200,5 +200,9 @@ issues:
         - stylecheck
       text: "ST1003: should not use underscores in Go names;"
       path: api\/.*\/.*conversion.*\.go$
+      # Ignore non-constant format string in call to condition utils
+    - linters:
+        - govet
+      text: "non-constant format string in call to sigs\\.k8s\\.io\\/cluster-api\\/util\\/conditions\\."
   exclude-files:
     - "zz_generated.*\\.go$"

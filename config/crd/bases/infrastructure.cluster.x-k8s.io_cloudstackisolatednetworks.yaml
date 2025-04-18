@@ -253,6 +253,7 @@ spec:
                 items:
                   type: string
                 type: array
+                x-kubernetes-list-type: set
               publicIPAddress:
                 description: The outgoing IP of the isolated network.
                 type: string

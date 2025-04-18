@@ -18,7 +18,9 @@ package cloud
 
 import (
 	"bytes"
-	cgzip "compress/gzip"
+	"compress/gzip"
+
+	"github.com/pkg/errors"
 )
 
 type (
@@ -27,33 +29,38 @@ type (
 	setInt   func(int64)
 )
 
+// setIfNotEmpty sets the given string to the setFn if it is not empty.
 func setIfNotEmpty(str string, setFn set) {
 	if str != "" {
 		setFn(str)
 	}
 }
 
+// setArrayIfNotEmpty sets the given array to the setFn if it is not empty.
 func setArrayIfNotEmpty(strArray []string, setFn setArray) {
 	if len(strArray) > 0 {
 		setFn(strArray)
 	}
 }
 
+// setIntIfPositive sets the given int64 to the setFn if it is greater than 0.
 func setIntIfPositive(num int64, setFn setInt) {
 	if num > 0 {
 		setFn(num)
 	}
 }
 
-func compress(str string) (string, error) {
+// GzipBytes will gzip a byte array.
+func GzipBytes(dat []byte) ([]byte, error) {
 	var buf bytes.Buffer
-	w := cgzip.NewWriter(&buf)
-	if _, err := w.Write([]byte(str)); err != nil {
-		return "", err
-	}
-	if err := w.Close(); err != nil {
-		return "", err
+	gz := gzip.NewWriter(&buf)
+	if _, err := gz.Write(dat); err != nil {
+		return []byte{}, errors.Wrap(err, "failed to gzip bytes")
 	}
 
-	return buf.String(), nil
+	if err := gz.Close(); err != nil {
+		return []byte{}, errors.Wrap(err, "failed to gzip bytes")
+	}
+
+	return buf.Bytes(), nil
 }

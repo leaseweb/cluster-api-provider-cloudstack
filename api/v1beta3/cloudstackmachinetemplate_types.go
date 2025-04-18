@@ -38,8 +38,9 @@ type CloudStackMachineTemplateSpec struct {
 }
 
 //+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+//+kubebuilder:resource:path=cloudstackmachinetemplates,scope=Namespaced,categories=cluster-api,shortName=csmt
 //+kubebuilder:storageversion
+//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="Time duration since creation of CloudStackMachineTemplate"
 
 // CloudStackMachineTemplate is the Schema for the cloudstackmachinetemplates API.
 type CloudStackMachineTemplate struct {

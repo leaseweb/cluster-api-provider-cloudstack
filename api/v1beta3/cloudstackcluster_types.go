@@ -30,6 +30,10 @@ var K8sClient client.Client
 
 // CloudStackClusterSpec defines the desired state of CloudStackCluster.
 type CloudStackClusterSpec struct {
+	// FailureDomains is a list of failure domains for the cluster.
+	//+listType=map
+	//+listMapKey=name
+	//+listMapKeyType=string
 	FailureDomains []CloudStackFailureDomainSpec `json:"failureDomains"`
 
 	// The kubernetes control plane endpoint.
@@ -51,11 +55,28 @@ type CloudStackClusterStatus struct {
 	// Reflects the readiness of the CS cluster.
 	//+optional
 	Ready bool `json:"ready"`
+
+	// Conditions defines current service state of the CloudStackCluster.
+	//+optional
+	Conditions clusterv1.Conditions `json:"conditions,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// GetConditions returns the conditions for the CloudStackCluster.
+func (r *CloudStackCluster) GetConditions() clusterv1.Conditions {
+	return r.Status.Conditions
+}
+
+// SetConditions sets the conditions for the CloudStackCluster.
+func (r *CloudStackCluster) SetConditions(conditions clusterv1.Conditions) {
+	r.Status.Conditions = conditions
+}
+
+//+kubebuilder:resource:path=cloudstackclusters,scope=Namespaced,categories=cluster-api,shortName=cscluster
 //+kubebuilder:subresource:status
 //+kubebuilder:storageversion
+//+kubebuilder:object:root=true
+//+kubebuilder:printcolumn:name="Cluster",type="string",JSONPath=".metadata.labels['cluster\\.x-k8s\\.io/cluster-name']",description="Cluster"
+//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="Time duration since creation of CloudStackCluster"
 
 // CloudStackCluster is the Schema for the cloudstackclusters API.
 type CloudStackCluster struct {
