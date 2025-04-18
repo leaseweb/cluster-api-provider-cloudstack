@@ -201,7 +201,7 @@ MANIFEST_GEN_INPUTS=$(shell find ./api ./internal/controllers -type f -name "*te
 $(shell	grep -qs "$(IMG)" config/default/manager_image_patch_edited.yaml || rm -f config/.flag.mk)
 .PHONY: generate-manifests
 generate-manifests: config/.flag.mk ## Generates crd, webhook, rbac, and other configuration manifests from kubebuilder instructions in go comments.
-config/.flag.mk: $(CONTROLLER_GEN) $(MANIFEST_GEN_INPUTS)
+config/.flag.mk: $(CONTROLLER_GEN) generate-mocks $(MANIFEST_GEN_INPUTS)
 	sed -e 's@image: .*@image: '"$(IMG)"'@' config/default/manager_image_patch.yaml > config/default/manager_image_patch_edited.yaml
 	$(CONTROLLER_GEN) crd:crdVersions=v1 rbac:roleName=manager-role webhook paths="{./,./api/...,./internal/controllers/...}" output:crd:artifacts:config=config/crd/bases
 	@touch config/.flag.mk
