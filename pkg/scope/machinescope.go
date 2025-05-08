@@ -29,7 +29,6 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	capierrors "sigs.k8s.io/cluster-api/errors"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
 	"sigs.k8s.io/cluster-api/util/conditions"
@@ -312,7 +311,7 @@ func (s *MachineScope) SetAddresses(addresses []corev1.NodeAddress) {
 	s.CloudStackMachine.Status.Addresses = addresses
 }
 
-func (s *MachineScope) SetFailureReason(reason capierrors.MachineStatusError) {
+func (s *MachineScope) SetFailureReason(reason string) {
 	s.CloudStackMachine.Status.FailureReason = &reason
 }
 

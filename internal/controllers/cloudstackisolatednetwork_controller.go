@@ -302,7 +302,7 @@ func (r *CloudStackIsolatedNetworkReconciler) SetupWithManager(ctx context.Conte
 	err = ctrl.NewControllerManagedBy(mgr).
 		For(&infrav1.CloudStackIsolatedNetwork{}).
 		WithOptions(options).
-		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(log.GetLogger(), r.WatchFilterValue)).
+		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(r.Scheme, log.GetLogger(), r.WatchFilterValue)).
 		Watches(
 			&infrav1.CloudStackCluster{},
 			handler.EnqueueRequestsFromMapFunc(cloudStackClusterToCloudStackIsolatedNetworksMapper),
