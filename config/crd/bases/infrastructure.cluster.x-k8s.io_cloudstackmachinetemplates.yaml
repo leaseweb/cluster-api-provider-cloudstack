@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.1
   name: cloudstackmachinetemplates.infrastructure.cluster.x-k8s.io
 spec:
   group: infrastructure.cluster.x-k8s.io
@@ -83,7 +83,6 @@ spec:
                               the event) or if no container name is specified "spec.containers[2]" (container with
                               index 2 in this pod). This syntax is chosen only to have some well-defined way of
                               referencing a part of an object.
-                              TODO: this design is not final and this field is subject to change in the future.
                             type: string
                           kind:
                             description: |-
@@ -298,7 +297,6 @@ spec:
                               the event) or if no container name is specified "spec.containers[2]" (container with
                               index 2 in this pod). This syntax is chosen only to have some well-defined way of
                               referencing a part of an object.
-                              TODO: this design is not final and this field is subject to change in the future.
                             type: string
                           kind:
                             description: |-
@@ -475,7 +473,7 @@ spec:
                         additionalProperties:
                           type: string
                         description: |-
-                          Annotations is an unstructured key value map stored with a resource that may be
+                          annotations is an unstructured key value map stored with a resource that may be
                           set by external tools to store and retrieve arbitrary metadata. They are not
                           queryable and should be preserved when modifying objects.
                           More info: http://kubernetes.io/docs/user-guide/annotations
@@ -522,7 +520,6 @@ spec:
                               the event) or if no container name is specified "spec.containers[2]" (container with
                               index 2 in this pod). This syntax is chosen only to have some well-defined way of
                               referencing a part of an object.
-                              TODO: this design is not final and this field is subject to change in the future.
                             type: string
                           kind:
                             description: |-

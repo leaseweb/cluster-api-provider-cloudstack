@@ -141,9 +141,10 @@ var _ = Describe("AffinityGroup Unit Tests", func() {
 			Ω(client.ResolveZone(&dummies.CSFailureDomain1.Spec.Zone)).Should(Succeed())
 			dummies.CSMachine1.Spec.DiskOffering.Name = ""
 
-			Ω(client.CreateVMInstance(
+			_, err := client.CreateVMInstance(
 				dummies.CSMachine1, dummies.CAPIMachine, dummies.CSFailureDomain1, dummies.CSAffinityGroup, nil,
-			)).Should(Succeed())
+			)
+			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(client.GetOrCreateAffinityGroup(dummies.AffinityGroup)).Should(Succeed())
 			Ω(client.AssociateAffinityGroup(dummies.CSMachine1, *dummies.AffinityGroup)).Should(Succeed())
@@ -151,7 +152,7 @@ var _ = Describe("AffinityGroup Unit Tests", func() {
 			// Make the created VM go away quickly by force stopping it.
 			p := realCSClient.VirtualMachine.NewStopVirtualMachineParams(*dummies.CSMachine1.Spec.InstanceID)
 			p.SetForced(true)
-			_, err := realCSClient.VirtualMachine.StopVirtualMachine(p)
+			_, err = realCSClient.VirtualMachine.StopVirtualMachine(p)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
