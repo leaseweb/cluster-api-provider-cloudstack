@@ -154,7 +154,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		key := client.ObjectKey{Namespace: ns.Name, Name: dummies.CSMachine1.Name}
 		g.Eventually(func() error {
 			return testEnv.Get(ctx, key, dummies.CSMachine1)
-		}, timeout).Should(BeNil())
+		}, timeout).Should(Succeed())
 
 		// Set owner ref from CAPI machine to CS machine and patch back the CS machine.
 		g.Eventually(func() error {
@@ -330,7 +330,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		key := client.ObjectKey{Namespace: ns.Name, Name: dummies.CSMachine1.Name}
 		g.Eventually(func() error {
 			return testEnv.Get(ctx, key, dummies.CSMachine1)
-		}, timeout).Should(BeNil())
+		}, timeout).Should(Succeed())
 
 		// Set owner ref from CAPI machine to CS machine and patch back the CS machine.
 		g.Eventually(func() error {
