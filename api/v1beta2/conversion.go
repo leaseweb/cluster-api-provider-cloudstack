@@ -29,3 +29,9 @@ func Convert_v1beta3_Network_To_v1beta2_Network(in *infrav1.Network, out *Networ
 func Convert_v1beta3_CloudStackIsolatedNetworkSpec_To_v1beta2_CloudStackIsolatedNetworkSpec(in *infrav1.CloudStackIsolatedNetworkSpec, out *CloudStackIsolatedNetworkSpec, s machineryconversion.Scope) error {
 	return autoConvert_v1beta3_CloudStackIsolatedNetworkSpec_To_v1beta2_CloudStackIsolatedNetworkSpec(in, out, s)
 }
+
+func Convert_v1beta3_CloudStackMachineTemplate_To_v1beta2_CloudStackMachineTemplate(in *infrav1.CloudStackMachineTemplate, out *CloudStackMachineTemplate, s machineryconversion.Scope) error {
+	out.ObjectMeta = in.ObjectMeta
+
+	return Convert_v1beta3_CloudStackMachineTemplateSpec_To_v1beta2_CloudStackMachineTemplateSpec(&in.Spec, &out.Spec, s)
+}

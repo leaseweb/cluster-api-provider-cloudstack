@@ -73,6 +73,12 @@ func Convert_v1beta3_Network_To_v1beta1_Network(in *infrav1.Network, out *Networ
 	return autoConvert_v1beta3_Network_To_v1beta1_Network(in, out, s)
 }
 
+func Convert_v1beta3_CloudStackMachineTemplate_To_v1beta1_CloudStackMachineTemplate(in *infrav1.CloudStackMachineTemplate, out *CloudStackMachineTemplate, s machineryconversion.Scope) error {
+	out.ObjectMeta = in.ObjectMeta
+
+	return Convert_v1beta3_CloudStackMachineTemplateSpec_To_v1beta1_CloudStackMachineTemplateSpec(&in.Spec, &out.Spec, s)
+}
+
 // getZones maps failure domains to zones.
 func getZones(csCluster *infrav1.CloudStackCluster) []Zone {
 	zones := make([]Zone, 0, len(csCluster.Status.FailureDomains))

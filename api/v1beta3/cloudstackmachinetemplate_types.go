@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta3
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
@@ -37,6 +38,16 @@ type CloudStackMachineTemplateSpec struct {
 	Template CloudStackMachineTemplateResource `json:"template"`
 }
 
+// CloudStackMachineTemplateStatus defines the observed state of CloudStackMachineTemplate.
+type CloudStackMachineTemplateStatus struct {
+	// Capacity defines the resource capacity for this machine.
+	// This value is used for autoscaling from zero operations as defined in:
+	// https://github.com/kubernetes-sigs/cluster-api/blob/main/docs/proposals/20210310-opt-in-autoscaling-from-zero.md
+	// +optional
+	Capacity corev1.ResourceList `json:"capacity,omitempty"`
+}
+
+//+kubebuilder:subresource:status
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:path=cloudstackmachinetemplates,scope=Namespaced,categories=cluster-api,shortName=csmt
 //+kubebuilder:storageversion
@@ -47,7 +58,8 @@ type CloudStackMachineTemplate struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec CloudStackMachineTemplateSpec `json:"spec,omitempty"`
+	Spec   CloudStackMachineTemplateSpec   `json:"spec,omitempty"`
+	Status CloudStackMachineTemplateStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true

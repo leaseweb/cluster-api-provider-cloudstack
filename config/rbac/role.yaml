@@ -55,6 +55,7 @@ rules:
   - cloudstackfailuredomains
   - cloudstackisolatednetworks
   - cloudstackmachines
+  - cloudstackmachinetemplates
   verbs:
   - create
   - delete
@@ -79,6 +80,7 @@ rules:
   - cloudstackaffinitygroups/status
   - cloudstackisolatednetworks/status
   - cloudstackmachines/status
+  - cloudstackmachinetemplates/status
   verbs:
   - get
   - patch
