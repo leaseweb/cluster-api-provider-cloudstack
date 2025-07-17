@@ -43,6 +43,7 @@ type Client interface {
 	TagIface
 	ZoneIFace
 	IsoNetworkIface
+	ServiceOfferingIface
 	UserCredIFace
 	GetConfig() Config
 	GetUser() *User
