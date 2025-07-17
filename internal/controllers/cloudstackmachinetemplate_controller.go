@@ -28,8 +28,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util"
+	"sigs.k8s.io/cluster-api/util/predicates"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/logger"
@@ -170,9 +172,12 @@ func getCloudStackMachineCapacity(serviceOffering *cloudstack.ServiceOffering) c
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *CloudStackMachineTemplateReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *CloudStackMachineTemplateReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
+	log := logger.FromContext(ctx)
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&infrav1.CloudStackMachineTemplate{}).
-		Named("cloudstackmachinetemplate").
+		WithOptions(options).
+		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(r.Scheme, log.GetLogger(), r.WatchFilterValue)).
 		Complete(r)
 }
