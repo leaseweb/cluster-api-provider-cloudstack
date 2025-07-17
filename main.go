@@ -93,6 +93,7 @@ var (
 
 	cloudStackClusterConcurrency         int
 	cloudStackMachineConcurrency         int
+	cloudStackMachineTemplateConcurrency int
 	cloudStackAffinityGroupConcurrency   int
 	cloudStackFailureDomainConcurrency   int
 	cloudStackIsolatedNetworkConcurrency int
@@ -136,6 +137,10 @@ func initFlags(fs *pflag.FlagSet) {
 
 	fs.IntVar(&cloudStackMachineConcurrency, "cloudstackmachine-concurrency", 10,
 		"Maximum concurrent reconciles for CloudStackMachine resources",
+	)
+
+	fs.IntVar(&cloudStackMachineTemplateConcurrency, "cloudstackmachinetemplate-concurrency", 5,
+		"Maximum concurrent reconciles for CloudStackMachineTemplate resources",
 	)
 
 	fs.IntVar(&cloudStackAffinityGroupConcurrency, "cloudstackaffinitygroup-concurrency", 5,
@@ -320,6 +325,15 @@ func setupReconcilers(ctx context.Context, mgr manager.Manager) {
 		ScopeFactory:     scopeFactory,
 	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackMachineConcurrency}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CloudStackMachine")
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
+	}
+	if err := (&controllers.CloudStackMachineTemplateReconciler{
+		Client:           mgr.GetClient(),
+		Scheme:           mgr.GetScheme(),
+		WatchFilterValue: watchFilterValue,
+		ScopeFactory:     scopeFactory,
+	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackMachineTemplateConcurrency}); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "CloudStackMachineTemplate")
 		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 	if err := (&controllers.CloudStackIsolatedNetworkReconciler{
