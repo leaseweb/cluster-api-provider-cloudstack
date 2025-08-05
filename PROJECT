@@ -1,6 +1,6 @@
 domain: cluster.x-k8s.io
 layout:
-- go.kubebuilder.io/v3
+- go.kubebuilder.io/v4
 projectName: cluster-api-provider-capc
 repo: sigs.k8s.io/cluster-api-provider-cloudstack
 resources:
@@ -78,7 +78,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  controller: true
+  controller: false
   domain: cluster.x-k8s.io
   group: infrastructure
   kind: CloudStackMachineStateChecker
@@ -141,7 +141,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  controller: true
+  controller: false
   domain: cluster.x-k8s.io
   group: infrastructure
   kind: CloudStackMachineStateChecker
@@ -213,7 +213,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  controller: true
+  controller: false
   domain: cluster.x-k8s.io
   group: infrastructure
   kind: CloudStackMachineStateChecker

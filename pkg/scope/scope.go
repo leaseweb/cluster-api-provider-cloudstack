@@ -16,5 +16,3 @@ limitations under the License.
 
 // Package scope implement the scope for the CloudStack Cluster when doing the reconciliation process.
 package scope
-
-
