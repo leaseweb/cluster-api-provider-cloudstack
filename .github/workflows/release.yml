@@ -11,7 +11,6 @@ on:
 env:
   REGISTRY: ghcr.io/leaseweb
   IMAGE_NAME: capi-cloudstack-controller
-  TAG: build
 
 jobs:
   push:
@@ -77,6 +76,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Sets env vars for tag
+        run: |
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,' | sed -e 's/^v//')
+          echo "TAG=${VERSION}" >> $GITHUB_ENV
 
       - name: Build release manifests
         run: make release-manifests
