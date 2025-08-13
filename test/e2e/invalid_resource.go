@@ -66,7 +66,7 @@ func InvalidResourceSpec(ctx context.Context, inputGetter func() CommonSpecInput
 	})
 
 	It("Should fail due to the specified account is not found [TC4a]", func() {
-		testInvalidResource(ctx, input, "invalid-account", "could not find account "+input.E2EConfig.GetVariable(InvalidAccountName))
+		testInvalidResource(ctx, input, "invalid-account", "could not find account "+input.E2EConfig.MustGetVariable(InvalidAccountName))
 	})
 
 	It("Should fail due to the specified domain is not found [TC4b]", func() {
@@ -74,19 +74,19 @@ func InvalidResourceSpec(ctx context.Context, inputGetter func() CommonSpecInput
 	})
 
 	It("Should fail due to the specified control plane offering is not found [TC7]", func() {
-		testInvalidResource(ctx, input, "invalid-cp-offering", "No match found for "+input.E2EConfig.GetVariable(InvalidCPOfferingName))
+		testInvalidResource(ctx, input, "invalid-cp-offering", "No match found for "+input.E2EConfig.MustGetVariable(InvalidCPOfferingName))
 	})
 
 	It("Should fail due to the specified template is not found [TC6]", func() {
-		testInvalidResource(ctx, input, "invalid-template", "No match found for "+input.E2EConfig.GetVariable(InvalidTemplateName))
+		testInvalidResource(ctx, input, "invalid-template", "No match found for "+input.E2EConfig.MustGetVariable(InvalidTemplateName))
 	})
 
 	It("Should fail due to the specified zone is not found [TC3]", func() {
-		testInvalidResource(ctx, input, "invalid-zone", "No match found for "+input.E2EConfig.GetVariable(InvalidZoneName))
+		testInvalidResource(ctx, input, "invalid-zone", "No match found for "+input.E2EConfig.MustGetVariable(InvalidZoneName))
 	})
 
 	It("Should fail due to the specified disk offering is not found", func() {
-		testInvalidResource(ctx, input, "invalid-disk-offering", "could not get DiskOffering ID from "+input.E2EConfig.GetVariable(InvalidDiskOfferingName))
+		testInvalidResource(ctx, input, "invalid-disk-offering", "could not get DiskOffering ID from "+input.E2EConfig.MustGetVariable(InvalidDiskOfferingName))
 	})
 
 	It("Should fail due to the compute resources are not sufficient for the specified offering [TC8]", func() {
@@ -114,7 +114,7 @@ func InvalidResourceSpec(ctx context.Context, inputGetter func() CommonSpecInput
 			By("Creating a workload cluster")
 			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
 				ClusterProxy:    input.BootstrapClusterProxy,
-				CNIManifestPath: input.E2EConfig.GetVariable(CNIPath),
+				CNIManifestPath: input.E2EConfig.MustGetVariable(CNIPath),
 				ConfigCluster: clusterctl.ConfigClusterInput{
 					LogFolder:                logFolder,
 					ClusterctlConfigPath:     input.ClusterctlConfigPath,
@@ -123,7 +123,7 @@ func InvalidResourceSpec(ctx context.Context, inputGetter func() CommonSpecInput
 					Flavor:                   "insufficient-compute-resources-for-upgrade",
 					Namespace:                namespace.Name,
 					ClusterName:              generateClusterName(),
-					KubernetesVersion:        input.E2EConfig.GetVariable(KubernetesVersion),
+					KubernetesVersion:        input.E2EConfig.MustGetVariable(KubernetesVersion),
 					ControlPlaneMachineCount: ptr.To[int64](1),
 					WorkerMachineCount:       ptr.To[int64](1),
 				},
@@ -180,7 +180,7 @@ func testInvalidResource(ctx context.Context, input CommonSpecInput, flavor stri
 		Flavor:                   flavor,
 		Namespace:                namespace.Name,
 		ClusterName:              clusterName,
-		KubernetesVersion:        input.E2EConfig.GetVariable(KubernetesVersion),
+		KubernetesVersion:        input.E2EConfig.MustGetVariable(KubernetesVersion),
 		ControlPlaneMachineCount: ptr.To[int64](1),
 		WorkerMachineCount:       ptr.To[int64](1),
 		InfrastructureProvider:   clusterctl.DefaultInfrastructureProvider,

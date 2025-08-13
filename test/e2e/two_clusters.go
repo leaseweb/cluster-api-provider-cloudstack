@@ -49,7 +49,7 @@ func TwoClustersSpec(ctx context.Context, inputGetter func() CommonSpecInput) {
 	createCluster := func(flavor string, namespace *corev1.Namespace, resources *clusterctl.ApplyClusterTemplateAndWaitResult) {
 		clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
 			ClusterProxy:    input.BootstrapClusterProxy,
-			CNIManifestPath: input.E2EConfig.GetVariable(CNIPath),
+			CNIManifestPath: input.E2EConfig.MustGetVariable(CNIPath),
 			ConfigCluster: clusterctl.ConfigClusterInput{
 				LogFolder:                filepath.Join(input.ArtifactFolder, "clusters", input.BootstrapClusterProxy.GetName()),
 				ClusterctlConfigPath:     input.ClusterctlConfigPath,
@@ -58,7 +58,7 @@ func TwoClustersSpec(ctx context.Context, inputGetter func() CommonSpecInput) {
 				Flavor:                   flavor,
 				Namespace:                namespace.Name,
 				ClusterName:              fmt.Sprintf("%s-%s", specName, util.RandomString(6)),
-				KubernetesVersion:        input.E2EConfig.GetVariable(KubernetesVersion),
+				KubernetesVersion:        input.E2EConfig.MustGetVariable(KubernetesVersion),
 				ControlPlaneMachineCount: ptr.To[int64](1),
 				WorkerMachineCount:       ptr.To[int64](1),
 			},
@@ -76,7 +76,7 @@ func TwoClustersSpec(ctx context.Context, inputGetter func() CommonSpecInput) {
 		Expect(input.BootstrapClusterProxy).ToNot(BeNil(), "Invalid argument. input.BootstrapClusterProxy can't be nil when calling %s spec", specName)
 		Expect(os.MkdirAll(input.ArtifactFolder, 0750)).To(Succeed(), "Invalid argument. input.ArtifactFolder can't be created for %s spec", specName)
 		Expect(input.E2EConfig.Variables).To(HaveKey(KubernetesVersion))
-		Expect(input.E2EConfig.Variables).To(HaveValidVersion(input.E2EConfig.GetVariable(KubernetesVersion)))
+		Expect(input.E2EConfig.Variables).To(HaveValidVersion(input.E2EConfig.MustGetVariable(KubernetesVersion)))
 
 		// Set up namespaces to host objects for this spec and create watchers for the namespace events.
 		namespace1, cancelWatches1 = setupSpecNamespace(ctx, specName, input.BootstrapClusterProxy, input.ArtifactFolder)

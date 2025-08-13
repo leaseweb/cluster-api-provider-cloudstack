@@ -68,7 +68,7 @@ func NodeDrainTimeoutSpec(ctx context.Context, inputGetter func() CommonSpecInpu
 		controlPlaneReplicas := 3
 		clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
 			ClusterProxy:    input.BootstrapClusterProxy,
-			CNIManifestPath: input.E2EConfig.GetVariable(CNIPath),
+			CNIManifestPath: input.E2EConfig.MustGetVariable(CNIPath),
 			ConfigCluster: clusterctl.ConfigClusterInput{
 				LogFolder:                filepath.Join(input.ArtifactFolder, "clusters", input.BootstrapClusterProxy.GetName()),
 				ClusterctlConfigPath:     input.ClusterctlConfigPath,
@@ -77,7 +77,7 @@ func NodeDrainTimeoutSpec(ctx context.Context, inputGetter func() CommonSpecInpu
 				Flavor:                   ptr.Deref(input.Flavor, "node-drain"),
 				Namespace:                namespace.Name,
 				ClusterName:              fmt.Sprintf("%s-%s", specName, util.RandomString(6)),
-				KubernetesVersion:        input.E2EConfig.GetVariable(KubernetesVersion),
+				KubernetesVersion:        input.E2EConfig.MustGetVariable(KubernetesVersion),
 				ControlPlaneMachineCount: ptr.To[int64](int64(controlPlaneReplicas)),
 				WorkerMachineCount:       ptr.To[int64](1),
 			},
@@ -95,7 +95,7 @@ func NodeDrainTimeoutSpec(ctx context.Context, inputGetter func() CommonSpecInpu
 		workloadKubeconfigPath := workloadClusterProxy.GetKubeconfigPath()
 		Byf("workload cluster kubeconfig path %s", workloadKubeconfigPath)
 
-		framework.DeployUnevictablePod(ctx, framework.DeployUnevictablePodInput{
+		framework.DeployUnevictablePod(ctx, framework.DeployPodAndWaitInput{
 			WorkloadClusterProxy:               workloadClusterProxy,
 			DeploymentName:                     fmt.Sprintf("%s-%s", "unevictable-pod", util.RandomString(3)),
 			Namespace:                          namespace.Name + "-unevictable-workload",
@@ -116,7 +116,7 @@ func NodeDrainTimeoutSpec(ctx context.Context, inputGetter func() CommonSpecInpu
 		}
 
 		By("Deploy deployment with unevictable pods on control plane nodes.")
-		framework.DeployUnevictablePod(ctx, framework.DeployUnevictablePodInput{
+		framework.DeployUnevictablePod(ctx, framework.DeployPodAndWaitInput{
 			WorkloadClusterProxy:               workloadClusterProxy,
 			ControlPlane:                       controlplane,
 			DeploymentName:                     fmt.Sprintf("%s-%s", "unevictable-pod", util.RandomString(3)),
