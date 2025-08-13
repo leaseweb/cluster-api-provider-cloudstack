@@ -65,7 +65,7 @@ func MachineRemediationSpec(ctx context.Context, inputGetter func() CommonSpecIn
 
 		clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
 			ClusterProxy:    proxy,
-			CNIManifestPath: input.E2EConfig.GetVariable(CNIPath),
+			CNIManifestPath: input.E2EConfig.MustGetVariable(CNIPath),
 			ConfigCluster: clusterctl.ConfigClusterInput{
 				LogFolder:                filepath.Join(input.ArtifactFolder, "clusters", input.BootstrapClusterProxy.GetName()),
 				ClusterctlConfigPath:     input.ClusterctlConfigPath,
@@ -74,7 +74,7 @@ func MachineRemediationSpec(ctx context.Context, inputGetter func() CommonSpecIn
 				Flavor:                   "machine-remediation",
 				Namespace:                namespace.Name,
 				ClusterName:              fmt.Sprintf("%s-%s", specName, util.RandomString(6)),
-				KubernetesVersion:        input.E2EConfig.GetVariable(KubernetesVersion),
+				KubernetesVersion:        input.E2EConfig.MustGetVariable(KubernetesVersion),
 				ControlPlaneMachineCount: ptr.To[int64](3),
 				WorkerMachineCount:       ptr.To[int64](3),
 			},
