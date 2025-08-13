@@ -16,7 +16,7 @@ jobs:
         with:
           go-version: '1.23'
 
-      - name: Run unit tests
+      - name: Run lint checks
         run: make lint
 
   build:
