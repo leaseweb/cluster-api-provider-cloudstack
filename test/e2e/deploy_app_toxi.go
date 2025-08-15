@@ -103,7 +103,7 @@ func DeployAppToxiSpec(ctx context.Context, inputGetter func() CommonSpecInput) 
 
 		clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
 			ClusterProxy:    bootstrapClusterToxiProxyContext.ClusterProxy,
-			CNIManifestPath: input.E2EConfig.GetVariable(CNIPath),
+			CNIManifestPath: input.E2EConfig.MustGetVariable(CNIPath),
 			ConfigCluster: clusterctl.ConfigClusterInput{
 				LogFolder:                filepath.Join(input.ArtifactFolder, "clusters", bootstrapClusterToxiProxyContext.ClusterProxy.GetName()),
 				ClusterctlConfigPath:     cloudStackToxiProxyContext.ConfigPath,
@@ -112,7 +112,7 @@ func DeployAppToxiSpec(ctx context.Context, inputGetter func() CommonSpecInput) 
 				Flavor:                   flavor,
 				Namespace:                namespace,
 				ClusterName:              clusterName,
-				KubernetesVersion:        input.E2EConfig.GetVariable(KubernetesVersion),
+				KubernetesVersion:        input.E2EConfig.MustGetVariable(KubernetesVersion),
 				ControlPlaneMachineCount: ptr.To[int64](1),
 				WorkerMachineCount:       ptr.To[int64](2),
 			},

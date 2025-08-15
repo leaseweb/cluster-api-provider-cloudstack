@@ -19,7 +19,7 @@ include $(REPO_ROOT)/common.mk
 #
 # Kubebuilder.
 #
-export KUBEBUILDER_ENVTEST_KUBERNETES_VERSION ?= 1.31.0
+export KUBEBUILDER_ENVTEST_KUBERNETES_VERSION ?= 1.33.0
 export KUBEBUILDER_CONTROLPLANE_START_TIMEOUT ?= 60s
 export KUBEBUILDER_CONTROLPLANE_STOP_TIMEOUT ?=
 
@@ -44,12 +44,12 @@ KUSTOMIZE_BIN := kustomize
 KUSTOMIZE := $(abspath $(TOOLS_BIN_DIR)/$(KUSTOMIZE_BIN)-$(KUSTOMIZE_VER))
 KUSTOMIZE_PKG := sigs.k8s.io/kustomize/kustomize/v5
 
-SETUP_ENVTEST_VER := release-0.19
+SETUP_ENVTEST_VER := release-0.20
 SETUP_ENVTEST_BIN := setup-envtest
 SETUP_ENVTEST := $(abspath $(TOOLS_BIN_DIR)/$(SETUP_ENVTEST_BIN)-$(SETUP_ENVTEST_VER))
 SETUP_ENVTEST_PKG := sigs.k8s.io/controller-runtime/tools/setup-envtest
 
-CONTROLLER_GEN_VER := v0.16.1
+CONTROLLER_GEN_VER := v0.17.2
 CONTROLLER_GEN_BIN := controller-gen
 CONTROLLER_GEN := $(abspath $(TOOLS_BIN_DIR)/$(CONTROLLER_GEN_BIN)-$(CONTROLLER_GEN_VER))
 CONTROLLER_GEN_PKG := sigs.k8s.io/controller-tools/cmd/controller-gen
@@ -59,7 +59,7 @@ GOTESTSUM_BIN := gotestsum
 GOTESTSUM := $(abspath $(TOOLS_BIN_DIR)/$(GOTESTSUM_BIN)-$(GOTESTSUM_VER))
 GOTESTSUM_PKG := gotest.tools/gotestsum
 
-CONVERSION_GEN_VER := v0.31.8
+CONVERSION_GEN_VER := v0.32.2
 CONVERSION_GEN_BIN := conversion-gen
 # We are intentionally using the binary without version suffix, to avoid the version
 # in generated files.
@@ -288,7 +288,7 @@ delete-kind-cluster:
 	kind delete cluster --name $(KIND_CLUSTER_NAME)
 
 cluster-api: ## Clone cluster-api repository for tilt use.
-	git clone --branch v1.9.10 --depth 1 https://github.com/kubernetes-sigs/cluster-api.git
+	git clone --branch v1.10.4 --depth 1 https://github.com/kubernetes-sigs/cluster-api.git
 
 cluster-api/tilt-settings.json: hack/tilt-settings.json cluster-api
 	cp ./hack/tilt-settings.json cluster-api
