@@ -30,7 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
 	"sigs.k8s.io/cluster-api/util/predicates"
@@ -151,7 +151,7 @@ func (r *CloudStackFailureDomainReconciler) reconcileDelete(ctx context.Context,
 		}
 
 		for _, condition := range scope.Cluster.Status.Conditions {
-			if condition.Type == clusterv1.ReadyCondition && condition.Status == corev1.ConditionFalse {
+			if condition.Type == clusterv1.ReadyCondition && string(condition.Status) == string(corev1.ConditionFalse) {
 				scope.Info("Cluster status not ready. Requeueing.")
 				return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 			}
