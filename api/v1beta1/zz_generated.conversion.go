@@ -28,7 +28,7 @@ import (
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	v1beta3 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
-	apiv1beta1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	corev1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 )
 
 func init() {
@@ -223,8 +223,8 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
-	if err := s.AddConversionFunc((*v1.ObjectMeta)(nil), (*apiv1beta1.ObjectMeta)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1_ObjectMeta_To_v1beta1_ObjectMeta(a.(*v1.ObjectMeta), b.(*apiv1beta1.ObjectMeta), scope)
+	if err := s.AddConversionFunc((*v1.ObjectMeta)(nil), (*corev1beta1.ObjectMeta)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1_ObjectMeta_To_v1beta1_ObjectMeta(a.(*v1.ObjectMeta), b.(*corev1beta1.ObjectMeta), scope)
 	}); err != nil {
 		return err
 	}
@@ -248,8 +248,8 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
-	if err := s.AddConversionFunc((*apiv1beta1.ObjectMeta)(nil), (*v1.ObjectMeta)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1beta1_ObjectMeta_To_v1_ObjectMeta(a.(*apiv1beta1.ObjectMeta), b.(*v1.ObjectMeta), scope)
+	if err := s.AddConversionFunc((*corev1beta1.ObjectMeta)(nil), (*v1.ObjectMeta)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1beta1_ObjectMeta_To_v1_ObjectMeta(a.(*corev1beta1.ObjectMeta), b.(*v1.ObjectMeta), scope)
 	}); err != nil {
 		return err
 	}
