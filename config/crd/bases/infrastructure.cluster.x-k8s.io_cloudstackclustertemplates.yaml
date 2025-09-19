@@ -116,20 +116,21 @@ spec:
                         type: object
                       controlPlaneEndpoint:
                         description: The kubernetes control plane endpoint.
+                        minProperties: 1
                         properties:
                           host:
                             description: host is the hostname on which the API server
                               is serving.
                             maxLength: 512
+                            minLength: 1
                             type: string
                           port:
                             description: port is the port on which the API server
                               is serving.
                             format: int32
+                            maximum: 65535
+                            minimum: 1
                             type: integer
-                        required:
-                        - host
-                        - port
                         type: object
                       failureDomains:
                         description: FailureDomains is a list of failure domains for

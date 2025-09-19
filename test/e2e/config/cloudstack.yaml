@@ -15,13 +15,13 @@ images:
   ## PLEASE KEEP THESE UP TO DATE WITH THE COMPONENTS
 
   # Cluster API v1beta1 Preloads
-  - name: gcr.io/k8s-staging-cluster-api/cluster-api-controller:v1.10.4
+  - name: gcr.io/k8s-staging-cluster-api/cluster-api-controller:v1.11.1
     loadBehavior: tryLoad
-  - name: gcr.io/k8s-staging-cluster-api/kubeadm-bootstrap-controller:v1.10.4
+  - name: gcr.io/k8s-staging-cluster-api/kubeadm-bootstrap-controller:v1.11.1
     loadBehavior: tryLoad
-  - name: gcr.io/k8s-staging-cluster-api/kubeadm-control-plane-controller:v1.10.4
+  - name: gcr.io/k8s-staging-cluster-api/kubeadm-control-plane-controller:v1.11.1
     loadBehavior: tryLoad
-  - name: gcr.io/k8s-staging-cluster-api/capd-manager-amd64:v1.10.4
+  - name: gcr.io/k8s-staging-cluster-api/capd-manager-amd64:v1.11.1
     loadBehavior: tryLoad
   - name: quay.io/jetstack/cert-manager-cainjector:v1.18.1
     loadBehavior: tryLoad
@@ -34,10 +34,10 @@ providers:
   - name: cluster-api
     type: CoreProvider
     versions:
-      - name: v1.10.4
-        value: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.10.4/core-components.yaml"
+      - name: v1.11.1
+        value: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.11.1/core-components.yaml"
         type: "url"
-        contract: v1beta1
+        contract: v1beta2
         replacements:
         - old: --metrics-addr=127.0.0.1:8080
           new: --metrics-addr=:8080
@@ -47,10 +47,10 @@ providers:
   - name: kubeadm
     type: BootstrapProvider
     versions:
-      - name: v1.10.4
-        value: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.10.4/bootstrap-components.yaml"
+      - name: v1.11.1
+        value: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.11.1/bootstrap-components.yaml"
         type: "url"
-        contract: v1beta1
+        contract: v1beta2
         replacements:
         - old: --metrics-addr=127.0.0.1:8080
           new: --metrics-addr=:8080
@@ -60,10 +60,10 @@ providers:
   - name: kubeadm
     type: ControlPlaneProvider
     versions:
-      - name: v1.10.4
-        value: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.10.4/control-plane-components.yaml"
+      - name: v1.11.1
+        value: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.11.1/control-plane-components.yaml"
         type: "url"
-        contract: v1beta1
+        contract: v1beta2
         replacements:
         - old: --metrics-addr=127.0.0.1:8080
           new: --metrics-addr=:8080
@@ -110,8 +110,8 @@ providers:
 variables:
   KUBERNETES_VERSION_MANAGEMENT: "v1.33.0"
   KUBERNETES_VERSION: "v1.33.0"
-  KUBERNETES_VERSION_UPGRADE_FROM: "v1.32.2"
-  KUBERNETES_VERSION_UPGRADE_TO: "v1.33.0"
+  KUBERNETES_VERSION_UPGRADE_FROM: "v1.33.0"
+  KUBERNETES_VERSION_UPGRADE_TO: "v1.34.0"
   CNI: "./data/cni/kindnet.yaml"
   IP_FAMILY: "IPv4"
   NODE_DRAIN_TIMEOUT: "60s"

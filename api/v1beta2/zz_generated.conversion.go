@@ -29,6 +29,7 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	v1beta3 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	v1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	corev1beta2 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 )
 
 func init() {
@@ -557,7 +558,8 @@ func autoConvert_v1beta2_CloudStackClusterSpec_To_v1beta3_CloudStackClusterSpec(
 	} else {
 		out.FailureDomains = nil
 	}
-	out.ControlPlaneEndpoint = in.ControlPlaneEndpoint
+	// FIXME: Provide conversion function to convert v1beta1.APIEndpoint to corev1beta2.APIEndpoint
+	compileErrorOnMissingConversion()
 	return nil
 }
 
@@ -573,7 +575,8 @@ func autoConvert_v1beta3_CloudStackClusterSpec_To_v1beta2_CloudStackClusterSpec(
 	} else {
 		out.FailureDomains = nil
 	}
-	out.ControlPlaneEndpoint = in.ControlPlaneEndpoint
+	// FIXME: Provide conversion function to convert corev1beta2.APIEndpoint to v1beta1.APIEndpoint
+	compileErrorOnMissingConversion()
 	// WARNING: in.APIServerLoadBalancer requires manual conversion: does not exist in peer-type
 	return nil
 }

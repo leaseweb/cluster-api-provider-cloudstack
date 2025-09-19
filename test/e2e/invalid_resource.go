@@ -29,8 +29,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/cluster-api/api/core/v1beta1"
-	controlplanev1 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1beta1"
+	controlplanev1 "sigs.k8s.io/cluster-api/api/controlplane/kubeadm/v1beta1"
+	"sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -153,8 +153,8 @@ func InvalidResourceSpec(ctx context.Context, inputGetter func() CommonSpecInput
 
 			By("Increasing the machine deployment instance size")
 			cp := clusterResources.ControlPlane
-			cp.Spec.MachineTemplate.InfrastructureRef.Name =
-				strings.Replace(cp.Spec.MachineTemplate.InfrastructureRef.Name, "-control-plane", "-upgrade-control-plane", 1)
+			cp.Spec.MachineTemplate.Spec.InfrastructureRef.Name =
+				strings.Replace(cp.Spec.MachineTemplate.Spec.InfrastructureRef.Name, "-control-plane", "-upgrade-control-plane", 1)
 			upgradeControlPlaneInfrastructureRef(ctx, cp)
 
 			By("Checking for the expected error")

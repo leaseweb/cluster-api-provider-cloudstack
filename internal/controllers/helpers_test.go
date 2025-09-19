@@ -21,7 +21,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/types"
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -46,7 +46,7 @@ func checkCAPIClusterReady(ctx context.Context, g *WithT, client client.Client) 
 	g.Eventually(func() bool {
 		capiCluster := &clusterv1.Cluster{}
 		if err := client.Get(ctx, types.NamespacedName{Namespace: dummies.CAPICluster.Namespace, Name: dummies.CAPICluster.Name}, capiCluster); err == nil {
-			if capiCluster.Status.InfrastructureReady {
+			if *capiCluster.Status.Initialization.InfrastructureProvisioned {
 				return true
 			}
 		}
