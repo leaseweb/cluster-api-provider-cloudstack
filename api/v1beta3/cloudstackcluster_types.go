@@ -18,8 +18,7 @@ package v1beta3
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -51,7 +50,7 @@ type CloudStackClusterStatus struct {
 	// CAPI recognizes failure domains as a method to spread machines.
 	// CAPC sets failure domains to indicate functioning CloudStackFailureDomains.
 	//+optional
-	FailureDomains clusterv1beta1.FailureDomains `json:"failureDomains,omitempty"`
+	FailureDomains clusterv1.FailureDomains `json:"failureDomains,omitempty"`
 
 	// Reflects the readiness of the CS cluster.
 	//+optional
