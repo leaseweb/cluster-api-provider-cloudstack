@@ -212,10 +212,8 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		g.Eventually(func() error {
 			ph, err := patch.NewHelper(dummies.CAPIMachine, testEnv.Client)
 			g.Expect(err).ToNot(HaveOccurred())
-			dummies.CAPIMachine.Status.NodeRef = &corev1.ObjectReference{
-				Kind:       "Node",
-				APIVersion: "v1",
-				Name:       "test-node",
+			dummies.CAPIMachine.Status.NodeRef = clusterv1.MachineNodeReference{
+				Name: "test-node",
 			}
 
 			return ph.Patch(ctx, dummies.CAPIMachine, patch.WithStatusObservedGeneration{})
@@ -316,10 +314,8 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		g.Eventually(func() error {
 			ph, err := patch.NewHelper(dummies.CAPIMachine, testEnv.Client)
 			g.Expect(err).ToNot(HaveOccurred())
-			dummies.CAPIMachine.Status.NodeRef = &corev1.ObjectReference{
-				Kind:       "Node",
-				APIVersion: "v1",
-				Name:       "test-node",
+			dummies.CAPIMachine.Status.NodeRef = clusterv1.MachineNodeReference{
+				Name: "test-node",
 			}
 
 			return ph.Patch(ctx, dummies.CAPIMachine, patch.WithStatusObservedGeneration{})

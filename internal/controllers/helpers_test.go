@@ -74,8 +74,7 @@ func setCAPIClusterReady(g *WithT, client client.Client) {
 	g.Eventually(func() error {
 		ph, err := patch.NewHelper(dummies.CAPICluster, client)
 		g.Expect(err).ToNot(HaveOccurred())
-		dummies.CAPICluster.Status.InfrastructureReady = true
-
+		*dummies.CAPICluster.Status.Initialization.InfrastructureProvisioned = true
 		return ph.Patch(ctx, dummies.CAPICluster, patch.WithStatusObservedGeneration{})
 	}, timeout).Should(Succeed())
 }
