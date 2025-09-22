@@ -160,7 +160,7 @@ linters:
 
 run:
   timeout: 10m
-  go: "1.23"
+  go: "1.24"
   build-tags:
     - tools
     - e2e
@@ -180,6 +180,12 @@ issues:
         - dupl
         - gosec
     - text: "SA1019: .+LBRuleID is deprecated"
+      linters:
+        - staticcheck
+    - text: "SA1019: \"sigs\\.k8s\\.io\\/cluster-api\\/api\\/core\\/v1beta1\" is deprecated"
+      linters:
+        - staticcheck
+    - text: "SA1019: \"sigs\\.k8s\\.io\\/cluster-api\\/util\\/deprecated\\/v1beta1\\/conditions\" is deprecated"
       linters:
         - staticcheck
     - path: api/v1beta3/webhook_suite_test.go
