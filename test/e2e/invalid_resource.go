@@ -29,8 +29,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/cluster-api/api/v1beta1"
-	controlplanev1 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1beta1"
+	controlplanev1 "sigs.k8s.io/cluster-api/api/controlplane/kubeadm/v1beta2"
+	"sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -153,8 +153,8 @@ func InvalidResourceSpec(ctx context.Context, inputGetter func() CommonSpecInput
 
 			By("Increasing the machine deployment instance size")
 			cp := clusterResources.ControlPlane
-			cp.Spec.MachineTemplate.InfrastructureRef.Name =
-				strings.Replace(cp.Spec.MachineTemplate.InfrastructureRef.Name, "-control-plane", "-upgrade-control-plane", 1)
+			cp.Spec.MachineTemplate.Spec.InfrastructureRef.Name =
+				strings.Replace(cp.Spec.MachineTemplate.Spec.InfrastructureRef.Name, "-control-plane", "-upgrade-control-plane", 1)
 			upgradeControlPlaneInfrastructureRef(ctx, cp)
 
 			By("Checking for the expected error")
@@ -255,7 +255,7 @@ func waitForErrorInLog(logFolder string, expectedError string) {
 
 // upgradeMachineDeploymentInfrastructureRef updates a machine deployment infrastructure ref and returns immediately.
 // The logic was borrowed from framework.UpgradeMachineDeploymentInfrastructureRefAndWait.
-func upgradeMachineDeploymentInfrastructureRef(ctx context.Context, deployment *v1beta1.MachineDeployment) {
+func upgradeMachineDeploymentInfrastructureRef(ctx context.Context, deployment *v1beta2.MachineDeployment) {
 	By("Patching the machine deployment infrastructure ref")
 	mgmtClient := input.BootstrapClusterProxy.GetClient()
 
@@ -277,25 +277,25 @@ func upgradeControlPlaneInfrastructureRef(ctx context.Context, controlPlane *con
 	mgmtClient := input.BootstrapClusterProxy.GetClient()
 
 	// Create a new infrastructure ref based on the existing one
-	infraRef := controlPlane.Spec.MachineTemplate.InfrastructureRef
+	infraRef := controlPlane.Spec.MachineTemplate.Spec.InfrastructureRef
 	newInfraObjName := createNewInfrastructureRef(ctx, infraRef)
 
 	// Patch the control plane to use the new infrastructure ref
 	patchHelper, err := patch.NewHelper(controlPlane, mgmtClient)
 	Expect(err).ToNot(HaveOccurred())
 	infraRef.Name = newInfraObjName
-	controlPlane.Spec.MachineTemplate.InfrastructureRef = infraRef
+	controlPlane.Spec.MachineTemplate.Spec.InfrastructureRef = infraRef
 	Expect(patchHelper.Patch(ctx, controlPlane)).To(Succeed())
 }
 
 // createNewInfrastructureRef creates a new infrastructure ref that's based on an existing one, but has a new name.  The
 // new name is returned.
-func createNewInfrastructureRef(ctx context.Context, sourceInfrastructureRef corev1.ObjectReference) string {
+func createNewInfrastructureRef(ctx context.Context, sourceInfrastructureRef v1beta2.ContractVersionedObjectReference) string {
 	mgmtClient := input.BootstrapClusterProxy.GetClient()
 
 	// Retrieve the existing infrastructure ref object
 	infraObj := &unstructured.Unstructured{}
-	infraObj.SetGroupVersionKind(sourceInfrastructureRef.GroupVersionKind())
+	infraObj.SetKind(sourceInfrastructureRef.Kind)
 	key := client.ObjectKey{
 		Namespace: clusterResources.Cluster.Namespace,
 		Name:      sourceInfrastructureRef.Name,

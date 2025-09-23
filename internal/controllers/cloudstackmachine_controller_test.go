@@ -33,7 +33,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -212,9 +212,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		g.Eventually(func() error {
 			ph, err := patch.NewHelper(dummies.CAPIMachine, testEnv.Client)
 			g.Expect(err).ToNot(HaveOccurred())
-			dummies.CAPIMachine.Status.NodeRef = &corev1.ObjectReference{
-				Kind:       "Node",
-				APIVersion: "v1",
+			dummies.CAPIMachine.Status.NodeRef = clusterv1.MachineNodeReference{
 				Name:       "test-node",
 			}
 
@@ -316,9 +314,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		g.Eventually(func() error {
 			ph, err := patch.NewHelper(dummies.CAPIMachine, testEnv.Client)
 			g.Expect(err).ToNot(HaveOccurred())
-			dummies.CAPIMachine.Status.NodeRef = &corev1.ObjectReference{
-				Kind:       "Node",
-				APIVersion: "v1",
+			dummies.CAPIMachine.Status.NodeRef = clusterv1.MachineNodeReference{
 				Name:       "test-node",
 			}
 

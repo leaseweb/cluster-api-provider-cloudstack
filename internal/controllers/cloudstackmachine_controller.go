@@ -247,7 +247,7 @@ func (r *CloudStackMachineReconciler) reconcileDelete(ctx context.Context, scope
 			}
 			scope.Error(err, "Failed to destroy VM instance")
 			r.Recorder.Eventf(scope.CloudStackMachine, corev1.EventTypeWarning, "FailedDestroyVM", "Failed to destroy VM instance %q: %v", vm.Id, err)
-			v1beta1conditions.MarkFalse(scope.CloudStackMachine, infrav1.InstanceReadyCondition, "DeletionFailed", clusterv1beta1.ConditionSeverityWarning, err.Error())
+			v1beta1conditions.MarkFalse(scope.CloudStackMachine, infrav1.InstanceReadyCondition, "DeletionFailed", clusterv1beta1.ConditionSeverityWarning, "%s", err.Error())
 			return ctrl.Result{}, err
 		}
 		scope.Info("VM instance successfully destroyed", "instance-id", vm.Id)
