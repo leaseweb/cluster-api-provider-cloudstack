@@ -28,10 +28,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
-	"sigs.k8s.io/cluster-api/util/conditions"
+	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
 	"sigs.k8s.io/cluster-api/util/predicates"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -166,11 +167,11 @@ func (r *CloudStackClusterReconciler) reconcileNormal(ctx context.Context, scope
 		metaHashName := infrav1.FailureDomainHashedMetaName(fdSpec.Name, scope.KubernetesClusterName())
 		if err := r.CreateFailureDomain(ctx, scope, fdSpec); err != nil {
 			if !apierrors.IsAlreadyExists(err) {
-				conditions.MarkFalse(scope.CloudStackCluster, infrav1.FailureDomainsReadyCondition, infrav1.FailureDomainsErrorReason, clusterv1.ConditionSeverityError, err.Error())
+				v1beta1conditions.MarkFalse(scope.CloudStackCluster, infrav1.FailureDomainsReadyCondition, infrav1.FailureDomainsErrorReason, clusterv1beta1.ConditionSeverityError, "%s", err.Error())
 				return ctrl.Result{}, errors.Wrap(err, "creating CloudStackFailureDomains")
 			}
 		}
-		scope.SetFailureDomain(fdSpec.Name, clusterv1.FailureDomainSpec{
+		scope.SetFailureDomain(fdSpec.Name, clusterv1beta1.FailureDomainSpec{
 			ControlPlane: true,
 			Attributes: map[string]string{
 				"MetaHashName": metaHashName,
@@ -180,26 +181,26 @@ func (r *CloudStackClusterReconciler) reconcileNormal(ctx context.Context, scope
 
 	fds := &infrav1.CloudStackFailureDomainList{}
 	if err := r.GetFailureDomains(ctx, scope, fds); err != nil {
-		conditions.MarkFalse(scope.CloudStackCluster, infrav1.FailureDomainsReadyCondition, infrav1.FailureDomainsErrorReason, clusterv1.ConditionSeverityError, err.Error())
+		v1beta1conditions.MarkFalse(scope.CloudStackCluster, infrav1.FailureDomainsReadyCondition, infrav1.FailureDomainsErrorReason, clusterv1beta1.ConditionSeverityError, "%s", err.Error())
 		return ctrl.Result{}, err
 	}
 
 	// Delete any failure domains that are no longer listed under the CloudStackCluster's spec.
 	if err := r.DeleteRemovedFailureDomains(ctx, scope, fds); err != nil {
-		conditions.MarkFalse(scope.CloudStackCluster, infrav1.FailureDomainsReadyCondition, infrav1.FailureDomainsDeletionFailedReason, clusterv1.ConditionSeverityError, err.Error())
+		v1beta1conditions.MarkFalse(scope.CloudStackCluster, infrav1.FailureDomainsReadyCondition, infrav1.FailureDomainsDeletionFailedReason, clusterv1beta1.ConditionSeverityError, "%s", err.Error())
 		return ctrl.Result{}, err
 	}
 
 	// Verify that all required failure domains are present and ready.
 	if err := r.VerifyFailureDomainsExist(scope, fds); err != nil {
-		conditions.MarkFalse(scope.CloudStackCluster, infrav1.FailureDomainsReadyCondition, infrav1.FailureDomainsNotReadyReason, clusterv1.ConditionSeverityWarning, err.Error())
+		v1beta1conditions.MarkFalse(scope.CloudStackCluster, infrav1.FailureDomainsReadyCondition, infrav1.FailureDomainsNotReadyReason, clusterv1beta1.ConditionSeverityWarning, "%s", err.Error())
 		scope.Info(fmt.Sprintf("%s, requeueing.", err.Error()))
 
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
 	// Mark failure domains as ready
-	conditions.MarkTrue(scope.CloudStackCluster, infrav1.FailureDomainsReadyCondition)
+	v1beta1conditions.MarkTrue(scope.CloudStackCluster, infrav1.FailureDomainsReadyCondition)
 
 	scope.SetReady()
 
