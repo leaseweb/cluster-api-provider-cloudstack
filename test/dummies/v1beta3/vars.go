@@ -453,8 +453,8 @@ func SetDummyCAPIMachineVars(namespace string) {
 			FailureDomain: "fd1",
 			InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 				APIGroup: infrav1.GroupVersion.Group,
-				Kind:       "CloudStackMachine",
-				Name:       "test-machine-1",
+				Kind:     "CloudStackMachine",
+				Name:     "test-machine-1",
 			},
 		},
 	}

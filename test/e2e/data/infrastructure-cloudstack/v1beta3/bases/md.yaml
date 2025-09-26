@@ -1,5 +1,5 @@
 ---
-apiVersion: cluster.x-k8s.io/v1beta1
+apiVersion: cluster.x-k8s.io/v1beta2
 kind: MachineDeployment
 metadata:
   name: "${CLUSTER_NAME}-md-0"
@@ -15,11 +15,11 @@ spec:
       bootstrap:
         configRef:
           name: "${CLUSTER_NAME}-md-0"
-          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          apiGroup: bootstrap.cluster.x-k8s.io
           kind: KubeadmConfigTemplate
       infrastructureRef:
         name: "${CLUSTER_NAME}-md-0"
-        apiVersion: infrastructure.cluster.x-k8s.io/v1beta3
+        apiGroup: infrastructure.cluster.x-k8s.io
         kind: CloudStackMachineTemplate
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta3
@@ -35,7 +35,7 @@ spec:
         name: ${CLOUDSTACK_TEMPLATE_NAME}
       sshKey: ${CLOUDSTACK_SSH_KEY_NAME}
 ---
-apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: KubeadmConfigTemplate
 metadata:
   name: ${CLUSTER_NAME}-md-0
@@ -46,6 +46,7 @@ spec:
         nodeRegistration:
           name: '{{ local_hostname }}'
           kubeletExtraArgs:
-            provider-id: "cloudstack:///'{{ ds.meta_data.instance_id }}'"
+            - name: "provider-id"
+              value: "cloudstack:///'{{ ds.meta_data.instance_id }}'"
       preKubeadmCommands:
         - swapoff -a

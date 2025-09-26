@@ -19,7 +19,7 @@ include $(REPO_ROOT)/common.mk
 #
 # Kubebuilder.
 #
-export KUBEBUILDER_ENVTEST_KUBERNETES_VERSION ?= 1.34.0
+export KUBEBUILDER_ENVTEST_KUBERNETES_VERSION ?= 1.34.1
 export KUBEBUILDER_CONTROLPLANE_START_TIMEOUT ?= 60s
 export KUBEBUILDER_CONTROLPLANE_STOP_TIMEOUT ?=
 
@@ -87,7 +87,7 @@ GOLANGCI_LINT := $(abspath $(TOOLS_BIN_DIR)/$(GOLANGCI_LINT_BIN)-$(GOLANGCI_LINT
 GOLANGCI_LINT_PKG := github.com/golangci/golangci-lint/cmd/golangci-lint
 
 MOCKGEN_BIN := mockgen
-MOCKGEN_VER := v0.5.2
+MOCKGEN_VER := v0.6.0
 MOCKGEN := $(abspath $(TOOLS_BIN_DIR)/$(MOCKGEN_BIN)-$(MOCKGEN_VER))
 MOCKGEN_PKG := go.uber.org/mock/mockgen
 
@@ -244,10 +244,10 @@ run: generate-deepcopy generate-conversion ## Run a controller from your host.
 deploy: generate-deepcopy generate-manifests $(KUSTOMIZE) ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	cd $(REPO_ROOT)
-	$(KUSTOMIZE) build config/default | kubectl apply -f -
+	$(KUSTOMIZE) build --load-restrictor=LoadRestrictionsNone config/default | kubectl apply -f -
 
 undeploy: $(KUSTOMIZE) ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/default | kubectl delete -f -
+	$(KUSTOMIZE) build --load-restrictor=LoadRestrictionsNone config/default | kubectl delete -f -
 
 ##@ Docker
 ## --------------------------------------
@@ -368,7 +368,7 @@ release-manifests: $(RELEASE_MANIFEST_TARGETS) ## Create kustomized release mani
 $(RELEASE_DIR)/%: $(RELEASE_MANIFEST_INPUTS)
 	@mkdir -p $(RELEASE_DIR)
 	cp metadata.yaml $(RELEASE_DIR)/metadata.yaml
-	$(KUSTOMIZE) build $(RELEASE_MANIFEST_SOURCE_BASE) > $(RELEASE_DIR)/infrastructure-components.yaml
+	$(KUSTOMIZE) build --load-restrictor=LoadRestrictionsNone $(RELEASE_MANIFEST_SOURCE_BASE) > $(RELEASE_DIR)/infrastructure-components.yaml
 
 .PHONY: release-manifests-metrics-port
 release-manifests-metrics-port:

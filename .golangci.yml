@@ -188,6 +188,9 @@ issues:
     - text: "SA1019: \"sigs\\.k8s\\.io\\/cluster-api\\/util\\/deprecated\\/v1beta1\\/conditions\" is deprecated"
       linters:
         - staticcheck
+    - text: "SA1019: scope.Cluster.Status.Deprecated.V1Beta1.Conditions is deprecated"
+      linters:
+        - staticcheck
     - path: api/v1beta3/webhook_suite_test.go
       linters:
         - goimports

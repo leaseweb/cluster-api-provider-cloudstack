@@ -230,7 +230,7 @@ func (r *CloudStackMachineReconciler) reconcileDelete(ctx context.Context, scope
 		scope.Info("Terminating instance", "instance-id", vm.Id)
 
 		// Set the InstanceReadyCondition and patch the object before the blocking operation
-		v1beta1conditions.MarkFalse(scope.CloudStackMachine, infrav1.InstanceReadyCondition, clusterv1.DeletingReason, clusterv1beta1.ConditionSeverityInfo, "")
+		v1beta1conditions.MarkFalse(scope.CloudStackMachine, infrav1.InstanceReadyCondition, clusterv1beta1.DeletingReason, clusterv1beta1.ConditionSeverityInfo, "")
 		if err := scope.PatchObject(); err != nil {
 			scope.Error(err, "failed to patch object")
 			return ctrl.Result{}, err
