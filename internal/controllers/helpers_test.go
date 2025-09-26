@@ -20,73 +20,35 @@ import (
 	"context"
 
 	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
-	"sigs.k8s.io/cluster-api/util/patch"
+	v1beta1patch "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
-	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
 )
 
-// setClusterReady patches the CAPI and CloudStack cluster with ready status true.
-func setClusterReady(g *WithT, client client.Client) {
-	setCAPIClusterReady(g, client)
-	setCloudStackClusterReady(g, client)
-}
-
-// checkClusterReady checks if the CAPI and CloudStack cluster are ready.
-func checkClusterReady(ctx context.Context, g *WithT, client client.Client) {
-	checkCAPIClusterReady(ctx, g, client)
-	checkCloudStackClusterReady(ctx, g, client)
-}
-
-// checkCAPIClusterReady checks if the CAPI cluster is ready.
-func checkCAPIClusterReady(ctx context.Context, g *WithT, client client.Client) {
-	g.Eventually(func() bool {
-		capiCluster := &clusterv1.Cluster{}
-		if err := client.Get(ctx, types.NamespacedName{Namespace: dummies.CAPICluster.Namespace, Name: dummies.CAPICluster.Name}, capiCluster); err == nil {
-			if *capiCluster.Status.Initialization.InfrastructureProvisioned {
-				return true
-			}
-		}
-
-		return false
-	}, timeout).Should(BeTrue())
-}
-
-// checkCloudStackClusterReady checks if the CloudStack cluster is ready.
-func checkCloudStackClusterReady(ctx context.Context, g *WithT, client client.Client) {
-	g.Eventually(func() bool {
-		csCluster := &infrav1.CloudStackCluster{}
-		if err := client.Get(ctx, types.NamespacedName{Namespace: dummies.CSCluster.Namespace, Name: dummies.CSCluster.Name}, csCluster); err == nil {
-			if csCluster.Status.Ready {
-				return true
-			}
-		}
-
-		return false
-	}, timeout).Should(BeTrue())
-}
-
-// setCAPIClusterReady patches the cluster with ready status true.
-func setCAPIClusterReady(g *WithT, client client.Client) {
+// markClustersReady patches Cluster & CloudStackCluster status to satisfy controller readiness checks (v1beta2 semantics).
+func markClustersReady(ctx context.Context, g *WithT, c client.Client, cluster *clusterv1.Cluster, csCluster *infrav1.CloudStackCluster) {
 	g.Eventually(func() error {
-		ph, err := patch.NewHelper(dummies.CAPICluster, client)
-		g.Expect(err).ToNot(HaveOccurred())
-		*dummies.CAPICluster.Status.Initialization.InfrastructureProvisioned = true
-
-		return ph.Patch(ctx, dummies.CAPICluster, patch.WithStatusObservedGeneration{})
+		ph, err := v1beta1patch.NewHelper(cluster, c)
+		if err != nil {
+			return err
+		}
+		if cluster.Status.Initialization.InfrastructureProvisioned == nil || !*cluster.Status.Initialization.InfrastructureProvisioned {
+			cluster.Status.Initialization.InfrastructureProvisioned = ptr.To(true)
+		}
+		return ph.Patch(ctx, cluster, v1beta1patch.WithStatusObservedGeneration{})
 	}, timeout).Should(Succeed())
-}
 
-// setCloudStackClusterReady patches the cluster with ready status true.
-func setCloudStackClusterReady(g *WithT, client client.Client) {
 	g.Eventually(func() error {
-		ph, err := patch.NewHelper(dummies.CSCluster, client)
-		g.Expect(err).ToNot(HaveOccurred())
-		dummies.CSCluster.Status.Ready = true
-
-		return ph.Patch(ctx, dummies.CSCluster, patch.WithStatusObservedGeneration{})
+		ph, err := v1beta1patch.NewHelper(csCluster, c)
+		if err != nil {
+			return err
+		}
+		if !csCluster.Status.Ready {
+			csCluster.Status.Ready = true
+		}
+		return ph.Patch(ctx, csCluster, v1beta1patch.WithStatusObservedGeneration{})
 	}, timeout).Should(Succeed())
 }

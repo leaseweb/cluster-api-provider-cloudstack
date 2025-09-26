@@ -102,19 +102,19 @@ providers:
     versions:
       - name: v1.0.0
         value: ../../../config/default
-        contract: v1beta1
+        contract: v1beta3
         replacements:
           - old: --metrics-bind-addr=localhost:8080
             new: --metrics-bind-addr=:8080
 
 variables:
-  KUBERNETES_VERSION_MANAGEMENT: "v1.34.0"
-  KUBERNETES_VERSION: "v1.34.0"
+  KUBERNETES_VERSION_MANAGEMENT: "v1.34.1"
+  KUBERNETES_VERSION: "v1.34.1"
   KUBERNETES_VERSION_UPGRADE_FROM: "v1.33.0"
-  KUBERNETES_VERSION_UPGRADE_TO: "v1.34.0"
+  KUBERNETES_VERSION_UPGRADE_TO: "v1.34.1"
   CNI: "./data/cni/kindnet.yaml"
   IP_FAMILY: "IPv4"
-  NODE_DRAIN_TIMEOUT: "60s"
+  NODE_DRAIN_TIMEOUT: "60"
 
   CLOUDSTACK_FD1_NAME: "fd1"
   CLOUDSTACK_FD1_SECRET_NAME: "secret1"
