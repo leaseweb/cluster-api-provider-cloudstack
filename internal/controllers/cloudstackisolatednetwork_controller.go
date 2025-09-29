@@ -32,7 +32,7 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
-	"sigs.k8s.io/cluster-api/util/patch"
+	v1beta1patch "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch"
 	"sigs.k8s.io/cluster-api/util/predicates"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -171,7 +171,7 @@ func (r *CloudStackIsolatedNetworkReconciler) reconcileNormal(ctx context.Contex
 
 	// Setup isolated network, endpoint, egress, and load balancing.
 	// Set endpoint of CloudStackCluster if it is not currently set. (uses patcher to do so)
-	csClusterPatcher, err := patch.NewHelper(scope.CloudStackCluster, r.Client)
+	csClusterPatcher, err := v1beta1patch.NewHelper(scope.CloudStackCluster, r.Client)
 	if err != nil {
 		return ctrl.Result{}, errors.Wrap(err, "setting up CloudStackCluster patcher")
 	}

@@ -35,7 +35,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
-	"sigs.k8s.io/cluster-api/util/patch"
+	v1beta1patch "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -158,7 +158,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 
 		// Set owner ref from CAPI machine to CS machine and patch back the CS machine.
 		g.Eventually(func() error {
-			ph, err := patch.NewHelper(dummies.CSMachine1, testEnv.Client)
+			ph, err := v1beta1patch.NewHelper(dummies.CSMachine1, testEnv.Client)
 			g.Expect(err).ToNot(HaveOccurred())
 			dummies.CSMachine1.OwnerReferences = append(dummies.CSMachine1.OwnerReferences, metav1.OwnerReference{
 				Kind:       "Machine",
@@ -167,7 +167,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 				UID:        "uniqueness",
 			})
 
-			return ph.Patch(ctx, dummies.CSMachine1, patch.WithStatusObservedGeneration{})
+			return ph.Patch(ctx, dummies.CSMachine1, v1beta1patch.WithStatusObservedGeneration{})
 		}, timeout).Should(Succeed())
 
 		setClusterReady(g, testEnv.Client)
@@ -210,13 +210,13 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 
 		// Set node ref on CAPI machine to simulate that the machine is operational.
 		g.Eventually(func() error {
-			ph, err := patch.NewHelper(dummies.CAPIMachine, testEnv.Client)
+			ph, err := v1beta1patch.NewHelper(dummies.CAPIMachine, testEnv.Client)
 			g.Expect(err).ToNot(HaveOccurred())
 			dummies.CAPIMachine.Status.NodeRef = clusterv1.MachineNodeReference{
-				Name:       "test-node",
+				Name: "test-node",
 			}
 
-			return ph.Patch(ctx, dummies.CAPIMachine, patch.WithStatusObservedGeneration{})
+			return ph.Patch(ctx, dummies.CAPIMachine, v1beta1patch.WithStatusObservedGeneration{})
 		}, timeout).Should(Succeed())
 
 		// Reconcile again (it is running).
@@ -312,13 +312,13 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		g.Expect(testEnv.Create(ctx, dummies.CAPIMachine)).To(Succeed())
 		// Set the NodeRef on the CAPI machine to simulate that the machine is operational.
 		g.Eventually(func() error {
-			ph, err := patch.NewHelper(dummies.CAPIMachine, testEnv.Client)
+			ph, err := v1beta1patch.NewHelper(dummies.CAPIMachine, testEnv.Client)
 			g.Expect(err).ToNot(HaveOccurred())
 			dummies.CAPIMachine.Status.NodeRef = clusterv1.MachineNodeReference{
-				Name:       "test-node",
+				Name: "test-node",
 			}
 
-			return ph.Patch(ctx, dummies.CAPIMachine, patch.WithStatusObservedGeneration{})
+			return ph.Patch(ctx, dummies.CAPIMachine, v1beta1patch.WithStatusObservedGeneration{})
 		}, timeout).Should(Succeed())
 		g.Expect(testEnv.Create(ctx, dummies.CSMachine1)).To(Succeed())
 
@@ -330,7 +330,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 
 		// Set owner ref from CAPI machine to CS machine and patch back the CS machine.
 		g.Eventually(func() error {
-			ph, err := patch.NewHelper(dummies.CSMachine1, testEnv.Client)
+			ph, err := v1beta1patch.NewHelper(dummies.CSMachine1, testEnv.Client)
 			g.Expect(err).ToNot(HaveOccurred())
 			dummies.CSMachine1.OwnerReferences = append(dummies.CSMachine1.OwnerReferences, metav1.OwnerReference{
 				Kind:       "Machine",
@@ -342,7 +342,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 			// Set the instance state to running to simulate that the machine is operational.
 			dummies.CSMachine1.Status.InstanceState = cloud.InstanceStateRunning
 
-			return ph.Patch(ctx, dummies.CSMachine1, patch.WithStatusObservedGeneration{})
+			return ph.Patch(ctx, dummies.CSMachine1, v1beta1patch.WithStatusObservedGeneration{})
 		}, timeout).Should(Succeed())
 
 		setClusterReady(g, testEnv.Client)

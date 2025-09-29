@@ -22,7 +22,7 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/types"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
-	"sigs.k8s.io/cluster-api/util/patch"
+	v1beta1patch "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
@@ -72,21 +72,21 @@ func checkCloudStackClusterReady(ctx context.Context, g *WithT, client client.Cl
 // setCAPIClusterReady patches the cluster with ready status true.
 func setCAPIClusterReady(g *WithT, client client.Client) {
 	g.Eventually(func() error {
-		ph, err := patch.NewHelper(dummies.CAPICluster, client)
+		ph, err := v1beta1patch.NewHelper(dummies.CAPICluster, client)
 		g.Expect(err).ToNot(HaveOccurred())
 		*dummies.CAPICluster.Status.Initialization.InfrastructureProvisioned = true
 
-		return ph.Patch(ctx, dummies.CAPICluster, patch.WithStatusObservedGeneration{})
+		return ph.Patch(ctx, dummies.CAPICluster, v1beta1patch.WithStatusObservedGeneration{})
 	}, timeout).Should(Succeed())
 }
 
 // setCloudStackClusterReady patches the cluster with ready status true.
 func setCloudStackClusterReady(g *WithT, client client.Client) {
 	g.Eventually(func() error {
-		ph, err := patch.NewHelper(dummies.CSCluster, client)
+		ph, err := v1beta1patch.NewHelper(dummies.CSCluster, client)
 		g.Expect(err).ToNot(HaveOccurred())
 		dummies.CSCluster.Status.Ready = true
 
-		return ph.Patch(ctx, dummies.CSCluster, patch.WithStatusObservedGeneration{})
+		return ph.Patch(ctx, dummies.CSCluster, v1beta1patch.WithStatusObservedGeneration{})
 	}, timeout).Should(Succeed())
 }

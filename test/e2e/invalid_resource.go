@@ -31,7 +31,7 @@ import (
 	"k8s.io/utils/ptr"
 	controlplanev1 "sigs.k8s.io/cluster-api/api/controlplane/kubeadm/v1beta2"
 	"sigs.k8s.io/cluster-api/api/core/v1beta2"
-	"sigs.k8s.io/cluster-api/util/patch"
+	v1beta1patch "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"sigs.k8s.io/cluster-api/test/framework"
@@ -264,7 +264,7 @@ func upgradeMachineDeploymentInfrastructureRef(ctx context.Context, deployment *
 	newInfraObjName := createNewInfrastructureRef(ctx, infraRef)
 
 	// Patch the new infra object's ref to the machine deployment
-	patchHelper, err := patch.NewHelper(deployment, mgmtClient)
+	patchHelper, err := v1beta1patch.NewHelper(deployment, mgmtClient)
 	Expect(err).ToNot(HaveOccurred())
 	infraRef.Name = newInfraObjName
 	deployment.Spec.Template.Spec.InfrastructureRef = infraRef
@@ -281,7 +281,7 @@ func upgradeControlPlaneInfrastructureRef(ctx context.Context, controlPlane *con
 	newInfraObjName := createNewInfrastructureRef(ctx, infraRef)
 
 	// Patch the control plane to use the new infrastructure ref
-	patchHelper, err := patch.NewHelper(controlPlane, mgmtClient)
+	patchHelper, err := v1beta1patch.NewHelper(controlPlane, mgmtClient)
 	Expect(err).ToNot(HaveOccurred())
 	infraRef.Name = newInfraObjName
 	controlPlane.Spec.MachineTemplate.Spec.InfrastructureRef = infraRef

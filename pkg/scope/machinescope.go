@@ -33,7 +33,7 @@ import (
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
 	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
-	"sigs.k8s.io/cluster-api/util/patch"
+	v1beta1patch "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
@@ -85,7 +85,7 @@ func NewMachineScope(params MachineScopeParams) (*MachineScope, error) {
 		CSClientsProvider:       params.CSClients,
 	}
 
-	helper, err := patch.NewHelper(params.CloudStackMachine, params.Client)
+	helper, err := v1beta1patch.NewHelper(params.CloudStackMachine, params.Client)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init patch helper")
 	}
@@ -99,7 +99,7 @@ func NewMachineScope(params MachineScopeParams) (*MachineScope, error) {
 type MachineScope struct {
 	logger.Logger
 	client      client.Client
-	patchHelper *patch.Helper
+	patchHelper *v1beta1patch.Helper
 
 	Cluster                   *clusterv1.Cluster
 	CloudStackCluster         *infrav1.CloudStackCluster
@@ -174,10 +174,10 @@ func (s *MachineScope) PatchObject() error {
 	return s.patchHelper.Patch(
 		context.TODO(),
 		s.CloudStackMachine,
-		patch.WithOwnedConditions{Conditions: []string{
-			clusterv1.ReadyCondition,
-			string(infrav1.InstanceReadyCondition),
-			string(infrav1.LoadBalancerAttachedCondition),
+		v1beta1patch.WithOwnedConditions{Conditions: []clusterv1beta1.ConditionType{
+			clusterv1beta1.ReadyCondition,
+			infrav1.InstanceReadyCondition,
+			infrav1.LoadBalancerAttachedCondition,
 		}},
 	)
 }

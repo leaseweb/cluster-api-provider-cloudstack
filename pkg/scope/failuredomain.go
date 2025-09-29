@@ -27,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
-	"sigs.k8s.io/cluster-api/util/patch"
+	v1beta1patch "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
@@ -70,7 +70,7 @@ func NewFailureDomainScope(params FailureDomainScopeParams) (*FailureDomainScope
 		CSClientsProvider:       params.CSClients,
 	}
 
-	helper, err := patch.NewHelper(params.CloudStackFailureDomain, params.Client)
+	helper, err := v1beta1patch.NewHelper(params.CloudStackFailureDomain, params.Client)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init patch helper")
 	}
@@ -84,7 +84,7 @@ func NewFailureDomainScope(params FailureDomainScopeParams) (*FailureDomainScope
 type FailureDomainScope struct {
 	logger.Logger
 	client      client.Client
-	patchHelper *patch.Helper
+	patchHelper *v1beta1patch.Helper
 
 	Cluster                 *clusterv1.Cluster
 	CloudStackFailureDomain *infrav1.CloudStackFailureDomain
