@@ -166,11 +166,16 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 				Name:       dummies.CAPIMachine.Name,
 				UID:        "uniqueness",
 			})
+			if dummies.CSMachine1.Labels == nil {
+				dummies.CSMachine1.Labels = map[string]string{}
+			}
+			dummies.CSMachine1.Labels[infrav1.FailureDomainLabelName] =
+				infrav1.FailureDomainHashedMetaName(dummies.CSMachine1.Spec.FailureDomainName, dummies.CAPICluster.Name)
 
 			return ph.Patch(ctx, dummies.CSMachine1, v1beta1patch.WithStatusObservedGeneration{})
 		}, timeout).Should(Succeed())
-
-		setClusterReady(g, testEnv.Client)
+		// Mark both Cluster and CloudStackCluster ready (v1beta2 readiness semantics).
+		markClustersReady(ctx, g, testEnv.Client, dummies.CAPICluster, dummies.CSCluster)
 
 		defer func() {
 			if err := recover(); err != nil {
@@ -308,7 +313,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		dummies.CAPIMachine.Spec.Bootstrap.DataSecretName = &dummies.BootstrapSecret.Name
 		g.Expect(testEnv.Create(ctx, dummies.BootstrapSecret)).To(Succeed())
 
-		// Create CAPI and CS machines.
+		// Create CAPI & set NodeRef.
 		g.Expect(testEnv.Create(ctx, dummies.CAPIMachine)).To(Succeed())
 		// Set the NodeRef on the CAPI machine to simulate that the machine is operational.
 		g.Eventually(func() error {
@@ -339,13 +344,19 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 				UID:        "uniqueness",
 			})
 			controllerutil.AddFinalizer(dummies.CSMachine1, infrav1.MachineFinalizer)
-			// Set the instance state to running to simulate that the machine is operational.
 			dummies.CSMachine1.Status.InstanceState = cloud.InstanceStateRunning
+			// Keep original logical FailureDomainName ("fd1"); only ensure label is present.
+			if dummies.CSMachine1.Labels == nil {
+				dummies.CSMachine1.Labels = map[string]string{}
+			}
+			dummies.CSMachine1.Labels[infrav1.FailureDomainLabelName] =
+				infrav1.FailureDomainHashedMetaName(dummies.CSMachine1.Spec.FailureDomainName, dummies.CAPICluster.Name)
 
 			return ph.Patch(ctx, dummies.CSMachine1, v1beta1patch.WithStatusObservedGeneration{})
 		}, timeout).Should(Succeed())
 
-		setClusterReady(g, testEnv.Client)
+		// Mark clusters ready (replaces setClusterReady & checkClusterReady).
+		markClustersReady(ctx, g, testEnv.Client, dummies.CAPICluster, dummies.CSCluster)
 
 		defer func() {
 			if err := recover(); err != nil {
@@ -353,9 +364,6 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 			}
 			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, dummies.CSFailureDomain1, dummies.CSISONet1, dummies.BootstrapSecret, dummies.CAPIMachine, dummies.CSMachine1, ns)).To(Succeed())
 		}()
-
-		// Check that the CAPI and CloudStack cluster are ready before reconciling.
-		checkClusterReady(ctx, g, testEnv.Client)
 
 		// Check that the machine was created correctly before reconciling.
 		machineKey := client.ObjectKey{Namespace: ns.Name, Name: dummies.CSMachine1.Name}
