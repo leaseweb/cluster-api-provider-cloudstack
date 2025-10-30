@@ -35,7 +35,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
-	"sigs.k8s.io/cluster-api/util/patch"
+	v1beta1patch "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -158,7 +158,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 
 		// Set owner ref from CAPI machine to CS machine and patch back the CS machine.
 		g.Eventually(func() error {
-			ph, err := patch.NewHelper(dummies.CSMachine1, testEnv.Client)
+			ph, err := v1beta1patch.NewHelper(dummies.CSMachine1, testEnv.Client)
 			g.Expect(err).ToNot(HaveOccurred())
 			dummies.CSMachine1.OwnerReferences = append(dummies.CSMachine1.OwnerReferences, metav1.OwnerReference{
 				Kind:       "Machine",
@@ -172,7 +172,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 			dummies.CSMachine1.Labels[infrav1.FailureDomainLabelName] =
 				infrav1.FailureDomainHashedMetaName(dummies.CSMachine1.Spec.FailureDomainName, dummies.CAPICluster.Name)
 
-			return ph.Patch(ctx, dummies.CSMachine1, patch.WithStatusObservedGeneration{})
+			return ph.Patch(ctx, dummies.CSMachine1, v1beta1patch.WithStatusObservedGeneration{})
 		}, timeout).Should(Succeed())
 		// Mark both Cluster and CloudStackCluster ready (v1beta2 readiness semantics).
 		markClustersReady(ctx, g, testEnv.Client, dummies.CAPICluster, dummies.CSCluster)
@@ -223,13 +223,13 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 
 		// Set node ref on CAPI machine to simulate that the machine is operational.
 		g.Eventually(func() error {
-			ph, err := patch.NewHelper(dummies.CAPIMachine, testEnv.Client)
+			ph, err := v1beta1patch.NewHelper(dummies.CAPIMachine, testEnv.Client)
 			g.Expect(err).ToNot(HaveOccurred())
 			dummies.CAPIMachine.Status.NodeRef = clusterv1.MachineNodeReference{
 				Name: "test-node",
 			}
 
-			return ph.Patch(ctx, dummies.CAPIMachine, patch.WithStatusObservedGeneration{})
+			return ph.Patch(ctx, dummies.CAPIMachine, v1beta1patch.WithStatusObservedGeneration{})
 		}, timeout).Should(Succeed())
 
 		// Reconcile again (it is running).
@@ -267,49 +267,39 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 		dummies.SetDummyVars(ns.Name)
 
-		// --- Relaxed mock expectations using a simple state machine instead of strict InOrder ---
-		// Sequence we simulate for GetVMInstanceByID across reconciles:
-		//  1: Running  (normal reconcile)
-		//  2: Running  (first delete reconcile -> triggers Destroy)
-		//  3+: Destroyed (subsequent delete reconcile(s))
-		callCount := 0
-		mockCSCUser.EXPECT().
-			GetVMInstanceByID(gomock.AssignableToTypeOf(*dummies.CSMachine1.Spec.InstanceID)).
-			DoAndReturn(func(string) (*cloudstack.VirtualMachine, error) {
-				callCount++
-				switch callCount {
-				case 1:
-					return &cloudstack.VirtualMachine{
-						Id:    *dummies.CSMachine1.Spec.InstanceID,
-						Name:  dummies.CSMachine1.Name,
-						State: cloud.InstanceStateRunning,
-					}, nil
-				case 2:
-					return &cloudstack.VirtualMachine{
-						Id:    *dummies.CSMachine1.Spec.InstanceID,
-						Name:  dummies.CSMachine1.Name,
-						State: cloud.InstanceStateRunning,
-					}, nil
-				default:
-					return &cloudstack.VirtualMachine{
-						Id:    *dummies.CSMachine1.Spec.InstanceID,
-						Name:  dummies.CSMachine1.Name,
-						State: cloud.InstanceStateDestroyed,
-					}, nil
-				}
-			}).AnyTimes()
-
-		// Address fetch may or may not happen multiple times depending on state transitions. Allow flexibly.
-		mockCSCUser.EXPECT().
-			GetInstanceAddresses(gomock.Any()).
-			Return([]corev1.NodeAddress{{Type: corev1.NodeInternalIP, Address: "192.168.1.1"}}, nil).
-			AnyTimes()
-
-		// Destroy is expected at least once (first delete reconcile); allow no strict arg matching aside from type.
-		mockCSClient.EXPECT().
-			DestroyVMInstance(gomock.AssignableToTypeOf(&infrav1.CloudStackMachine{})).
-			Return(fmt.Errorf("VM deletion in progress")).
-			MinTimes(1)
+		gomock.InOrder(
+			mockCSCUser.EXPECT().GetVMInstanceByID(gomock.AssignableToTypeOf(*dummies.CSMachine1.Spec.InstanceID)).
+				Return(&cloudstack.VirtualMachine{
+					Id:    *dummies.CSMachine1.Spec.InstanceID,
+					Name:  dummies.CSMachine1.Name,
+					State: cloud.InstanceStateRunning,
+				}, nil).Times(2),
+			mockCSCUser.EXPECT().GetVMInstanceByID(gomock.AssignableToTypeOf(*dummies.CSMachine1.Spec.InstanceID)).
+				Return(&cloudstack.VirtualMachine{
+					Id:    *dummies.CSMachine1.Spec.InstanceID,
+					Name:  dummies.CSMachine1.Name,
+					State: cloud.InstanceStateDestroyed,
+				}, nil).Times(1),
+		)
+		mockCSCUser.EXPECT().GetInstanceAddresses(gomock.AssignableToTypeOf(&cloudstack.VirtualMachine{
+			Id:    *dummies.CSMachine1.Spec.InstanceID,
+			Name:  dummies.CSMachine1.Name,
+			State: cloud.InstanceStateRunning,
+		})).Return([]corev1.NodeAddress{
+			{
+				Type:    corev1.NodeInternalIP,
+				Address: "192.168.1.1",
+			},
+		}, nil).Times(1)
+		mockCSClient.EXPECT().DestroyVMInstance(gomock.AssignableToTypeOf(&infrav1.CloudStackMachine{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      dummies.CSMachine1.Name,
+				Namespace: ns.Name,
+			},
+			Spec: infrav1.CloudStackMachineSpec{
+				InstanceID: dummies.CSMachine1.Spec.InstanceID,
+			},
+		})).Return(fmt.Errorf("VM deletion in progress")).Times(1)
 
 		// Create test objects
 		g.Expect(testEnv.Create(ctx, dummies.CAPICluster)).To(Succeed())
@@ -334,10 +324,10 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		// Create CAPI & set NodeRef (simulate operational).
 		g.Expect(testEnv.Create(ctx, dummies.CAPIMachine)).To(Succeed())
 		g.Eventually(func() error {
-			ph, err2 := patch.NewHelper(dummies.CAPIMachine, testEnv.Client)
+			ph, err2 := v1beta1patch.NewHelper(dummies.CAPIMachine, testEnv.Client)
 			g.Expect(err2).ToNot(HaveOccurred())
 			dummies.CAPIMachine.Status.NodeRef = clusterv1.MachineNodeReference{Name: "test-node"}
-			return ph.Patch(ctx, dummies.CAPIMachine, patch.WithStatusObservedGeneration{})
+			return ph.Patch(ctx, dummies.CAPIMachine, v1beta1patch.WithStatusObservedGeneration{})
 		}, timeout).Should(Succeed())
 
 		// Create CS machine.
@@ -347,7 +337,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		key := client.ObjectKey{Namespace: ns.Name, Name: dummies.CSMachine1.Name}
 		g.Eventually(func() error { return testEnv.Get(ctx, key, dummies.CSMachine1) }, timeout).Should(Succeed())
 		g.Eventually(func() error {
-			ph, err2 := patch.NewHelper(dummies.CSMachine1, testEnv.Client)
+			ph, err2 := v1beta1patch.NewHelper(dummies.CSMachine1, testEnv.Client)
 			g.Expect(err2).ToNot(HaveOccurred())
 			dummies.CSMachine1.OwnerReferences = append(dummies.CSMachine1.OwnerReferences, metav1.OwnerReference{
 				Kind:       "Machine",
@@ -363,7 +353,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 			}
 			dummies.CSMachine1.Labels[infrav1.FailureDomainLabelName] =
 				infrav1.FailureDomainHashedMetaName(dummies.CSMachine1.Spec.FailureDomainName, dummies.CAPICluster.Name)
-			return ph.Patch(ctx, dummies.CSMachine1, patch.WithStatusObservedGeneration{})
+			return ph.Patch(ctx, dummies.CSMachine1, v1beta1patch.WithStatusObservedGeneration{})
 		}, timeout).Should(Succeed())
 
 		// Mark clusters ready per new v1beta2 readiness semantics.

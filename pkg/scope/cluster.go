@@ -26,7 +26,7 @@ import (
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
-	"sigs.k8s.io/cluster-api/util/patch"
+	v1beta1patch "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
@@ -65,7 +65,7 @@ func NewClusterScope(params ClusterScopeParams) (*ClusterScope, error) {
 		controllerName:    params.ControllerName,
 	}
 
-	helper, err := patch.NewHelper(params.CloudStackCluster, params.Client)
+	helper, err := v1beta1patch.NewHelper(params.CloudStackCluster, params.Client)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init patch helper")
 	}
@@ -79,7 +79,7 @@ func NewClusterScope(params ClusterScopeParams) (*ClusterScope, error) {
 type ClusterScope struct {
 	logger.Logger
 	client      client.Client
-	patchHelper *patch.Helper
+	patchHelper *v1beta1patch.Helper
 
 	Cluster           *clusterv1.Cluster
 	CloudStackCluster *infrav1.CloudStackCluster
@@ -129,9 +129,9 @@ func (s *ClusterScope) PatchObject() error {
 	return s.patchHelper.Patch(
 		context.TODO(),
 		s.CloudStackCluster,
-		patch.WithOwnedConditions{Conditions: []string{
-			clusterv1.ReadyCondition,
-			string(infrav1.FailureDomainsReadyCondition),
+		v1beta1patch.WithOwnedConditions{Conditions: []clusterv1beta1.ConditionType{
+			clusterv1beta1.ReadyCondition,
+			infrav1.FailureDomainsReadyCondition,
 		}},
 	)
 }
