@@ -17,15 +17,14 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
 	"errors"
+	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	machineryconversion "k8s.io/apimachinery/pkg/conversion"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
 )
 
 const DefaultEndpointCredential = "global"
@@ -137,56 +136,13 @@ func GetFailureDomains(csCluster *CloudStackCluster) ([]infrav1.CloudStackFailur
 // method to get zoneID by calling cloudstack API.
 // When upgrading cluster using clusterctl directly, zoneID is fetched directly from kubernetes cluster in cloudstackzones.
 func GetDefaultFailureDomainName(namespace string, zoneID string, zoneName string) (string, error) {
-	if len(zoneID) > 0 {
+	if len(strings.TrimSpace(zoneID)) > 0 {
 		return zoneID, nil
 	}
 
-	secret, err := GetK8sSecret(DefaultEndpointCredential, namespace)
-	if err != nil {
-		return "", err
+	if len(strings.TrimSpace(zoneName)) > 0 {
+		return strings.ToLower(zoneName), nil
 	}
 
-	// try fetch zoneID using zoneName through cloudstack client.
-	zoneID, err = fetchZoneIDUsingCloudStack(secret, zoneName)
-	if err == nil {
-		return zoneID, nil
-	}
-
-	zoneID, err = fetchZoneIDUsingK8s(namespace, zoneName)
-	if err != nil {
-		return "", err
-	}
-
-	return zoneID, nil
-}
-
-func fetchZoneIDUsingK8s(namespace string, zoneName string) (string, error) {
-	zone := &CloudStackZone{}
-	key := client.ObjectKey{Name: zoneName, Namespace: namespace}
-	if err := infrav1.K8sClient.Get(context.TODO(), key, zone); err != nil {
-		return "", err
-	}
-
-	return zone.Spec.ID, nil
-}
-
-func fetchZoneIDUsingCloudStack(secret *corev1.Secret, zoneName string) (string, error) {
-	client, err := cloud.NewClientFromK8sSecret(secret, nil)
-	if err != nil {
-		return "", err
-	}
-	zone := &infrav1.CloudStackZoneSpec{Name: zoneName}
-	err = client.ResolveZone(zone)
-
-	return zone.ID, err
-}
-
-func GetK8sSecret(name, namespace string) (*corev1.Secret, error) {
-	endpointCredentials := &corev1.Secret{}
-	key := client.ObjectKey{Name: name, Namespace: namespace}
-	if err := infrav1.K8sClient.Get(context.TODO(), key, endpointCredentials); err != nil {
-		return nil, err
-	}
-
-	return endpointCredentials, nil
+	return "", fmt.Errorf("cannot derive failure domain name: both zone ID and zone name are empty (namespace=%s)", namespace)
 }
