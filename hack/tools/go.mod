@@ -16,6 +16,6 @@ require (
 )
 
 replace (
-	sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.11.1
-	sigs.k8s.io/cluster-api/test => sigs.k8s.io/cluster-api/test v1.11.1
+	sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.11.3
+	sigs.k8s.io/cluster-api/test => sigs.k8s.io/cluster-api/test v1.11.3
 )
