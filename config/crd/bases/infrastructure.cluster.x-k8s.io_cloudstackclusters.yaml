@@ -18,10 +18,16 @@ spec:
     singular: cloudstackcluster
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - deprecated: true
+    deprecationWarning: The v1beta1 version of CloudStackCluster has been deprecated
+      and will be removed in a future release of the API. Please upgrade.
+    name: v1beta1
     schema:
       openAPIV3Schema:
-        description: CloudStackCluster is the Schema for the cloudstackclusters API.
+        description: |-
+          CloudStackCluster is the Schema for the cloudstackclusters API.
+
+          Deprecated: This type will be removed in one of the next releases.
         properties:
           apiVersion:
             description: |-
@@ -192,10 +198,16 @@ spec:
     storage: false
     subresources:
       status: {}
-  - name: v1beta2
+  - deprecated: true
+    deprecationWarning: The v1beta2 version of CloudStackCluster has been deprecated
+      and will be removed in a future release of the API. Please upgrade.
+    name: v1beta2
     schema:
       openAPIV3Schema:
-        description: CloudStackCluster is the Schema for the cloudstackclusters API.
+        description: |-
+          CloudStackCluster is the Schema for the cloudstackclusters API.
+
+          Deprecated: This type will be removed in one of the next releases.
         properties:
           apiVersion:
             description: |-

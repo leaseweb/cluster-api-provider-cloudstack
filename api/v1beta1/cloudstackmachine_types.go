@@ -156,6 +156,7 @@ func (s *CloudStackMachineStatus) TimeSinceLastStateChange() time.Duration {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:deprecatedversion:warning="The v1beta1 version of CloudStackMachine has been deprecated and will be removed in a future release of the API. Please upgrade."
 // +kubebuilder:resource:path=cloudstackmachines,scope=Namespaced,categories=cluster-api,shortName=csm
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Cluster",type="string",JSONPath=".metadata.labels.cluster\\.x-k8s\\.io/cluster-name",description="Cluster to which this CloudStackMachine belongs"
@@ -165,6 +166,8 @@ func (s *CloudStackMachineStatus) TimeSinceLastStateChange() time.Duration {
 // +kubebuilder:printcolumn:name="Machine",type="string",JSONPath=".metadata.ownerReferences[?(@.kind==\"Machine\")].name",description="Machine object which owns with this CloudStackMachine"
 
 // CloudStackMachine is the Schema for the cloudstackmachines API.
+//
+// Deprecated: This type will be removed in one of the next releases.
 type CloudStackMachine struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -176,6 +179,8 @@ type CloudStackMachine struct {
 //+kubebuilder:object:root=true
 
 // CloudStackMachineList contains a list of CloudStackMachine.
+//
+// Deprecated: This type will be removed in one of the next releases.
 type CloudStackMachineList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

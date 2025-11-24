@@ -45,9 +45,12 @@ type CloudStackClusterStatus struct {
 }
 
 //+kubebuilder:object:root=true
+//+kubebuilder:deprecatedversion:warning="The v1beta2 version of CloudStackCluster has been deprecated and will be removed in a future release of the API. Please upgrade."
 //+kubebuilder:subresource:status
 
 // CloudStackCluster is the Schema for the cloudstackclusters API.
+//
+// Deprecated: This type will be removed in one of the next releases.
 type CloudStackCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -61,6 +64,8 @@ type CloudStackCluster struct {
 //+kubebuilder:object:root=true
 
 // CloudStackClusterList contains a list of CloudStackCluster.
+//
+// Deprecated: This type will be removed in one of the next releases.
 type CloudStackClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

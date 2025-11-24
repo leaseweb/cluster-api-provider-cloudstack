@@ -100,9 +100,12 @@ type CloudStackFailureDomainStatus struct {
 }
 
 //+kubebuilder:object:root=true
+//+kubebuilder:deprecatedversion:warning="The v1beta2 version of CloudStackFailureDomain has been deprecated and will be removed in a future release of the API. Please upgrade."
 //+kubebuilder:subresource:status
 
 // CloudStackFailureDomain is the Schema for the cloudstackfailuredomains API.
+//
+// Deprecated: This type will be removed in one of the next releases.
 type CloudStackFailureDomain struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -114,6 +117,8 @@ type CloudStackFailureDomain struct {
 //+kubebuilder:object:root=true
 
 // CloudStackFailureDomainList contains a list of CloudStackFailureDomain.
+//
+// Deprecated: This type will be removed in one of the next releases.
 type CloudStackFailureDomainList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

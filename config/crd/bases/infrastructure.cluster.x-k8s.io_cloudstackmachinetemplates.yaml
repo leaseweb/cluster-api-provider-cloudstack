@@ -18,11 +18,16 @@ spec:
     singular: cloudstackmachinetemplate
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - deprecated: true
+    deprecationWarning: The v1beta1 version of CloudStackMachineTemplate has been
+      deprecated and will be removed in a future release of the API. Please upgrade.
+    name: v1beta1
     schema:
       openAPIV3Schema:
-        description: CloudStackMachineTemplate is the Schema for the cloudstackmachinetemplates
-          API.
+        description: |-
+          CloudStackMachineTemplate is the Schema for the cloudstackmachinetemplates API.
+
+          Deprecated: This type will be removed in one of the next releases.
         properties:
           apiVersion:
             description: |-
@@ -231,11 +236,16 @@ spec:
     storage: false
     subresources:
       status: {}
-  - name: v1beta2
+  - deprecated: true
+    deprecationWarning: The v1beta2 version of CloudStackMachineTemplate has been
+      deprecated and will be removed in a future release of the API. Please upgrade.
+    name: v1beta2
     schema:
       openAPIV3Schema:
-        description: CloudStackMachineTemplate is the Schema for the cloudstackmachinetemplates
-          API.
+        description: |-
+          CloudStackMachineTemplate is the Schema for the cloudstackmachinetemplates API.
+
+          Deprecated: This type will be removed in one of the next releases.
         properties:
           apiVersion:
             description: |-
