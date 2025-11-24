@@ -24,8 +24,8 @@ import (
 	"k8s.io/utils/ptr"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 
-	v1beta1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta1"
-	"sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
+	infrav1beta1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta1"
+	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 )
 
 var _ = Describe("Conversion", func() {
@@ -34,16 +34,16 @@ var _ = Describe("Conversion", func() {
 
 	Context("GetFailureDomains function", func() {
 		It("Converts v1beta1 cluster spec to v1beta3 failure domains", func() {
-			csCluster := &v1beta1.CloudStackCluster{
+			csCluster := &infrav1beta1.CloudStackCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "cluster1",
 					Namespace: "namespace1",
 				},
-				Spec: v1beta1.CloudStackClusterSpec{
-					Zones: []v1beta1.Zone{
+				Spec: infrav1beta1.CloudStackClusterSpec{
+					Zones: []infrav1beta1.Zone{
 						{
 							ID: "76472a84-d23f-4e97-b154-ee1b975ed936",
-							Network: v1beta1.Network{
+							Network: infrav1beta1.Network{
 								Name: "network1",
 							},
 						},
@@ -55,15 +55,15 @@ var _ = Describe("Conversion", func() {
 					Account: "account1",
 					Domain:  "domain1",
 				},
-				Status: v1beta1.CloudStackClusterStatus{},
+				Status: infrav1beta1.CloudStackClusterStatus{},
 			}
-			failureDomains, err := v1beta1.GetFailureDomains(csCluster)
-			expectedResult := []v1beta3.CloudStackFailureDomainSpec{
+			failureDomains, err := infrav1beta1.GetFailureDomains(csCluster)
+			expectedResult := []infrav1.CloudStackFailureDomainSpec{
 				{
 					Name: "76472a84-d23f-4e97-b154-ee1b975ed936",
-					Zone: v1beta3.CloudStackZoneSpec{
+					Zone: infrav1.CloudStackZoneSpec{
 						ID:      "76472a84-d23f-4e97-b154-ee1b975ed936",
-						Network: v1beta3.Network{Name: "network1"},
+						Network: infrav1.Network{Name: "network1"},
 					},
 					Account: "account1",
 					Domain:  "domain1",
@@ -80,18 +80,18 @@ var _ = Describe("Conversion", func() {
 
 	Context("v1beta3 to v1beta1 function", func() {
 		It("Converts v1beta3 cluster spec to v1beta1 zone based cluster spec", func() {
-			csCluster := &v1beta3.CloudStackCluster{
+			csCluster := &infrav1.CloudStackCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "cluster1",
 					Namespace: "namespace1",
 				},
-				Spec: v1beta3.CloudStackClusterSpec{
-					FailureDomains: []v1beta3.CloudStackFailureDomainSpec{
+				Spec: infrav1.CloudStackClusterSpec{
+					FailureDomains: []infrav1.CloudStackFailureDomainSpec{
 						{
 							Name: "76472a84-d23f-4e97-b154-ee1b975ed936",
-							Zone: v1beta3.CloudStackZoneSpec{
+							Zone: infrav1.CloudStackZoneSpec{
 								ID:      "76472a84-d23f-4e97-b154-ee1b975ed936",
-								Network: v1beta3.Network{Name: "network1"},
+								Network: infrav1.Network{Name: "network1"},
 							},
 							Account: "account1",
 							Domain:  "domain1",
@@ -105,26 +105,26 @@ var _ = Describe("Conversion", func() {
 						Host: "endpoint1",
 						Port: 443,
 					},
-					APIServerLoadBalancer: &v1beta3.APIServerLoadBalancer{
+					APIServerLoadBalancer: &infrav1.APIServerLoadBalancer{
 						Enabled:         ptr.To(true),
 						AdditionalPorts: []int{},
 						AllowedCIDRs:    []string{},
 					},
 				},
-				Status: v1beta3.CloudStackClusterStatus{},
+				Status: infrav1.CloudStackClusterStatus{},
 			}
-			converted := &v1beta1.CloudStackCluster{}
-			err := v1beta1.Convert_v1beta3_CloudStackCluster_To_v1beta1_CloudStackCluster(csCluster, converted, nil)
-			expectedResult := &v1beta1.CloudStackCluster{
+			converted := &infrav1beta1.CloudStackCluster{}
+			err := infrav1beta1.Convert_v1beta3_CloudStackCluster_To_v1beta1_CloudStackCluster(csCluster, converted, nil)
+			expectedResult := &infrav1beta1.CloudStackCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "cluster1",
 					Namespace: "namespace1",
 				},
-				Spec: v1beta1.CloudStackClusterSpec{
-					Zones: []v1beta1.Zone{
+				Spec: infrav1beta1.CloudStackClusterSpec{
+					Zones: []infrav1beta1.Zone{
 						{
 							ID: "76472a84-d23f-4e97-b154-ee1b975ed936",
-							Network: v1beta1.Network{
+							Network: infrav1beta1.Network{
 								Name: "network1",
 							},
 						},
@@ -136,7 +136,7 @@ var _ = Describe("Conversion", func() {
 					Account: "account1",
 					Domain:  "domain1",
 				},
-				Status: v1beta1.CloudStackClusterStatus{},
+				Status: infrav1beta1.CloudStackClusterStatus{},
 			}
 
 			Ω(err).ShouldNot(HaveOccurred())
@@ -144,20 +144,20 @@ var _ = Describe("Conversion", func() {
 		})
 
 		It("Returns error when len(failureDomains) < 1", func() {
-			csCluster := &v1beta3.CloudStackCluster{
+			csCluster := &infrav1.CloudStackCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "cluster1",
 					Namespace: "namespace1",
 				},
-				Spec: v1beta3.CloudStackClusterSpec{
+				Spec: infrav1.CloudStackClusterSpec{
 					ControlPlaneEndpoint: clusterv1beta1.APIEndpoint{
 						Host: "endpoint1",
 						Port: 443,
 					},
 				},
-				Status: v1beta3.CloudStackClusterStatus{},
+				Status: infrav1.CloudStackClusterStatus{},
 			}
-			err := v1beta1.Convert_v1beta3_CloudStackCluster_To_v1beta1_CloudStackCluster(csCluster, nil, nil)
+			err := infrav1beta1.Convert_v1beta3_CloudStackCluster_To_v1beta1_CloudStackCluster(csCluster, nil, nil)
 			Ω(err).Should(HaveOccurred())
 		})
 	})

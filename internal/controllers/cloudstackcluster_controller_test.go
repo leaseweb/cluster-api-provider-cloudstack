@@ -55,7 +55,7 @@ func TestCloudStackClusterReconcilerIntegrationTests(t *testing.T) {
 			Recorder:         recorder,
 			WatchFilterValue: "",
 		}
-		ctx = context.TODO()
+		ctx = t.Context()
 		ctx = logr.NewContext(ctx, ctrl.LoggerFrom(ctx))
 	}
 

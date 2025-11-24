@@ -61,7 +61,7 @@ func TestCloudStackMachineTemplateReconciler_Reconcile(t *testing.T) {
 			ScopeFactory:     mockClientScopeFactory,
 			WatchFilterValue: "",
 		}
-		ctx = context.TODO()
+		ctx = t.Context()
 		ctx = logr.NewContext(ctx, ctrl.LoggerFrom(ctx))
 	}
 

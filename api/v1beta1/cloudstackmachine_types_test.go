@@ -23,14 +23,14 @@ import (
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta1"
+	infrav1beta1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta1"
 )
 
 var _ = Describe("CloudStackMachine types", func() {
-	var cloudStackMachine infrav1.CloudStackMachine
+	var cloudStackMachine infrav1beta1.CloudStackMachine
 
 	BeforeEach(func() { // Reset test vars to initial state.
-		cloudStackMachine = infrav1.CloudStackMachine{}
+		cloudStackMachine = infrav1beta1.CloudStackMachine{}
 	})
 
 	Context("When calculating time since state change", func() {
