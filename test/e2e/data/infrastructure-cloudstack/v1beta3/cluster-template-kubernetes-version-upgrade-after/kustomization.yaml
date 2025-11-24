@@ -1,4 +1,4 @@
-bases:
+resources:
   - ./cluster.yaml
   - ./upgrade-md.yaml
   - ./upgrade-cp.yaml

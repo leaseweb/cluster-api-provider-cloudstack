@@ -11,7 +11,7 @@ import (
 	ptr "k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta2"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 )
 
 // GetYamlVal fetches the values in test/e2e/config/cloudstack.yaml by yaml node. A common config file.
@@ -34,9 +34,9 @@ var ( // Declare exported dummy vars.
 	AffinityGroup       *cloud.AffinityGroup
 	CSAffinityGroup     *infrav1.CloudStackAffinityGroup
 	CSCluster           *infrav1.CloudStackCluster
-	CAPIMachine         *clusterv1.Machine
+	CAPIMachine         *clusterv1beta1.Machine
 	CSMachine1          *infrav1.CloudStackMachine
-	CAPICluster         *clusterv1.Cluster
+	CAPICluster         *clusterv1beta1.Cluster
 	ClusterLabel        map[string]string
 	ClusterName         string
 	ClusterNameSpace    string
@@ -252,7 +252,7 @@ func SetDummyCAPCClusterVars() {
 	EndPointPort = int32(5309)
 	PublicIPID = "FakePublicIPID"
 	ClusterNameSpace = "default"
-	ClusterLabel = map[string]string{clusterv1.ClusterNameLabel: ClusterName}
+	ClusterLabel = map[string]string{clusterv1beta1.ClusterNameLabel: ClusterName}
 	AffinityGroup = &cloud.AffinityGroup{
 		Name: "fakeaffinitygroup",
 		Type: cloud.AffinityGroupType,
@@ -309,7 +309,7 @@ func SetDummyCAPCClusterVars() {
 			Labels:    ClusterLabel,
 		},
 		Spec: infrav1.CloudStackClusterSpec{
-			ControlPlaneEndpoint: clusterv1.APIEndpoint{Host: EndPointHost, Port: EndPointPort},
+			ControlPlaneEndpoint: clusterv1beta1.APIEndpoint{Host: EndPointHost, Port: EndPointPort},
 			FailureDomains:       []infrav1.CloudStackFailureDomainSpec{CSFailureDomain1.Spec, CSFailureDomain2.Spec},
 		},
 		Status: infrav1.CloudStackClusterStatus{},
@@ -362,16 +362,16 @@ func SetACSEndpointSecretVars() {
 
 // SetDummyCapiCluster resets the values in each of the exported CAPICluster related dummy variables.
 func SetDummyCAPIClusterVars() {
-	CAPICluster = &clusterv1.Cluster{
+	CAPICluster = &clusterv1beta1.Cluster{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: clusterv1.GroupVersion.String(),
-			Kind:       clusterv1.ClusterKind,
+			APIVersion: clusterv1beta1.GroupVersion.String(),
+			Kind:       clusterv1beta1.ClusterKind,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ClusterName,
 			Namespace: ClusterNameSpace,
 		},
-		Spec: clusterv1.ClusterSpec{
+		Spec: clusterv1beta1.ClusterSpec{
 			InfrastructureRef: &corev1.ObjectReference{
 				APIVersion: infrav1.GroupVersion.String(),
 				Kind:       "CloudStackCluster",
@@ -409,9 +409,9 @@ func SetClusterSpecToNet(net *infrav1.Network) {
 }
 
 func SetDummyCAPIMachineVars() {
-	CAPIMachine = &clusterv1.Machine{
+	CAPIMachine = &clusterv1beta1.Machine{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: clusterv1.GroupVersion.String(),
+			APIVersion: clusterv1beta1.GroupVersion.String(),
 			Kind:       "Machine",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -419,7 +419,7 @@ func SetDummyCAPIMachineVars() {
 			Namespace:    "default",
 			Labels:       ClusterLabel,
 		},
-		Spec: clusterv1.MachineSpec{
+		Spec: clusterv1beta1.MachineSpec{
 			ClusterName:   ClusterName,
 			FailureDomain: ptr.To("fd1"),
 			InfrastructureRef: corev1.ObjectReference{

@@ -1,7 +1,7 @@
-bases:
+resources:
   - ../bases/cluster-with-kcp.yaml
   - ../bases/md.yaml
   - mhc.yaml
 
-patchesStrategicMerge:
-- ./md.yaml
+patches:
+  - path: ./md.yaml

@@ -18,7 +18,7 @@ package v1beta3
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 )
 
 // The presence of a finalizer prevents CAPI from deleting the corresponding CAPI data.
@@ -35,7 +35,7 @@ type CloudStackIsolatedNetworkSpec struct {
 	ID string `json:"id,omitempty"`
 
 	// The kubernetes control plane endpoint.
-	ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint"`
+	ControlPlaneEndpoint clusterv1beta1.APIEndpoint `json:"controlPlaneEndpoint"`
 
 	// FailureDomainName -- the FailureDomain the network is placed in.
 	FailureDomainName string `json:"failureDomainName"`

@@ -22,7 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 
 	v1beta1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
@@ -48,7 +48,7 @@ var _ = Describe("Conversion", func() {
 							},
 						},
 					},
-					ControlPlaneEndpoint: clusterv1.APIEndpoint{
+					ControlPlaneEndpoint: clusterv1beta1.APIEndpoint{
 						Host: "endpoint1",
 						Port: 443,
 					},
@@ -101,7 +101,7 @@ var _ = Describe("Conversion", func() {
 							},
 						},
 					},
-					ControlPlaneEndpoint: clusterv1.APIEndpoint{
+					ControlPlaneEndpoint: clusterv1beta1.APIEndpoint{
 						Host: "endpoint1",
 						Port: 443,
 					},
@@ -129,7 +129,7 @@ var _ = Describe("Conversion", func() {
 							},
 						},
 					},
-					ControlPlaneEndpoint: clusterv1.APIEndpoint{
+					ControlPlaneEndpoint: clusterv1beta1.APIEndpoint{
 						Host: "endpoint1",
 						Port: 443,
 					},
@@ -150,7 +150,7 @@ var _ = Describe("Conversion", func() {
 					Namespace: "namespace1",
 				},
 				Spec: v1beta3.CloudStackClusterSpec{
-					ControlPlaneEndpoint: clusterv1.APIEndpoint{
+					ControlPlaneEndpoint: clusterv1beta1.APIEndpoint{
 						Host: "endpoint1",
 						Port: 443,
 					},

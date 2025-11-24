@@ -29,8 +29,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	controlplanev1 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1beta1"
+	controlplanev1 "sigs.k8s.io/cluster-api/api/controlplane/kubeadm/v1beta2"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/cluster-api/util"
@@ -104,7 +104,7 @@ func NodeDrainTimeoutSpec(ctx context.Context, inputGetter func() CommonSpecInpu
 
 		By("Scale the machinedeployment down to zero. If we didn't have the NodeDrainTimeout duration, the node drain process would block this operator.")
 		// Because all the machines of a machinedeployment can be deleted at the same time, so we only prepare the interval for 1 replica.
-		nodeDrainTimeoutMachineDeploymentInterval := getDrainAndDeleteInterval(input.E2EConfig.GetIntervals(specName, "wait-machine-deleted"), machineDeployments[0].Spec.Template.Spec.NodeDrainTimeout, 1)
+		nodeDrainTimeoutMachineDeploymentInterval := getDrainAndDeleteInterval(input.E2EConfig.GetIntervals(specName, "wait-machine-deleted"), int32SecondsToMetav1Duration(machineDeployments[0].Spec.Template.Spec.Deletion.NodeDrainTimeoutSeconds), 1)
 		for _, md := range machineDeployments {
 			framework.ScaleAndWaitMachineDeployment(ctx, framework.ScaleAndWaitMachineDeploymentInput{
 				ClusterProxy:              input.BootstrapClusterProxy,
@@ -126,7 +126,7 @@ func NodeDrainTimeoutSpec(ctx context.Context, inputGetter func() CommonSpecInpu
 
 		By("Scale down the controlplane of the workload cluster and make sure that nodes running workload can be deleted even the draining process is blocked.")
 		// When we scale down the KCP, controlplane machines are by default deleted one by one, so it requires more time.
-		nodeDrainTimeoutKCPInterval := getDrainAndDeleteInterval(input.E2EConfig.GetIntervals(specName, "wait-machine-deleted"), controlplane.Spec.MachineTemplate.NodeDrainTimeout, controlPlaneReplicas)
+		nodeDrainTimeoutKCPInterval := getDrainAndDeleteInterval(input.E2EConfig.GetIntervals(specName, "wait-machine-deleted"), int32SecondsToMetav1Duration(controlplane.Spec.MachineTemplate.Spec.Deletion.NodeDrainTimeoutSeconds), controlPlaneReplicas)
 		framework.ScaleAndWaitControlPlane(ctx, framework.ScaleAndWaitControlPlaneInput{
 			ClusterProxy:        input.BootstrapClusterProxy,
 			Cluster:             cluster,
@@ -151,4 +151,11 @@ func getDrainAndDeleteInterval(deleteInterval []interface{}, drainTimeout *metav
 	intervalDuration := (drainTimeout.Duration + deleteTimeout) * time.Duration(replicas)
 	res := []interface{}{intervalDuration.String(), deleteInterval[1]}
 	return res
+}
+
+func int32SecondsToMetav1Duration(seconds *int32) *metav1.Duration {
+	if seconds == nil {
+		return &metav1.Duration{Duration: 0}
+	}
+	return &metav1.Duration{Duration: time.Duration(*seconds) * time.Second}
 }

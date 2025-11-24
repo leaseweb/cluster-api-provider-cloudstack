@@ -28,11 +28,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
-	"sigs.k8s.io/cluster-api/util/conditions"
-	"sigs.k8s.io/cluster-api/util/patch"
+	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
+	v1beta1patch "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
@@ -84,7 +85,7 @@ func NewMachineScope(params MachineScopeParams) (*MachineScope, error) {
 		CSClientsProvider:       params.CSClients,
 	}
 
-	helper, err := patch.NewHelper(params.CloudStackMachine, params.Client)
+	helper, err := v1beta1patch.NewHelper(params.CloudStackMachine, params.Client)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init patch helper")
 	}
@@ -98,7 +99,7 @@ func NewMachineScope(params MachineScopeParams) (*MachineScope, error) {
 type MachineScope struct {
 	logger.Logger
 	client      client.Client
-	patchHelper *patch.Helper
+	patchHelper *v1beta1patch.Helper
 
 	Cluster                   *clusterv1.Cluster
 	CloudStackCluster         *infrav1.CloudStackCluster
@@ -131,8 +132,8 @@ func (s *MachineScope) KubernetesClusterName() string {
 // If the machine has a failure domain, it will be used.
 // Otherwise, the CloudStackMachine's failure domain name will be used.
 func (s *MachineScope) FailureDomainName() string {
-	if s.Machine.Spec.FailureDomain != nil {
-		return *s.Machine.Spec.FailureDomain
+	if s.Machine.Spec.FailureDomain != "" {
+		return s.Machine.Spec.FailureDomain
 	}
 
 	return s.CloudStackMachine.Spec.FailureDomainName
@@ -157,7 +158,7 @@ func (s *MachineScope) PatchObject() error {
 	// Always update the readyCondition by summarizing the state of other conditions.
 	// A step counter is added to represent progress during the provisioning process (instead we are hiding during the deletion process).
 	// At a later stage, we will add more conditions indicating the readiness of other resources security groups etc.
-	applicableConditions := []clusterv1.ConditionType{
+	applicableConditions := []clusterv1beta1.ConditionType{
 		infrav1.InstanceReadyCondition,
 	}
 
@@ -165,16 +166,16 @@ func (s *MachineScope) PatchObject() error {
 		applicableConditions = append(applicableConditions, infrav1.LoadBalancerAttachedCondition)
 	}
 
-	conditions.SetSummary(s.CloudStackMachine,
-		conditions.WithConditions(applicableConditions...),
-		conditions.WithStepCounterIf(s.CloudStackMachine.ObjectMeta.DeletionTimestamp.IsZero()),
+	v1beta1conditions.SetSummary(s.CloudStackMachine,
+		v1beta1conditions.WithConditions(applicableConditions...),
+		v1beta1conditions.WithStepCounterIf(s.CloudStackMachine.ObjectMeta.DeletionTimestamp.IsZero()),
 	)
 
 	return s.patchHelper.Patch(
 		context.TODO(),
 		s.CloudStackMachine,
-		patch.WithOwnedConditions{Conditions: []clusterv1.ConditionType{
-			clusterv1.ReadyCondition,
+		v1beta1patch.WithOwnedConditions{Conditions: []clusterv1beta1.ConditionType{
+			clusterv1beta1.ReadyCondition,
 			infrav1.InstanceReadyCondition,
 			infrav1.LoadBalancerAttachedCondition,
 		}},

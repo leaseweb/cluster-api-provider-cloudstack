@@ -18,7 +18,7 @@ package v1beta2
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 )
 
 const (
@@ -30,7 +30,7 @@ type CloudStackClusterSpec struct {
 	FailureDomains []CloudStackFailureDomainSpec `json:"failureDomains"`
 
 	// The kubernetes control plane endpoint.
-	ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint"`
+	ControlPlaneEndpoint clusterv1beta1.APIEndpoint `json:"controlPlaneEndpoint"`
 }
 
 // The status of the CloudStackCluster object.
@@ -38,7 +38,7 @@ type CloudStackClusterStatus struct {
 	// CAPI recognizes failure domains as a method to spread machines.
 	// CAPC sets failure domains to indicate functioning CloudStackFailureDomains.
 	// +optional
-	FailureDomains clusterv1.FailureDomains `json:"failureDomains,omitempty"`
+	FailureDomains clusterv1beta1.FailureDomains `json:"failureDomains,omitempty"`
 
 	// Reflects the readiness of the CS cluster.
 	Ready bool `json:"ready"`

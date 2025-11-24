@@ -38,7 +38,7 @@ import (
 	"github.com/onsi/gomega/types"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stypes "k8s.io/apimachinery/pkg/types"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/cluster-api/test/framework/exec"
@@ -464,7 +464,7 @@ func WaitForHealthyMachineCount(ctx context.Context, mgmtClient client.Client, w
 	})
 
 	for _, mhc := range machineHealthChecks {
-		Expect(mhc.Spec.UnhealthyConditions).NotTo(BeEmpty())
+		Expect(mhc.Spec.Checks.UnhealthyNodeConditions).NotTo(BeEmpty())
 		if !strings.Contains(mhc.Name, mhcMatcher) {
 			continue
 		}
@@ -478,11 +478,11 @@ func WaitForHealthyMachineCount(ctx context.Context, mgmtClient client.Client, w
 
 			count := 0
 			for _, machine := range machines {
-				if machine.Status.NodeRef == nil {
+				if !machine.Status.NodeRef.IsDefined() {
 					continue
 				}
 				node := &corev1.Node{}
-				err := workloadClient.Get(ctx, k8stypes.NamespacedName{Name: machine.Status.NodeRef.Name, Namespace: machine.Status.NodeRef.Namespace}, node)
+				err := workloadClient.Get(ctx, k8stypes.NamespacedName{Name: machine.Status.NodeRef.Name, Namespace: machine.Namespace}, node)
 				if err != nil {
 					continue
 				}
@@ -496,7 +496,7 @@ func WaitForHealthyMachineCount(ctx context.Context, mgmtClient client.Client, w
 }
 
 func HasMatchingUnhealthyConditions(machineHealthCheck *clusterv1.MachineHealthCheck, nodeConditions []corev1.NodeCondition) bool {
-	for _, unhealthyCondition := range machineHealthCheck.Spec.UnhealthyConditions {
+	for _, unhealthyCondition := range machineHealthCheck.Spec.Checks.UnhealthyNodeConditions {
 		for _, nodeCondition := range nodeConditions {
 			if nodeCondition.Type == unhealthyCondition.Type && nodeCondition.Status == unhealthyCondition.Status {
 				return true
@@ -526,7 +526,7 @@ func IsClusterReady(ctx context.Context, mgmtClient client.Client, cluster *clus
 		return false
 	}
 	Expect(err).To(BeNil(), "Failed to get cluster status")
-	return c.Status.ControlPlaneReady && c.Status.InfrastructureReady
+	return *c.Status.Initialization.ControlPlaneInitialized && *c.Status.Initialization.InfrastructureProvisioned
 }
 
 func CheckDiskOfferingOfVmInstances(client *cloudstack.CloudStackClient, clusterName string, diskOfferingName string) {

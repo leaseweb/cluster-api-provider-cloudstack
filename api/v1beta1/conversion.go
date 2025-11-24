@@ -19,6 +19,8 @@ package v1beta1
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	machineryconversion "k8s.io/apimachinery/pkg/conversion"
@@ -137,13 +139,13 @@ func GetFailureDomains(csCluster *CloudStackCluster) ([]infrav1.CloudStackFailur
 // method to get zoneID by calling cloudstack API.
 // When upgrading cluster using clusterctl directly, zoneID is fetched directly from kubernetes cluster in cloudstackzones.
 func GetDefaultFailureDomainName(namespace string, zoneID string, zoneName string) (string, error) {
-	if len(zoneID) > 0 {
+	if len(strings.TrimSpace(zoneID)) > 0 {
 		return zoneID, nil
 	}
 
 	secret, err := GetK8sSecret(DefaultEndpointCredential, namespace)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get secret for namespace %s: %w", namespace, err)
 	}
 
 	// try fetch zoneID using zoneName through cloudstack client.
@@ -161,6 +163,9 @@ func GetDefaultFailureDomainName(namespace string, zoneID string, zoneName strin
 }
 
 func fetchZoneIDUsingK8s(namespace string, zoneName string) (string, error) {
+	if infrav1.K8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
 	zone := &CloudStackZone{}
 	key := client.ObjectKey{Name: zoneName, Namespace: namespace}
 	if err := infrav1.K8sClient.Get(context.TODO(), key, zone); err != nil {
@@ -182,11 +187,13 @@ func fetchZoneIDUsingCloudStack(secret *corev1.Secret, zoneName string) (string,
 }
 
 func GetK8sSecret(name, namespace string) (*corev1.Secret, error) {
+	if infrav1.K8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
 	endpointCredentials := &corev1.Secret{}
 	key := client.ObjectKey{Name: name, Namespace: namespace}
 	if err := infrav1.K8sClient.Get(context.TODO(), key, endpointCredentials); err != nil {
 		return nil, err
 	}
-
 	return endpointCredentials, nil
 }

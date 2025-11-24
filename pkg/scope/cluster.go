@@ -23,9 +23,10 @@ import (
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	"sigs.k8s.io/cluster-api/util/conditions"
-	"sigs.k8s.io/cluster-api/util/patch"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
+	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
+	v1beta1patch "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
@@ -64,7 +65,7 @@ func NewClusterScope(params ClusterScopeParams) (*ClusterScope, error) {
 		controllerName:    params.ControllerName,
 	}
 
-	helper, err := patch.NewHelper(params.CloudStackCluster, params.Client)
+	helper, err := v1beta1patch.NewHelper(params.CloudStackCluster, params.Client)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init patch helper")
 	}
@@ -78,7 +79,7 @@ func NewClusterScope(params ClusterScopeParams) (*ClusterScope, error) {
 type ClusterScope struct {
 	logger.Logger
 	client      client.Client
-	patchHelper *patch.Helper
+	patchHelper *v1beta1patch.Helper
 
 	Cluster           *clusterv1.Cluster
 	CloudStackCluster *infrav1.CloudStackCluster
@@ -116,20 +117,20 @@ func (s *ClusterScope) PatchObject() error {
 	// Always update the readyCondition by summarizing the state of other conditions.
 	// A step counter is added to represent progress during the provisioning process (disabled during deletion).
 	// At a later stage, we will add more conditions indicating the readiness of other resources like networks, loadbalancers, etc.
-	applicableConditions := []clusterv1.ConditionType{
+	applicableConditions := []clusterv1beta1.ConditionType{
 		infrav1.FailureDomainsReadyCondition,
 	}
 
-	conditions.SetSummary(s.CloudStackCluster,
-		conditions.WithConditions(applicableConditions...),
-		conditions.WithStepCounterIf(s.CloudStackCluster.DeletionTimestamp.IsZero()),
+	v1beta1conditions.SetSummary(s.CloudStackCluster,
+		v1beta1conditions.WithConditions(applicableConditions...),
+		v1beta1conditions.WithStepCounterIf(s.CloudStackCluster.DeletionTimestamp.IsZero()),
 	)
 
 	return s.patchHelper.Patch(
 		context.TODO(),
 		s.CloudStackCluster,
-		patch.WithOwnedConditions{Conditions: []clusterv1.ConditionType{
-			clusterv1.ReadyCondition,
+		v1beta1patch.WithOwnedConditions{Conditions: []clusterv1beta1.ConditionType{
+			clusterv1beta1.ReadyCondition,
 			infrav1.FailureDomainsReadyCondition,
 		}},
 	)
@@ -141,9 +142,9 @@ func (s *ClusterScope) Close() error {
 }
 
 // SetFailureDomain sets the infrastructure provider failure domain key to the spec given as input.
-func (s *ClusterScope) SetFailureDomain(id string, spec clusterv1.FailureDomainSpec) {
+func (s *ClusterScope) SetFailureDomain(id string, spec clusterv1beta1.FailureDomainSpec) {
 	if s.CloudStackCluster.Status.FailureDomains == nil {
-		s.CloudStackCluster.Status.FailureDomains = make(clusterv1.FailureDomains)
+		s.CloudStackCluster.Status.FailureDomains = make(clusterv1beta1.FailureDomains)
 	}
 	s.CloudStackCluster.Status.FailureDomains[id] = spec
 }

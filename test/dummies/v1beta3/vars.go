@@ -13,7 +13,8 @@ import (
 	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 )
 
 // GetYamlVal fetches the values in test/e2e/config/cloudstack.yaml by yaml node. A common config file.
@@ -331,7 +332,7 @@ func SetDummyCAPCClusterVars(namespace string) {
 			Labels:    ClusterLabel,
 		},
 		Spec: infrav1.CloudStackClusterSpec{
-			ControlPlaneEndpoint:  clusterv1.APIEndpoint{Host: EndPointHost, Port: EndPointPort},
+			ControlPlaneEndpoint:  clusterv1beta1.APIEndpoint{Host: EndPointHost, Port: EndPointPort},
 			FailureDomains:        []infrav1.CloudStackFailureDomainSpec{CSFailureDomain1.Spec, CSFailureDomain2.Spec},
 			APIServerLoadBalancer: APIServerLoadBalancer,
 		},
@@ -400,10 +401,10 @@ func SetDummyCAPIClusterVars(namespace string) {
 			Namespace: namespace,
 		},
 		Spec: clusterv1.ClusterSpec{
-			InfrastructureRef: &corev1.ObjectReference{
-				APIVersion: infrav1.GroupVersion.String(),
-				Kind:       "CloudStackCluster",
-				Name:       ClusterName,
+			InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+				APIGroup: infrav1.GroupVersion.Group,
+				Kind:     "CloudStackCluster",
+				Name:     ClusterName,
 			},
 		},
 	}
@@ -449,11 +450,11 @@ func SetDummyCAPIMachineVars(namespace string) {
 		},
 		Spec: clusterv1.MachineSpec{
 			ClusterName:   ClusterName,
-			FailureDomain: ptr.To("fd1"),
-			InfrastructureRef: corev1.ObjectReference{
-				APIVersion: infrav1.GroupVersion.String(),
-				Kind:       "CloudStackMachine",
-				Name:       "test-machine-1",
+			FailureDomain: "fd1",
+			InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+				APIGroup: infrav1.GroupVersion.Group,
+				Kind:     "CloudStackMachine",
+				Name:     "test-machine-1",
 			},
 		},
 	}

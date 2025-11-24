@@ -1,7 +1,7 @@
-bases:
+resources:
   - ../bases/cluster-with-kcp.yaml
   - ../bases/md.yaml
 
-patchesStrategicMerge:
-- ./cluster-with-custom-disk-offering.yaml
-- ./md.yaml
+patches:
+  - path: ./cluster-with-custom-disk-offering.yaml
+  - path: ./md.yaml

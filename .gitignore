@@ -49,3 +49,5 @@ cloud-config.yaml
 *~
 examples/*
 hack/tools/share/*
+.tool-versions
+.mirrord/*
