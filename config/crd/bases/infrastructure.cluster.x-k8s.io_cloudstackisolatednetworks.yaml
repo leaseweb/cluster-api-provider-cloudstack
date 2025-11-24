@@ -14,7 +14,10 @@ spec:
     singular: cloudstackisolatednetwork
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - deprecated: true
+    deprecationWarning: The v1beta1 version of CloudStackIsolatedNetwork has been
+      deprecated and will be removed in a future release of the API. Please upgrade.
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: CloudStackIsolatedNetwork is the Schema for the cloudstackisolatednetworks
@@ -86,11 +89,16 @@ spec:
     storage: false
     subresources:
       status: {}
-  - name: v1beta2
+  - deprecated: true
+    deprecationWarning: The v1beta2 version of CloudStackIsolatedNetwork has been
+      deprecated and will be removed in a future release of the API. Please upgrade.
+    name: v1beta2
     schema:
       openAPIV3Schema:
-        description: CloudStackIsolatedNetwork is the Schema for the cloudstackisolatednetworks
-          API.
+        description: |-
+          CloudStackIsolatedNetwork is the Schema for the cloudstackisolatednetworks API.
+
+          Deprecated: This type will be removed in one of the next releases.
         properties:
           apiVersion:
             description: |-

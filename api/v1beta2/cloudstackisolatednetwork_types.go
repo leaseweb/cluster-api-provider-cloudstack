@@ -62,9 +62,12 @@ func (r *CloudStackIsolatedNetwork) Network() *Network {
 }
 
 //+kubebuilder:object:root=true
+//+kubebuilder:deprecatedversion:warning="The v1beta2 version of CloudStackIsolatedNetwork has been deprecated and will be removed in a future release of the API. Please upgrade."
 //+kubebuilder:subresource:status
 
 // CloudStackIsolatedNetwork is the Schema for the cloudstackisolatednetworks API.
+//
+// Deprecated: This type will be removed in one of the next releases.
 type CloudStackIsolatedNetwork struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -76,6 +79,8 @@ type CloudStackIsolatedNetwork struct {
 //+kubebuilder:object:root=true
 
 // CloudStackIsolatedNetworkList contains a list of CloudStackIsolatedNetwork.
+//
+// Deprecated: This type will be removed in one of the next releases.
 type CloudStackIsolatedNetworkList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

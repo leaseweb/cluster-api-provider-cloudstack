@@ -34,9 +34,12 @@ type CloudStackMachineTemplateSpec struct {
 }
 
 //+kubebuilder:object:root=true
+//+kubebuilder:deprecatedversion:warning="The v1beta1 version of CloudStackMachineTemplate has been deprecated and will be removed in a future release of the API. Please upgrade."
 //+kubebuilder:subresource:status
 
 // CloudStackMachineTemplate is the Schema for the cloudstackmachinetemplates API.
+//
+// Deprecated: This type will be removed in one of the next releases.
 type CloudStackMachineTemplate struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -47,6 +50,8 @@ type CloudStackMachineTemplate struct {
 //+kubebuilder:object:root=true
 
 // CloudStackMachineTemplateList contains a list of CloudStackMachineTemplate.
+//
+// Deprecated: This type will be removed in one of the next releases.
 type CloudStackMachineTemplateList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
