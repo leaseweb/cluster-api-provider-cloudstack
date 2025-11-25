@@ -189,7 +189,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 			if err := recover(); err != nil {
 				g.Fail(FailMessage(err))
 			}
-			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, dummies.CSFailureDomain1, dummies.CSISONet1, dummies.BootstrapSecret, dummies.CAPIMachine, dummies.CSMachine1, ns)).To(Succeed())
+			g.Expect(testEnv.Cleanup(dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, dummies.CSFailureDomain1, dummies.CSISONet1, dummies.BootstrapSecret, dummies.CAPIMachine, dummies.CSMachine1, ns)).To(Succeed())
 		}()
 
 		// Check that the machine was created correctly before reconciling.
@@ -371,7 +371,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 			if err := recover(); err != nil {
 				g.Fail(FailMessage(err))
 			}
-			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, dummies.CSFailureDomain1, dummies.CSISONet1,
+			g.Expect(testEnv.Cleanup(dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, dummies.CSFailureDomain1, dummies.CSISONet1,
 				dummies.BootstrapSecret, dummies.CAPIMachine, dummies.CSMachine1, ns)).To(Succeed())
 		}()
 

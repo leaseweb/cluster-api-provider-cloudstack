@@ -104,7 +104,7 @@ func TestCloudStackAffinityGroupReconcilerIntegrationTests(t *testing.T) {
 
 		defer teardown()
 		defer t.Cleanup(func() {
-			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.CSFailureDomain1, dummies.ACSEndpointSecret1, dummies.CSAffinityGroup, ns)).To(Succeed())
+			g.Expect(testEnv.Cleanup(dummies.CAPICluster, dummies.CSCluster, dummies.CSFailureDomain1, dummies.ACSEndpointSecret1, dummies.CSAffinityGroup, ns)).To(Succeed())
 		})
 
 		req := ctrl.Request{
@@ -161,7 +161,7 @@ func TestCloudStackAffinityGroupReconcilerIntegrationTests(t *testing.T) {
 
 		defer teardown()
 		defer t.Cleanup(func() {
-			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.CSFailureDomain1, dummies.ACSEndpointSecret1, dummies.CSAffinityGroup, ns)).To(Succeed())
+			g.Expect(testEnv.Cleanup(dummies.CAPICluster, dummies.CSCluster, dummies.CSFailureDomain1, dummies.ACSEndpointSecret1, dummies.CSAffinityGroup, ns)).To(Succeed())
 		})
 
 		// Check that the affinity group was created correctly before reconciling.

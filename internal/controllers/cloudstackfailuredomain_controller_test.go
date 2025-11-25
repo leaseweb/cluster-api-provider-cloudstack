@@ -105,7 +105,7 @@ func TestCloudStackFailureDomainReconcilerIntegrationTests(t *testing.T) {
 		g.Expect(testEnv.Create(ctx, dummies.CSFailureDomain1)).To(Succeed())
 
 		defer func() {
-			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, dummies.CSFailureDomain1, ns)).To(Succeed())
+			g.Expect(testEnv.Cleanup(dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, dummies.CSFailureDomain1, ns)).To(Succeed())
 		}()
 
 		// Check that the failure domain was created correctly before reconciling.
@@ -171,7 +171,7 @@ func TestCloudStackFailureDomainReconcilerIntegrationTests(t *testing.T) {
 		g.Expect(testEnv.Create(ctx, dummies.CSFailureDomain1)).To(Succeed())
 
 		defer func() {
-			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, dummies.CSFailureDomain1, ns)).To(Succeed())
+			g.Expect(testEnv.Cleanup(dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, dummies.CSFailureDomain1, ns)).To(Succeed())
 		}()
 
 		// Check that the failure domain was created correctly before reconciling.

@@ -111,7 +111,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 		g.Expect(testEnv.Create(ctx, dummies.CSISONet1)).To(Succeed())
 
 		defer func() {
-			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret2, dummies.CSFailureDomain2, dummies.CSISONet1, ns)).To(Succeed())
+			g.Expect(testEnv.Cleanup(dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret2, dummies.CSFailureDomain2, dummies.CSISONet1, ns)).To(Succeed())
 		}()
 
 		// Check that the isolated network was created correctly before reconciling.
@@ -186,7 +186,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 		g.Expect(testEnv.Create(ctx, dummies.CSISONet1)).To(Succeed())
 
 		defer func() {
-			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret2, dummies.CSFailureDomain2, dummies.CSISONet1, ns)).To(Succeed())
+			g.Expect(testEnv.Cleanup(dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret2, dummies.CSFailureDomain2, dummies.CSISONet1, ns)).To(Succeed())
 		}()
 
 		// Check that the isolated network was created correctly before reconciling.
@@ -283,7 +283,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 		g.Expect(testEnv.Create(ctx, dummies.CSISONet1)).To(Succeed())
 
 		defer func() {
-			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret2, dummies.CSFailureDomain2, dummies.CSISONet1, ns)).To(Succeed())
+			g.Expect(testEnv.Cleanup(dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret2, dummies.CSFailureDomain2, dummies.CSISONet1, ns)).To(Succeed())
 		}()
 
 		// Check that the isolated network was created correctly before reconciling.
@@ -355,7 +355,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 		g.Expect(testEnv.Create(ctx, dummies.CSISONet1)).To(Succeed())
 
 		defer func() {
-			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret2, dummies.CSFailureDomain2, dummies.CSISONet1, ns)).To(Succeed())
+			g.Expect(testEnv.Cleanup(dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret2, dummies.CSFailureDomain2, dummies.CSISONet1, ns)).To(Succeed())
 		}()
 
 		// Check that the isolated network was created correctly before reconciling.

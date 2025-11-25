@@ -112,7 +112,9 @@ type (
 )
 
 // Cleanup deletes all the given objects.
-func (t *TestEnvironment) Cleanup(ctx context.Context, objs ...client.Object) error {
+func (t *TestEnvironment) Cleanup(objs ...client.Object) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	errs := []error{}
 	for _, o := range objs {
 		err := t.Client.Delete(ctx, o)

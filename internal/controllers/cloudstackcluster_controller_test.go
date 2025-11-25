@@ -86,7 +86,7 @@ func TestCloudStackClusterReconcilerIntegrationTests(t *testing.T) {
 
 		defer teardown()
 		defer t.Cleanup(func() {
-			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, ns)).To(Succeed())
+			g.Expect(testEnv.Cleanup(dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, ns)).To(Succeed())
 		})
 
 		result, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: dummies.CSCluster.Name, Namespace: ns.Name}})
@@ -140,7 +140,7 @@ func TestCloudStackClusterReconcilerIntegrationTests(t *testing.T) {
 
 		defer teardown()
 		defer t.Cleanup(func() {
-			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, ns)).To(Succeed())
+			g.Expect(testEnv.Cleanup(dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, ns)).To(Succeed())
 		})
 
 		result, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: dummies.CSCluster.Name, Namespace: ns.Name}})
