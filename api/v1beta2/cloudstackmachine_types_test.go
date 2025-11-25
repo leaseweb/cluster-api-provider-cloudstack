@@ -21,19 +21,19 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/utils/ptr"
 
-	capcv1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta2"
+	infrav1beta2 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta2"
 )
 
 var _ = Describe("CloudStackMachineConfig_CompressUserdata", func() {
 	for _, tc := range []struct {
 		Name    string
-		Machine capcv1.CloudStackMachine
+		Machine infrav1beta2.CloudStackMachine
 		Expect  bool
 	}{
 		{
 			Name: "is true when uncompressed user data is nil",
-			Machine: capcv1.CloudStackMachine{
-				Spec: capcv1.CloudStackMachineSpec{
+			Machine: infrav1beta2.CloudStackMachine{
+				Spec: infrav1beta2.CloudStackMachineSpec{
 					UncompressedUserData: nil,
 				},
 			},
@@ -41,8 +41,8 @@ var _ = Describe("CloudStackMachineConfig_CompressUserdata", func() {
 		},
 		{
 			Name: "is false when uncompressed user data is true",
-			Machine: capcv1.CloudStackMachine{
-				Spec: capcv1.CloudStackMachineSpec{
+			Machine: infrav1beta2.CloudStackMachine{
+				Spec: infrav1beta2.CloudStackMachineSpec{
 					UncompressedUserData: ptr.To(true),
 				},
 			},
@@ -50,8 +50,8 @@ var _ = Describe("CloudStackMachineConfig_CompressUserdata", func() {
 		},
 		{
 			Name: "Is false when uncompressed user data is false",
-			Machine: capcv1.CloudStackMachine{
-				Spec: capcv1.CloudStackMachineSpec{
+			Machine: infrav1beta2.CloudStackMachine{
+				Spec: infrav1beta2.CloudStackMachineSpec{
 					UncompressedUserData: ptr.To(false),
 				},
 			},

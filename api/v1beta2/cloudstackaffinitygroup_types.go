@@ -47,9 +47,12 @@ type CloudStackAffinityGroupStatus struct {
 }
 
 //+kubebuilder:object:root=true
+//+kubebuilder:deprecatedversion:warning="The v1beta2 version of CloudStackAffinityGroup has been deprecated and will be removed in a future release of the API. Please upgrade."
 //+kubebuilder:subresource:status
 
 // CloudStackAffinityGroup is the Schema for the cloudstackaffinitygroups API.
+//
+// Deprecated: This type will be removed in one of the next releases.
 type CloudStackAffinityGroup struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -61,6 +64,8 @@ type CloudStackAffinityGroup struct {
 //+kubebuilder:object:root=true
 
 // CloudStackAffinityGroupList contains a list of CloudStackAffinityGroup.
+//
+// Deprecated: This type will be removed in one of the next releases.
 type CloudStackAffinityGroupList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

@@ -21,7 +21,7 @@ import (
 
 	machineryconversion "k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/utils/ptr"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
 
 	"sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
@@ -62,7 +62,7 @@ func Convert_v1beta2_CloudStackClusterSpec_To_v1beta3_CloudStackClusterSpec(in *
 }
 
 func Convert_v1beta3_CloudStackClusterStatus_To_v1beta2_CloudStackClusterStatus(in *v1beta3.CloudStackClusterStatus, out *CloudStackClusterStatus, _ machineryconversion.Scope) error {
-	out.FailureDomains = *(*clusterv1.FailureDomains)(unsafe.Pointer(&in.FailureDomains))
+	out.FailureDomains = *(*clusterv1beta1.FailureDomains)(unsafe.Pointer(&in.FailureDomains))
 	out.Ready = in.Ready
 
 	return nil

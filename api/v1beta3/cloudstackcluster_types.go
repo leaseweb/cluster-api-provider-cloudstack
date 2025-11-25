@@ -18,7 +18,7 @@ package v1beta3
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -37,7 +37,7 @@ type CloudStackClusterSpec struct {
 	FailureDomains []CloudStackFailureDomainSpec `json:"failureDomains"`
 
 	// The kubernetes control plane endpoint.
-	ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint"`
+	ControlPlaneEndpoint clusterv1beta1.APIEndpoint `json:"controlPlaneEndpoint"`
 
 	// APIServerLoadBalancer configures the optional LoadBalancer for the APIServer.
 	// If not specified, no load balancer will be created for the API server.
@@ -50,7 +50,7 @@ type CloudStackClusterStatus struct {
 	// CAPI recognizes failure domains as a method to spread machines.
 	// CAPC sets failure domains to indicate functioning CloudStackFailureDomains.
 	//+optional
-	FailureDomains clusterv1.FailureDomains `json:"failureDomains,omitempty"`
+	FailureDomains clusterv1beta1.FailureDomains `json:"failureDomains,omitempty"`
 
 	// Reflects the readiness of the CS cluster.
 	//+optional
@@ -58,16 +58,16 @@ type CloudStackClusterStatus struct {
 
 	// Conditions defines current service state of the CloudStackCluster.
 	//+optional
-	Conditions clusterv1.Conditions `json:"conditions,omitempty"`
+	Conditions clusterv1beta1.Conditions `json:"conditions,omitempty"`
 }
 
 // GetConditions returns the conditions for the CloudStackCluster.
-func (r *CloudStackCluster) GetConditions() clusterv1.Conditions {
+func (r *CloudStackCluster) GetConditions() clusterv1beta1.Conditions {
 	return r.Status.Conditions
 }
 
 // SetConditions sets the conditions for the CloudStackCluster.
-func (r *CloudStackCluster) SetConditions(conditions clusterv1.Conditions) {
+func (r *CloudStackCluster) SetConditions(conditions clusterv1beta1.Conditions) {
 	r.Status.Conditions = conditions
 }
 

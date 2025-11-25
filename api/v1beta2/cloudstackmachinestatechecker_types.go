@@ -31,9 +31,12 @@ type CloudStackMachineStateCheckerStatus struct {
 }
 
 //+kubebuilder:object:root=true
+//+kubebuilder:deprecatedversion:warning="The v1beta2 version of CloudStackMachineStateChecker has been deprecated and will be removed in a future release of the API. Please upgrade."
 //+kubebuilder:subresource:status
 
 // CloudStackMachineStateChecker is the Schema for the cloudstackmachinestatecheckers API.
+//
+// Deprecated: This type will be removed in one of the next releases.
 type CloudStackMachineStateChecker struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -45,6 +48,8 @@ type CloudStackMachineStateChecker struct {
 //+kubebuilder:object:root=true
 
 // CloudStackMachineStateCheckerList contains a list of CloudStackMachineStateChecker.
+//
+// Deprecated: This type will be removed in one of the next releases.
 type CloudStackMachineStateCheckerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

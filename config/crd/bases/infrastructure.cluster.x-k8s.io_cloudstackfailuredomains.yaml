@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.17.2
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: cloudstackfailuredomains.infrastructure.cluster.x-k8s.io
 spec:
   group: infrastructure.cluster.x-k8s.io
@@ -14,11 +14,16 @@ spec:
     singular: cloudstackfailuredomain
   scope: Namespaced
   versions:
-  - name: v1beta2
+  - deprecated: true
+    deprecationWarning: The v1beta2 version of CloudStackFailureDomain has been deprecated
+      and will be removed in a future release of the API. Please upgrade.
+    name: v1beta2
     schema:
       openAPIV3Schema:
-        description: CloudStackFailureDomain is the Schema for the cloudstackfailuredomains
-          API.
+        description: |-
+          CloudStackFailureDomain is the Schema for the cloudstackfailuredomains API.
+
+          Deprecated: This type will be removed in one of the next releases.
         properties:
           apiVersion:
             description: |-

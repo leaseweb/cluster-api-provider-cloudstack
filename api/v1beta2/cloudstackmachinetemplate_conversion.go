@@ -19,7 +19,7 @@ package v1beta2
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	machineryconversion "k8s.io/apimachinery/pkg/conversion"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	utilconversion "sigs.k8s.io/cluster-api/util/conversion"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
 
@@ -63,7 +63,7 @@ func Convert_v1beta3_CloudStackMachineTemplateSpec_To_v1beta2_CloudStackMachineT
 	return Convert_v1beta3_CloudStackMachineTemplateResource_To_v1beta2_CloudStackMachineTemplateResource(&in.Template, &out.Spec, s)
 }
 
-func Convert_v1beta1_ObjectMeta_To_v1_ObjectMeta(in *clusterv1.ObjectMeta, out *metav1.ObjectMeta, _ machineryconversion.Scope) error {
+func Convert_v1beta1_ObjectMeta_To_v1_ObjectMeta(in *clusterv1beta1.ObjectMeta, out *metav1.ObjectMeta, _ machineryconversion.Scope) error {
 	if in.Annotations != nil {
 		out.Annotations = in.Annotations
 	}
@@ -74,7 +74,7 @@ func Convert_v1beta1_ObjectMeta_To_v1_ObjectMeta(in *clusterv1.ObjectMeta, out *
 	return nil
 }
 
-func Convert_v1_ObjectMeta_To_v1beta1_ObjectMeta(in *metav1.ObjectMeta, out *clusterv1.ObjectMeta, _ machineryconversion.Scope) error {
+func Convert_v1_ObjectMeta_To_v1beta1_ObjectMeta(in *metav1.ObjectMeta, out *clusterv1beta1.ObjectMeta, _ machineryconversion.Scope) error {
 	if in.Annotations != nil {
 		out.Annotations = in.Annotations
 	}

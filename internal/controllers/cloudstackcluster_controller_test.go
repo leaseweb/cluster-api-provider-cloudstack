@@ -28,7 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -55,7 +55,7 @@ func TestCloudStackClusterReconcilerIntegrationTests(t *testing.T) {
 			Recorder:         recorder,
 			WatchFilterValue: "",
 		}
-		ctx = context.TODO()
+		ctx = t.Context()
 		ctx = logr.NewContext(ctx, ctrl.LoggerFrom(ctx))
 	}
 
@@ -86,7 +86,7 @@ func TestCloudStackClusterReconcilerIntegrationTests(t *testing.T) {
 
 		defer teardown()
 		defer t.Cleanup(func() {
-			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, ns)).To(Succeed())
+			g.Expect(testEnv.Cleanup(dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, ns)).To(Succeed())
 		})
 
 		result, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: dummies.CSCluster.Name, Namespace: ns.Name}})
@@ -140,7 +140,7 @@ func TestCloudStackClusterReconcilerIntegrationTests(t *testing.T) {
 
 		defer teardown()
 		defer t.Cleanup(func() {
-			g.Expect(testEnv.Cleanup(ctx, dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, ns)).To(Succeed())
+			g.Expect(testEnv.Cleanup(dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, ns)).To(Succeed())
 		})
 
 		result, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: dummies.CSCluster.Name, Namespace: ns.Name}})

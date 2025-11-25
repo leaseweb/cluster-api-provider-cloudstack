@@ -45,9 +45,12 @@ type CloudStackZoneStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:deprecatedversion:warning="The v1beta1 version of CloudStackZone has been deprecated and will be removed in a future release of the API. Please upgrade."
 // +kubebuilder:subresource:status
 // +k8s:conversion-gen=false
 // CloudStackZone is the Schema for the cloudstackzones API.
+//
+// Deprecated: This type will be removed in one of the next releases.
 type CloudStackZone struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -59,6 +62,8 @@ type CloudStackZone struct {
 //+kubebuilder:object:root=true
 
 // CloudStackZoneList contains a list of CloudStackZone.
+//
+// Deprecated: This type will be removed in one of the next releases.
 type CloudStackZoneList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

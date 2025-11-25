@@ -1,7 +1,7 @@
-bases:
+resources:
   - ../bases/cluster-with-kcp.yaml
   - ../bases/md.yaml
 
-patchesStrategicMerge:
-- ./cloudstack-cluster.yaml
-- ./md.yaml
+patches:
+  - path: ./cloudstack-cluster.yaml
+  - path: ./md.yaml

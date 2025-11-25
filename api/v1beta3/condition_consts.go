@@ -17,12 +17,12 @@ limitations under the License.
 package v1beta3
 
 import (
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 )
 
 const (
 	// FailureDomainsReadyCondition reports on the successful reconciliation of CloudStack failure domains.
-	FailureDomainsReadyCondition clusterv1.ConditionType = "FailureDomainsReady"
+	FailureDomainsReadyCondition clusterv1beta1.ConditionType = "FailureDomainsReady"
 
 	// FailureDomainsNotReadyReason used when the failure domains are not ready.
 	FailureDomainsNotReadyReason = "FailureDomainsNotReady"
@@ -34,7 +34,7 @@ const (
 
 const (
 	// InstanceReadyCondition reports on current status of the CloudStack instance. Ready indicates the instance is in a Running state.
-	InstanceReadyCondition clusterv1.ConditionType = "InstanceReady"
+	InstanceReadyCondition clusterv1beta1.ConditionType = "InstanceReady"
 
 	// InstanceNotFoundReason used when the instance couldn't be retrieved.
 	InstanceNotFoundReason = "InstanceNotFound"
@@ -64,7 +64,7 @@ const (
 
 const (
 	// LoadBalancerAttachedCondition reports on the successful attachment of a load balancer to an instance.
-	LoadBalancerAttachedCondition clusterv1.ConditionType = "LoadBalancerAttached"
+	LoadBalancerAttachedCondition clusterv1beta1.ConditionType = "LoadBalancerAttached"
 
 	// LoadBalancerAttachFailedReason used when the attachment of a load balancer to an instance fails.
 	LoadBalancerAttachFailedReason = "LoadBalancerAttachFailed"

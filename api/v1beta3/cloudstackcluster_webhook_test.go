@@ -21,7 +21,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	"sigs.k8s.io/cluster-api/util/annotations"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
@@ -110,7 +110,7 @@ var _ = Describe("CloudStackCluster webhooks", func() {
 	Context("When updating a CloudStackCluster's annotations", func() {
 		It("Should reject removal of externally managed ('managed-by') annotation from CloudStackCluster", func() {
 			// Create a CloudStackCluster with managed-by annotation.
-			annotations.AddAnnotations(dummies.CSCluster, map[string]string{clusterv1.ManagedByAnnotation: ""})
+			annotations.AddAnnotations(dummies.CSCluster, map[string]string{clusterv1beta1.ManagedByAnnotation: ""})
 			Ω(k8sClient.Create(ctx, dummies.CSCluster)).Should(Succeed())
 
 			// Remove the annotation and update CloudStackCluster.
@@ -122,7 +122,7 @@ var _ = Describe("CloudStackCluster webhooks", func() {
 		It("Should allow adding of externally managed ('managed-by') annotation to CloudStackCluster", func() {
 			Ω(k8sClient.Create(ctx, dummies.CSCluster)).Should(Succeed())
 
-			annotations.AddAnnotations(dummies.CSCluster, map[string]string{clusterv1.ManagedByAnnotation: ""})
+			annotations.AddAnnotations(dummies.CSCluster, map[string]string{clusterv1beta1.ManagedByAnnotation: ""})
 			Ω(k8sClient.Update(ctx, dummies.CSCluster)).Should(Succeed())
 		})
 	})

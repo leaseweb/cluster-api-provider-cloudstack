@@ -44,7 +44,7 @@ import (
 	"k8s.io/component-base/logs"
 	logsv1 "k8s.io/component-base/logs/api/v1"
 	"k8s.io/klog/v2"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	utilyaml "sigs.k8s.io/cluster-api/util/yaml"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -112,7 +112,9 @@ type (
 )
 
 // Cleanup deletes all the given objects.
-func (t *TestEnvironment) Cleanup(ctx context.Context, objs ...client.Object) error {
+func (t *TestEnvironment) Cleanup(objs ...client.Object) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	errs := []error{}
 	for _, o := range objs {
 		err := t.Client.Delete(ctx, o)
