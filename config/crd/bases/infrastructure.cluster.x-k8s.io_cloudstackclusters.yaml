@@ -587,6 +587,18 @@ spec:
                   CAPI recognizes failure domains as a method to spread machines.
                   CAPC sets failure domains to indicate functioning CloudStackFailureDomains.
                 type: object
+              initialization:
+                description: |-
+                  initialization provides observations of the CloudStackCluster initialization process.
+                  NOTE: Fields in this struct are part of the Cluster API contract and are used to orchestrate initial Cluster provisioning.
+                minProperties: 1
+                properties:
+                  provisioned:
+                    description: |-
+                      provisioned is true when the infrastructure provider reports that the Cluster's infrastructure is fully provisioned.
+                      NOTE: this field is part of the Cluster API contract, and it is used to orchestrate initial Cluster provisioning.
+                    type: boolean
+                type: object
               ready:
                 description: Reflects the readiness of the CS cluster.
                 type: boolean
