@@ -8,7 +8,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	k8s.io/apimachinery v0.33.3 // indirect
+	k8s.io/apimachinery v0.33.6 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738 // indirect
 	sigs.k8s.io/cluster-api v0.0.0-00010101000000-000000000000 // indirect
