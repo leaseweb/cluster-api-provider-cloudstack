@@ -592,6 +592,7 @@ func Convert_v1beta2_CloudStackClusterStatus_To_v1beta3_CloudStackClusterStatus(
 func autoConvert_v1beta3_CloudStackClusterStatus_To_v1beta2_CloudStackClusterStatus(in *v1beta3.CloudStackClusterStatus, out *CloudStackClusterStatus, s conversion.Scope) error {
 	out.FailureDomains = *(*v1beta1.FailureDomains)(unsafe.Pointer(&in.FailureDomains))
 	out.Ready = in.Ready
+	// WARNING: in.Initialization requires manual conversion: does not exist in peer-type
 	// WARNING: in.Conditions requires manual conversion: does not exist in peer-type
 	return nil
 }
@@ -1067,6 +1068,7 @@ func Convert_v1beta2_CloudStackMachineStatus_To_v1beta3_CloudStackMachineStatus(
 
 func autoConvert_v1beta3_CloudStackMachineStatus_To_v1beta2_CloudStackMachineStatus(in *v1beta3.CloudStackMachineStatus, out *CloudStackMachineStatus, s conversion.Scope) error {
 	out.Ready = in.Ready
+	// WARNING: in.Initialization requires manual conversion: does not exist in peer-type
 	out.Addresses = *(*[]corev1.NodeAddress)(unsafe.Pointer(&in.Addresses))
 	out.InstanceState = in.InstanceState
 	out.InstanceStateLastUpdated = in.InstanceStateLastUpdated

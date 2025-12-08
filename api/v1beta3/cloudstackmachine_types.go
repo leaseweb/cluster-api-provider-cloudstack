@@ -120,6 +120,11 @@ type CloudStackMachineStatus struct {
 	//+optional
 	Ready bool `json:"ready"`
 
+	// initialization provides observations of the CloudStackMachine initialization process.
+	// NOTE: Fields in this struct are part of the Cluster API contract and are used to orchestrate initial Machine provisioning.
+	// +optional
+	Initialization CloudStackMachineInitializationStatus `json:"initialization,omitempty,omitzero"`
+
 	// Addresses contains a CloudStack VM instance's IP addresses.
 	Addresses []corev1.NodeAddress `json:"addresses,omitempty"`
 
@@ -182,6 +187,15 @@ type CloudStackMachineStatus struct {
 	// Conditions defines current service state of the CloudStackMachine.
 	//+optional
 	Conditions clusterv1beta1.Conditions `json:"conditions,omitempty"`
+}
+
+// CloudStackMachineInitializationStatus provides observations of the CloudStackMachine initialization process.
+// +kubebuilder:validation:MinProperties=1
+type CloudStackMachineInitializationStatus struct {
+	// provisioned is true when the infrastructure provider reports that the Machine's infrastructure is fully provisioned.
+	// NOTE: this field is part of the Cluster API contract, and it is used to orchestrate initial Machine provisioning.
+	// +optional
+	Provisioned *bool `json:"provisioned,omitempty"`
 }
 
 // GetConditions returns the conditions for the CloudStackMachine.

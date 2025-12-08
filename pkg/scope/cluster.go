@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
@@ -105,6 +106,7 @@ func (s *ClusterScope) KubernetesClusterName() string {
 // SetReady sets the CloudStackCluster Ready Status.
 func (s *ClusterScope) SetReady() {
 	s.CloudStackCluster.Status.Ready = true
+	s.CloudStackCluster.Status.Initialization.Provisioned = ptr.To(true)
 }
 
 // SetNotReady sets the CloudStackCluster Ready Status to false.

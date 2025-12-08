@@ -142,6 +142,7 @@ func (s *MachineScope) FailureDomainName() string {
 // SetReady sets the CloudStackMachine Ready Status.
 func (s *MachineScope) SetReady() {
 	s.CloudStackMachine.Status.Ready = true
+	s.CloudStackMachine.Status.Initialization.Provisioned = ptr.To(true)
 }
 
 // SetNotReady sets the CloudStackMachine Ready Status to false.
