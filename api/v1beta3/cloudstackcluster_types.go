@@ -56,9 +56,23 @@ type CloudStackClusterStatus struct {
 	//+optional
 	Ready bool `json:"ready"`
 
+	// initialization provides observations of the CloudStackCluster initialization process.
+	// NOTE: Fields in this struct are part of the Cluster API contract and are used to orchestrate initial Cluster provisioning.
+	// +optional
+	Initialization CloudStackClusterInitializationStatus `json:"initialization,omitempty,omitzero"`
+
 	// Conditions defines current service state of the CloudStackCluster.
 	//+optional
 	Conditions clusterv1beta1.Conditions `json:"conditions,omitempty"`
+}
+
+// CloudStackClusterInitializationStatus provides observations of the CloudStackCluster initialization process.
+// +kubebuilder:validation:MinProperties=1
+type CloudStackClusterInitializationStatus struct {
+	// provisioned is true when the infrastructure provider reports that the Cluster's infrastructure is fully provisioned.
+	// NOTE: this field is part of the Cluster API contract, and it is used to orchestrate initial Cluster provisioning.
+	// +optional
+	Provisioned *bool `json:"provisioned,omitempty"`
 }
 
 // GetConditions returns the conditions for the CloudStackCluster.
