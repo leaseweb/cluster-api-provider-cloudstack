@@ -873,7 +873,8 @@ func (c *client) DisposeIsoNetResources(
 	csCluster *infrav1.CloudStackCluster,
 ) error {
 	// Release the load balancer IP, if the load balancer is enabled and its IP is different from the isonet public IP.
-	if csCluster.Spec.APIServerLoadBalancer.IsEnabled() && isoNet.Status.APIServerLoadBalancer.IPAddressID != "" &&
+	if csCluster.Spec.APIServerLoadBalancer.IsEnabled() && isoNet.Status.APIServerLoadBalancer != nil &&
+		isoNet.Status.APIServerLoadBalancer.IPAddressID != "" &&
 		isoNet.Status.APIServerLoadBalancer.IPAddressID != isoNet.Status.PublicIPID {
 		if err := c.DeleteClusterTag(ResourceTypeIPAddress, isoNet.Status.APIServerLoadBalancer.IPAddressID, csCluster); err != nil {
 			return err
