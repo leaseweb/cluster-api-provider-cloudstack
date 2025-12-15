@@ -323,28 +323,36 @@ func setupReconcilers(ctx context.Context, mgr manager.Manager) {
 
 	crdMigratorConfig := map[client.Object]crdmigrator.ByObjectConfig{
 		&infrav1.CloudStackCluster{}: {
-			UseCache: true,
+			UseCache:                            true,
+			UseStatusForStorageVersionMigration: true,
 		},
 		&infrav1.CloudStackMachine{}: {
-			UseCache: true,
+			UseCache:                            true,
+			UseStatusForStorageVersionMigration: true,
 		},
 		&infrav1.CloudStackMachineTemplate{}: {
-			UseCache: true,
+			UseCache:                            true,
+			UseStatusForStorageVersionMigration: true,
 		},
 		&infrav1.CloudStackClusterTemplate{}: {
-			UseCache: true,
+			UseCache:                            true,
+			UseStatusForStorageVersionMigration: false,
 		},
 		&infrav1.CloudStackFailureDomain{}: {
-			UseCache: true,
+			UseCache:                            true,
+			UseStatusForStorageVersionMigration: true,
 		},
 		&infrav1.CloudStackIsolatedNetwork{}: {
-			UseCache: true,
+			UseCache:                            true,
+			UseStatusForStorageVersionMigration: true,
 		},
 		&infrav1.CloudStackAffinityGroup{}: {
-			UseCache: true,
+			UseCache:                            true,
+			UseStatusForStorageVersionMigration: true,
 		},
 		&infrav1.CloudStackMachineStateChecker{}: {
-			UseCache: true,
+			UseCache:                            true,
+			UseStatusForStorageVersionMigration: true,
 		},
 	}
 	crdMigratorSkipPhases := []crdmigrator.Phase{}
