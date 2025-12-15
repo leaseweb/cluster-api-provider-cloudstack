@@ -27,6 +27,7 @@ import (
 
 	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -37,6 +38,7 @@ import (
 	logsv1 "k8s.io/component-base/logs/api/v1"
 	"k8s.io/klog/v2"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
+	"sigs.k8s.io/cluster-api/controllers/crdmigrator"
 	"sigs.k8s.io/cluster-api/controllers/remote"
 	"sigs.k8s.io/cluster-api/feature"
 	"sigs.k8s.io/cluster-api/util/flags"
@@ -61,6 +63,7 @@ var (
 )
 
 func init() {
+	utilruntime.Must(apiextensionsv1.AddToScheme(scheme))
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(clusterv1.AddToScheme(scheme))
 	utilruntime.Must(infrav1beta1.AddToScheme(scheme))
@@ -90,6 +93,7 @@ var (
 	managerOptions              = flags.ManagerOptions{}
 	logOptions                  = logs.NewOptions()
 	showVersion                 bool
+	skipCRDMigrationPhases      []string
 
 	cloudStackClusterConcurrency         int
 	cloudStackMachineConcurrency         int
@@ -180,6 +184,9 @@ func initFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&healthAddr, "health-addr", ":9440",
 		"The address the health endpoint binds to.")
 
+	fs.StringArrayVar(&skipCRDMigrationPhases, "skip-crd-migration-phases", []string{},
+		"List of CRD migration phases to skip. Valid values are: StorageVersionMigration, CleanupManagedFields.")
+
 	fs.BoolVar(&showVersion, "version", false, "Show current version and exit.")
 
 	flags.AddManagerOptions(fs, &managerOptions)
@@ -190,6 +197,11 @@ func initFlags(fs *pflag.FlagSet) {
 // Add RBAC for the authorized diagnostics endpoint.
 // +kubebuilder:rbac:groups=authentication.k8s.io,resources=tokenreviews,verbs=create
 // +kubebuilder:rbac:groups=authorization.k8s.io,resources=subjectaccessreviews,verbs=create
+// Setup CRD migrator
+// +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions/status,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=cloudstackclusters;cloudstackmachines;cloudstackmachinetemplates;cloudstackclustertemplates;cloudstackfailuredomains;cloudstackisolatednetworks;cloudstackaffinitygroups;cloudstackmachinestatecheckers,verbs=get;list;watch;patch;update
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=cloudstackclusters/status;cloudstackmachines/status;cloudstackmachinetemplates/status;cloudstackclustertemplates/status;cloudstackfailuredomains/status;cloudstackisolatednetworks/status;cloudstackaffinitygroups/status;cloudstackmachinestatecheckers/status,verbs=get;patch;update
 
 func main() {
 	initFlags(pflag.CommandLine)
@@ -308,6 +320,47 @@ func setupChecks(mgr ctrl.Manager) {
 
 func setupReconcilers(ctx context.Context, mgr manager.Manager) {
 	scopeFactory := scope.NewClientScopeFactory(10)
+
+	crdMigratorConfig := map[client.Object]crdmigrator.ByObjectConfig{
+		&infrav1.CloudStackCluster{}: {
+			UseCache: true,
+		},
+		&infrav1.CloudStackMachine{}: {
+			UseCache: true,
+		},
+		&infrav1.CloudStackMachineTemplate{}: {
+			UseCache: true,
+		},
+		&infrav1.CloudStackClusterTemplate{}: {
+			UseCache: true,
+		},
+		&infrav1.CloudStackFailureDomain{}: {
+			UseCache: true,
+		},
+		&infrav1.CloudStackIsolatedNetwork{}: {
+			UseCache: true,
+		},
+		&infrav1.CloudStackAffinityGroup{}: {
+			UseCache: true,
+		},
+		&infrav1.CloudStackMachineStateChecker{}: {
+			UseCache: true,
+		},
+	}
+	crdMigratorSkipPhases := []crdmigrator.Phase{}
+	for _, p := range skipCRDMigrationPhases {
+		crdMigratorSkipPhases = append(crdMigratorSkipPhases, crdmigrator.Phase(p))
+	}
+	if err := (&crdmigrator.CRDMigrator{
+		Client:                 mgr.GetClient(),
+		APIReader:              mgr.GetAPIReader(),
+		SkipCRDMigrationPhases: crdMigratorSkipPhases,
+		Config:                 crdMigratorConfig,
+	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: 1}); err != nil {
+		setupLog.Error(err, "unable to setup CRD migrator")
+		os.Exit(1)
+	}
+
 	if err := (&controllers.CloudStackClusterReconciler{
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
