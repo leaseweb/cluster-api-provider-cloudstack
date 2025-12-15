@@ -201,7 +201,7 @@ func initFlags(fs *pflag.FlagSet) {
 // +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions/status,verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=cloudstackclusters;cloudstackmachines;cloudstackmachinetemplates;cloudstackclustertemplates;cloudstackfailuredomains;cloudstackisolatednetworks;cloudstackaffinitygroups;cloudstackmachinestatecheckers,verbs=get;list;watch;patch;update
-// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=cloudstackclusters/status;cloudstackmachines/status;cloudstackmachinetemplates/status;cloudstackclustertemplates/status;cloudstackfailuredomains/status;cloudstackisolatednetworks/status;cloudstackaffinitygroups/status;cloudstackmachinestatecheckers/status,verbs=get;patch;update
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=cloudstackclusters/status;cloudstackmachines/status;cloudstackmachinetemplates/status;cloudstackfailuredomains/status;cloudstackisolatednetworks/status;cloudstackaffinitygroups/status;cloudstackmachinestatecheckers/status,verbs=get;patch;update
 
 func main() {
 	initFlags(pflag.CommandLine)
@@ -323,28 +323,36 @@ func setupReconcilers(ctx context.Context, mgr manager.Manager) {
 
 	crdMigratorConfig := map[client.Object]crdmigrator.ByObjectConfig{
 		&infrav1.CloudStackCluster{}: {
-			UseCache: true,
+			UseCache:                            true,
+			UseStatusForStorageVersionMigration: true,
 		},
 		&infrav1.CloudStackMachine{}: {
-			UseCache: true,
+			UseCache:                            true,
+			UseStatusForStorageVersionMigration: true,
 		},
 		&infrav1.CloudStackMachineTemplate{}: {
-			UseCache: true,
+			UseCache:                            true,
+			UseStatusForStorageVersionMigration: true,
 		},
 		&infrav1.CloudStackClusterTemplate{}: {
-			UseCache: true,
+			UseCache:                            true,
+			UseStatusForStorageVersionMigration: false,
 		},
 		&infrav1.CloudStackFailureDomain{}: {
-			UseCache: true,
+			UseCache:                            true,
+			UseStatusForStorageVersionMigration: true,
 		},
 		&infrav1.CloudStackIsolatedNetwork{}: {
-			UseCache: true,
+			UseCache:                            true,
+			UseStatusForStorageVersionMigration: true,
 		},
 		&infrav1.CloudStackAffinityGroup{}: {
-			UseCache: true,
+			UseCache:                            true,
+			UseStatusForStorageVersionMigration: true,
 		},
 		&infrav1.CloudStackMachineStateChecker{}: {
-			UseCache: true,
+			UseCache:                            true,
+			UseStatusForStorageVersionMigration: true,
 		},
 	}
 	crdMigratorSkipPhases := []crdmigrator.Phase{}
