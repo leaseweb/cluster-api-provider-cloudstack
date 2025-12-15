@@ -201,7 +201,7 @@ func initFlags(fs *pflag.FlagSet) {
 // +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions/status,verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=cloudstackclusters;cloudstackmachines;cloudstackmachinetemplates;cloudstackclustertemplates;cloudstackfailuredomains;cloudstackisolatednetworks;cloudstackaffinitygroups;cloudstackmachinestatecheckers,verbs=get;list;watch;patch;update
-// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=cloudstackclusters/status;cloudstackmachines/status;cloudstackmachinetemplates/status;cloudstackclustertemplates/status;cloudstackfailuredomains/status;cloudstackisolatednetworks/status;cloudstackaffinitygroups/status;cloudstackmachinestatecheckers/status,verbs=get;patch;update
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=cloudstackclusters/status;cloudstackmachines/status;cloudstackmachinetemplates/status;cloudstackfailuredomains/status;cloudstackisolatednetworks/status;cloudstackaffinitygroups/status;cloudstackmachinestatecheckers/status,verbs=get;patch;update
 
 func main() {
 	initFlags(pflag.CommandLine)

@@ -89,7 +89,6 @@ rules:
   - infrastructure.cluster.x-k8s.io
   resources:
   - cloudstackaffinitygroups/status
-  - cloudstackclustertemplates/status
   - cloudstackisolatednetworks/status
   - cloudstackmachines/status
   - cloudstackmachinestatecheckers/status
