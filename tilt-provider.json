@@ -10,7 +10,7 @@
             "go.sum",
             "api",
             "cmd",
-            "controllers",
+            "internal",
             "pkg"
         ]
     }
