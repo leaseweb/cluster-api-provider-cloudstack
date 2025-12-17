@@ -21,13 +21,13 @@ import (
 	"fmt"
 
 	"github.com/apache/cloudstack-go/v2/cloudstack"
-	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
+	"sigs.k8s.io/cluster-api/util/annotations"
 	"sigs.k8s.io/cluster-api/util/predicates"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -52,13 +52,19 @@ type CloudStackMachineTemplateReconciler struct {
 func (r *CloudStackMachineTemplateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, reterr error) {
 	log := logger.FromContext(ctx).WithValues("cloudstackmachinetemplate", req.NamespacedName)
 
-	machineTemplate := &infrav1.CloudStackMachineTemplate{}
-	if err := r.Get(ctx, req.NamespacedName, machineTemplate); err != nil {
+	csMachineTemplate := &infrav1.CloudStackMachineTemplate{}
+	if err := r.Get(ctx, req.NamespacedName, csMachineTemplate); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	// If the capacity is already set, skip the reconciliation.
+	// The template spec is immutable after the template is created, so this doesnt need updating.
+	if len(csMachineTemplate.Status.Capacity) > 0 {
+		return ctrl.Result{}, nil
+	}
+
 	// Fetch the Cluster.
-	cluster, err := util.GetOwnerCluster(ctx, r.Client, machineTemplate.ObjectMeta)
+	cluster, err := util.GetOwnerCluster(ctx, r.Client, csMachineTemplate.ObjectMeta)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -67,23 +73,28 @@ func (r *CloudStackMachineTemplateReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, nil
 	}
 
+	if annotations.IsPaused(cluster, csMachineTemplate) {
+		log.Info("Reconciliation is paused for this object")
+		return ctrl.Result{}, nil
+	}
+
 	log = log.WithValues("cluster", cluster.Name)
 
-	csCluster, err := r.getInfraCluster(ctx, cluster, machineTemplate)
+	csCluster, err := r.getInfraCluster(ctx, cluster, csMachineTemplate)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	var fdName string
-	if machineTemplate.Spec.Template.Spec.FailureDomainName != "" {
-		fdName = machineTemplate.Spec.Template.Spec.FailureDomainName
+	if csMachineTemplate.Spec.Template.Spec.FailureDomainName != "" {
+		fdName = csMachineTemplate.Spec.Template.Spec.FailureDomainName
 	} else {
 		// If the failure domain name is not set in the MachineTemplate spec,
 		// we take the first failure domain from the CloudStackCluster spec.
 		fdName = csCluster.Spec.FailureDomains[0].Name
 	}
 
-	fd, err := GetFailureDomainByName(ctx, r.Client, fdName, machineTemplate.Namespace, cluster.Name)
+	fd, err := GetFailureDomainByName(ctx, r.Client, fdName, csMachineTemplate.Namespace, cluster.Name)
 	if err != nil {
 		log.Error(err, "Failed to get failure domain", "fdname", fdName)
 		return ctrl.Result{}, err
@@ -99,7 +110,7 @@ func (r *CloudStackMachineTemplateReconciler) Reconcile(ctx context.Context, req
 		Client:                    r.Client,
 		Logger:                    log,
 		Cluster:                   cluster,
-		CloudStackMachineTemplate: machineTemplate,
+		CloudStackMachineTemplate: csMachineTemplate,
 		CSClients:                 clientScope.CSClients(),
 		ControllerName:            "cloudstackmachinetemplate",
 	})
@@ -137,11 +148,13 @@ func (r *CloudStackMachineTemplateReconciler) reconcile(scope *scope.MachineTemp
 		}
 	}
 
-	capacity := getCloudStackMachineCapacity(serviceOffering)
-	scope.Debug("Calculated capacity for machine template", "capacity", capacity)
-	if !cmp.Equal(scope.CloudStackMachineTemplate.Status.Capacity, capacity) {
-		scope.CloudStackMachineTemplate.Status.Capacity = capacity
+	capacity, err := getCloudStackMachineCapacity(serviceOffering)
+	if err != nil {
+		scope.Error(err, "Failed to get capacity for instance", "offering", serviceOffering.Name)
+		return err
 	}
+	scope.CloudStackMachineTemplate.Status.Capacity = capacity
+	scope.Info("Successfully populated capacity for instance", "offering", serviceOffering.Name, "capacity", capacity)
 
 	return nil
 }
@@ -163,12 +176,29 @@ func (r *CloudStackMachineTemplateReconciler) getInfraCluster(ctx context.Contex
 }
 
 // getCloudStackMachineCapacity returns the capacity of the given service offering.
-func getCloudStackMachineCapacity(serviceOffering *cloudstack.ServiceOffering) corev1.ResourceList {
+// It returns an error if the capacity cannot be parsed.
+func getCloudStackMachineCapacity(serviceOffering *cloudstack.ServiceOffering) (corev1.ResourceList, error) {
 	capacity := corev1.ResourceList{}
-	capacity[corev1.ResourceCPU] = resource.MustParse(fmt.Sprintf("%d", serviceOffering.Cpunumber))
-	capacity[corev1.ResourceMemory] = resource.MustParse(fmt.Sprintf("%dM", serviceOffering.Memory))
 
-	return capacity
+	if serviceOffering.Cpunumber == 0 {
+		return nil, fmt.Errorf("service offering %s has no CPU", serviceOffering.Name)
+	}
+	cpu, err := resource.ParseQuantity(fmt.Sprintf("%d", serviceOffering.Cpunumber))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse CPU quantity: %w", err)
+	}
+	capacity[corev1.ResourceCPU] = cpu
+
+	if serviceOffering.Memory == 0 {
+		return nil, fmt.Errorf("service offering %s has no memory", serviceOffering.Name)
+	}
+	memory, err := resource.ParseQuantity(fmt.Sprintf("%dM", serviceOffering.Memory))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse memory quantity: %w", err)
+	}
+	capacity[corev1.ResourceMemory] = memory
+
+	return capacity, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
