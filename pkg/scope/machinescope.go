@@ -169,7 +169,7 @@ func (s *MachineScope) PatchObject() error {
 
 	v1beta1conditions.SetSummary(s.CloudStackMachine,
 		v1beta1conditions.WithConditions(applicableConditions...),
-		v1beta1conditions.WithStepCounterIf(s.CloudStackMachine.ObjectMeta.DeletionTimestamp.IsZero()),
+		v1beta1conditions.WithStepCounterIf(s.CloudStackMachine.DeletionTimestamp.IsZero()),
 	)
 
 	return s.patchHelper.Patch(
@@ -348,12 +348,12 @@ func (s *MachineScope) IsLBEnabled() bool {
 
 // CloudStackMachineIsDeleted returns true if the CloudStackMachine is deleted.
 func (s *MachineScope) CloudStackMachineIsDeleted() bool {
-	return !s.CloudStackMachine.ObjectMeta.DeletionTimestamp.IsZero()
+	return !s.CloudStackMachine.DeletionTimestamp.IsZero()
 }
 
 // MachineIsDeleted returns true if the CAPI Machine is deleted.
 func (s *MachineScope) MachineIsDeleted() bool {
-	return !s.Machine.ObjectMeta.DeletionTimestamp.IsZero()
+	return !s.Machine.DeletionTimestamp.IsZero()
 }
 
 // IsExternallyManaged checks if the machine is externally managed.

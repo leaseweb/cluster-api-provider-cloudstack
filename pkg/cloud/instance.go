@@ -442,22 +442,22 @@ func (c *client) checkAccountLimits(offering *cloudstack.ServiceOffering) error 
 
 // checkDomainLimits checks the domain's limit of VM, CPU & Memory.
 func (c *client) checkDomainLimits(offering *cloudstack.ServiceOffering) error {
-	if c.user.Account.Domain.CPUAvailable != LimitUnlimited {
-		cpuAvailable, err := strconv.ParseInt(c.user.Account.Domain.CPUAvailable, 10, 0)
+	if c.user.Domain.CPUAvailable != LimitUnlimited {
+		cpuAvailable, err := strconv.ParseInt(c.user.Domain.CPUAvailable, 10, 0)
 		if err == nil && int64(offering.Cpunumber) > cpuAvailable {
 			return fmt.Errorf("CPU available (%d) in domain can't fulfil the requirement: %d", cpuAvailable, offering.Cpunumber)
 		}
 	}
 
-	if c.user.Account.Domain.MemoryAvailable != LimitUnlimited {
-		memoryAvailable, err := strconv.ParseInt(c.user.Account.Domain.MemoryAvailable, 10, 0)
+	if c.user.Domain.MemoryAvailable != LimitUnlimited {
+		memoryAvailable, err := strconv.ParseInt(c.user.Domain.MemoryAvailable, 10, 0)
 		if err == nil && int64(offering.Memory) > memoryAvailable {
 			return fmt.Errorf("memory available (%d) in domain can't fulfil the requirement: %d", memoryAvailable, offering.Memory)
 		}
 	}
 
-	if c.user.Account.Domain.VMAvailable != LimitUnlimited {
-		vmAvailable, err := strconv.ParseInt(c.user.Account.Domain.VMAvailable, 10, 0)
+	if c.user.Domain.VMAvailable != LimitUnlimited {
+		vmAvailable, err := strconv.ParseInt(c.user.Domain.VMAvailable, 10, 0)
 		if err == nil && vmAvailable < 1 {
 			return errors.New("VM limit in domain has reached its maximum value")
 		}

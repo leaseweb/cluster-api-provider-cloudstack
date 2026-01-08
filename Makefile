@@ -82,9 +82,9 @@ GINKGO := $(abspath $(TOOLS_BIN_DIR)/$(GINKGO_BIN)-$(GINGKO_VER))
 GINKGO_PKG := github.com/onsi/ginkgo/v2/ginkgo
 
 GOLANGCI_LINT_BIN := golangci-lint
-GOLANGCI_LINT_VER := v1.64.8
+GOLANGCI_LINT_VER := v2.7.2
 GOLANGCI_LINT := $(abspath $(TOOLS_BIN_DIR)/$(GOLANGCI_LINT_BIN)-$(GOLANGCI_LINT_VER))
-GOLANGCI_LINT_PKG := github.com/golangci/golangci-lint/cmd/golangci-lint
+GOLANGCI_LINT_PKG := github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
 MOCKGEN_BIN := mockgen
 MOCKGEN_VER := v0.6.0

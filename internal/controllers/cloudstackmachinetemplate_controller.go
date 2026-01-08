@@ -53,7 +53,7 @@ func (r *CloudStackMachineTemplateReconciler) Reconcile(ctx context.Context, req
 	log := logger.FromContext(ctx).WithValues("cloudstackmachinetemplate", req.NamespacedName)
 
 	machineTemplate := &infrav1.CloudStackMachineTemplate{}
-	if err := r.Client.Get(ctx, req.NamespacedName, machineTemplate); err != nil {
+	if err := r.Get(ctx, req.NamespacedName, machineTemplate); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
@@ -153,7 +153,7 @@ func (r *CloudStackMachineTemplateReconciler) getInfraCluster(ctx context.Contex
 		Namespace: cloudStackMachineTemplate.Namespace,
 		Name:      cluster.Spec.InfrastructureRef.Name,
 	}
-	if err := r.Client.Get(ctx, cloudStackClusterName, cloudStackCluster); err != nil {
+	if err := r.Get(ctx, cloudStackClusterName, cloudStackCluster); err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil, nil
 		}

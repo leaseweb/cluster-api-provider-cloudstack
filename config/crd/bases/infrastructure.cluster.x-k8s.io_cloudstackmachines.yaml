@@ -849,12 +849,16 @@ spec:
               reason:
                 description: |-
                   Reason indicates the reason of status failure.
-                  Deprecated: This field has no function and is going to be removed in the next release.
+                  Deprecated:
+
+                  This field has no function and is going to be removed in the next release.
                 type: string
               status:
                 description: |-
                   Status indicates the status of the provider resource.
-                  Deprecated: This field has no function and is going to be removed in the next release.
+                  Deprecated:
+
+                  This field has no function and is going to be removed in the next release.
                 type: string
             type: object
         type: object
