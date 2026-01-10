@@ -177,7 +177,7 @@ modules: ## Runs go mod to ensure proper vendoring.
 	cd $(TOOLS_DIR); go mod tidy -compat=1.25
 
 .PHONY: generate-all
-generate-all: generate-mocks generate-conversion generate-deepcopy generate-manifests
+generate-all: generate-mocks generate-deepcopy generate-manifests
 
 .PHONY: generate-mocks
 generate-mocks: $(MOCKGEN) generate-deepcopy pkg/mocks/mock_client.go $(shell find ./pkg/mocks -type f -name "mock*.go") ## Generate mocks needed for testing. Primarily mocks of the cloud package.
@@ -257,7 +257,7 @@ undeploy: $(KUSTOMIZE) ## Undeploy controller from the K8s cluster specified in 
 # Using a flag file here as docker build doesn't produce a target file.
 DOCKER_BUILD_INPUTS=$(MANAGER_BIN_INPUTS) Dockerfile
 .PHONY: docker-build
-docker-build: generate-deepcopy generate-conversion generate-mocks build-for-docker .dockerflag.mk ## Build docker image containing the controller manager.
+docker-build: generate-deepcopy generate-mocks build-for-docker .dockerflag.mk ## Build docker image containing the controller manager.
 .dockerflag.mk: $(DOCKER_BUILD_INPUTS)
 	docker build -t ${IMG} .
 	@touch .dockerflag.mk
