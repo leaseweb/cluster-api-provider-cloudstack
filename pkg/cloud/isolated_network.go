@@ -778,8 +778,22 @@ func (c *client) ReconcileLoadBalancer(
 	return nil
 }
 
+// isLBRuleNotFound checks if an error from the CloudStack API indicates that a load balancer rule does not exist.
+func isLBRuleNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+
+	return strings.Contains(msg, "no match found") ||
+		strings.Contains(msg, "unable to find") ||
+		strings.Contains(msg, "does not exist") ||
+		strings.Contains(msg, "entity does not exist")
+}
+
 // AssignVMToLoadBalancerRules assigns a VM to the load balancing rules listed in isoNet.Status.LoadBalancerRuleIDs,
 // if not already assigned. It returns a bool indicating whether an instance was actually assigned, and an error in case an error occurred.
+// If a load balancer rule no longer exists in CloudStack, it is skipped.
 func (c *client) AssignVMToLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNetwork, instanceID string) (bool, error) {
 	var assigned, found bool
 	assigned = false
@@ -790,6 +804,14 @@ func (c *client) AssignVMToLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedN
 		lbRuleInstances, err := c.cs.LoadBalancer.ListLoadBalancerRuleInstances(
 			c.cs.LoadBalancer.NewListLoadBalancerRuleInstancesParams(lbRuleID))
 		if err != nil {
+			if isLBRuleNotFound(err) {
+				// The load balancer rule no longer exists in CloudStack. Skip it; the
+				// isolated network controller will re-create it on its next reconciliation.
+				record.Warnf(isoNet, "LoadBalancerRuleNotFound",
+					"Load balancer rule %s no longer exists, skipping assignment for instance %s", lbRuleID, instanceID)
+
+				continue
+			}
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
 			return false, err
@@ -822,6 +844,7 @@ func (c *client) AssignVMToLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedN
 
 // RemoveVMFromLoadBalancerRules removes a VM from the load balancing rules listed in isoNet.Status.LoadBalancerRuleIDs,
 // if not already removed. It returns a bool indicating whether an instance was actually removed, and an error in case an error occurred.
+// If a load balancer rule no longer exists in CloudStack, it is skipped (the VM is implicitly not assigned).
 func (c *client) RemoveVMFromLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNetwork, instanceID string) (bool, error) {
 	for _, lbRuleID := range isoNet.Status.LoadBalancerRuleIDs {
 		// Check that the instance isn't already in LB rotation.
@@ -829,6 +852,14 @@ func (c *client) RemoveVMFromLoadBalancerRules(isoNet *infrav1.CloudStackIsolate
 		lbRuleInstances, err := c.cs.LoadBalancer.ListLoadBalancerRuleInstances(
 			c.cs.LoadBalancer.NewListLoadBalancerRuleInstancesParams(lbRuleID))
 		if err != nil {
+			if isLBRuleNotFound(err) {
+				// The load balancer rule no longer exists in CloudStack, so the VM
+				// is implicitly not assigned to it. Skip it.
+				record.Warnf(isoNet, "LoadBalancerRuleNotFound",
+					"Load balancer rule %s no longer exists, skipping removal for instance %s", lbRuleID, instanceID)
+
+				continue
+			}
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
 			return false, err
