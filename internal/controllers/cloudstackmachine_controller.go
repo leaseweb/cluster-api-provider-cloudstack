@@ -898,7 +898,7 @@ func (r *CloudStackMachineReconciler) SetupWithManager(ctx context.Context, mgr 
 						}
 
 						// Only trigger a CloudStackMachine reconcile if the loadbalancer rules changed.
-						return len(oldCSIsoNet.Status.LoadBalancerRuleIDs) != len(newCSIsoNet.Status.LoadBalancerRuleIDs)
+						return !cmp.Equal(oldCSIsoNet.Status.LoadBalancerRuleIDs, newCSIsoNet.Status.LoadBalancerRuleIDs)
 					},
 				},
 			),

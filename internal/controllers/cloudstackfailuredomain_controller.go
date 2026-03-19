@@ -234,7 +234,7 @@ func (r *CloudStackFailureDomainReconciler) reconcileNormal(ctx context.Context,
 // GenerateIsolatedNetwork creates a CloudStackIsolatedNetwork object in the cluster that is owned by the CloudStackFailureDomain.
 func (r *CloudStackFailureDomainReconciler) GenerateIsolatedNetwork(ctx context.Context, scope *scope.FailureDomainScope) error {
 	lowerName := strings.ToLower(scope.NetworkName())
-	metaName := fmt.Sprintf("%s-%s", scope.KubernetesClusterName(), lowerName)
+	metaName := scope.IsolatedNetworkName()
 	ownerGVK := scope.OwnerGVK()
 	csIsoNet := &infrav1.CloudStackIsolatedNetwork{}
 	csIsoNet.ObjectMeta = metav1.ObjectMeta{
