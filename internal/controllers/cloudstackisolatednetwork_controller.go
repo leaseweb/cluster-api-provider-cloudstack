@@ -255,7 +255,7 @@ func (r *CloudStackIsolatedNetworkReconciler) CloudStackClusterToCloudStackIsola
 		log = log.WithValues("objectMapper", "cloudstackClusterToCloudStackIsolatedNetworks", "cluster", klog.KRef(csCluster.Namespace, csCluster.Name))
 
 		// Don't handle deleted CloudStackClusters
-		if !csCluster.ObjectMeta.DeletionTimestamp.IsZero() {
+		if !csCluster.DeletionTimestamp.IsZero() {
 			log.Trace("CloudStackCluster has a deletion timestamp, skipping mapping.")
 
 			return nil

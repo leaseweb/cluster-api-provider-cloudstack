@@ -60,7 +60,7 @@ func (r *CloudStackMachineTemplateWebhook) ValidateCreate(_ context.Context, obj
 	spec := obj.Spec.Template.Spec
 
 	affinity := strings.ToLower(spec.Affinity)
-	if !(affinity == "" || affinity == "no" || affinity == "pro" || affinity == "anti" || affinity == "soft-pro" || affinity == "soft-anti") {
+	if affinity != "" && affinity != "no" && affinity != "pro" && affinity != "anti" && affinity != "soft-pro" && affinity != "soft-anti" {
 		errorList = append(errorList, field.Invalid(field.NewPath("spec", "Affinity"), spec.Affinity,
 			`Affinity must be "no", "pro", "anti", "soft-pro", "soft-anti", or unspecified.`))
 	}
