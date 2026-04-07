@@ -71,7 +71,6 @@ spec:
                 description: Name.
                 type: string
             required:
-            - controlPlaneEndpoint
             - failureDomainName
             type: object
           status:

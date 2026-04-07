@@ -196,6 +196,7 @@ func (r *CloudStackIsolatedNetworkReconciler) reconcileNormal(ctx context.Contex
 			return ctrl.Result{}, errors.Wrap(err, "failed to associate public IP address")
 		}
 		scope.SetControlPlaneEndpointHost(pubIP.Ipaddress)
+		scope.SetControlPlaneEndpointPort(getAPIServerPort(scope.CloudStackCluster))
 		scope.SetPublicIPID(pubIP.Id)
 		scope.SetPublicIPAddress(pubIP.Ipaddress)
 
@@ -234,6 +235,15 @@ func (r *CloudStackIsolatedNetworkReconciler) getInfraCluster(ctx context.Contex
 		return nil, err
 	}
 	return cloudStackCluster, nil
+}
+
+// getAPIServerPort returns the port to use for the API server based on the cluster spec.
+func getAPIServerPort(csc *infrav1.CloudStackCluster) int32 {
+	if csc.Spec.ControlPlaneEndpoint.IsValid() {
+		return csc.Spec.ControlPlaneEndpoint.Port
+	}
+
+	return 6443
 }
 
 // CloudStackClusterToCloudStackIsolatedNetworks is a handler.ToRequestsFunc to be used to enqueue requests for reconciliation

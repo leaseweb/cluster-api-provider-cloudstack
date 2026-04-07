@@ -38,30 +38,15 @@ type CloudStackClusterWebhook struct{}
 func (r *CloudStackClusterWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&CloudStackCluster{}).
-		WithDefaulter(r).
 		WithValidator(r).
 		Complete()
 }
 
 // +kubebuilder:webhook:verbs=create;update,path=/validate-infrastructure-cluster-x-k8s-io-v1beta3-cloudstackcluster,mutating=false,failurePolicy=fail,matchPolicy=Equivalent,groups=infrastructure.cluster.x-k8s.io,resources=cloudstackclusters,versions=v1beta3,name=validation.cloudstackcluster.infrastructure.cluster.x-k8s.io,sideEffects=None,admissionReviewVersions=v1;v1beta1
-// +kubebuilder:webhook:verbs=create;update,path=/mutate-infrastructure-cluster-x-k8s-io-v1beta3-cloudstackcluster,mutating=true,failurePolicy=fail,matchPolicy=Equivalent,groups=infrastructure.cluster.x-k8s.io,resources=cloudstackclusters,versions=v1beta3,name=default.cloudstackcluster.infrastructure.cluster.x-k8s.io,sideEffects=None,admissionReviewVersions=v1;v1beta1
 
 var (
-	_ webhook.CustomDefaulter = &CloudStackClusterWebhook{}
 	_ webhook.CustomValidator = &CloudStackClusterWebhook{}
 )
-
-// Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (r *CloudStackClusterWebhook) Default(_ context.Context, objRaw runtime.Object) error {
-	obj, ok := objRaw.(*CloudStackCluster)
-	if !ok {
-		return apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackCluster but got a %T", objRaw))
-	}
-
-	defaultCloudStackClusterSpec(&obj.Spec)
-
-	return nil
-}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
 func (r *CloudStackClusterWebhook) ValidateCreate(_ context.Context, objRaw runtime.Object) (admission.Warnings, error) {
@@ -165,12 +150,6 @@ func ValidateCIDR(cidr string) (*net.IPNet, error) {
 	}
 
 	return net, nil
-}
-
-func defaultCloudStackClusterSpec(s *CloudStackClusterSpec) {
-	if s.ControlPlaneEndpoint.Port == 0 {
-		s.ControlPlaneEndpoint.Port = 6443
-	}
 }
 
 func validateCloudStackClusterSpec(s CloudStackClusterSpec) field.ErrorList {

@@ -208,7 +208,6 @@ spec:
                         - name
                         x-kubernetes-list-type: map
                     required:
-                    - controlPlaneEndpoint
                     - failureDomains
                     type: object
                 required:
