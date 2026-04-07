@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/ptr"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -41,6 +42,61 @@ import (
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/scope"
 	dummies "sigs.k8s.io/cluster-api-provider-cloudstack/test/dummies/v1beta3"
 )
+
+func TestGetAPIServerPort(t *testing.T) {
+	tests := []struct {
+		name     string
+		cluster  *infrav1.CloudStackCluster
+		expected int32
+	}{
+		{
+			name:     "returns default port when ControlPlaneEndpoint is empty",
+			cluster:  &infrav1.CloudStackCluster{},
+			expected: 6443,
+		},
+		{
+			name: "returns default port when only host is set",
+			cluster: &infrav1.CloudStackCluster{
+				Spec: infrav1.CloudStackClusterSpec{
+					ControlPlaneEndpoint: clusterv1beta1.APIEndpoint{
+						Host: "10.0.0.1",
+					},
+				},
+			},
+			expected: 6443,
+		},
+		{
+			name: "returns default port when only port is set",
+			cluster: &infrav1.CloudStackCluster{
+				Spec: infrav1.CloudStackClusterSpec{
+					ControlPlaneEndpoint: clusterv1beta1.APIEndpoint{
+						Port: 8443,
+					},
+				},
+			},
+			expected: 6443,
+		},
+		{
+			name: "returns specified port when endpoint is fully set",
+			cluster: &infrav1.CloudStackCluster{
+				Spec: infrav1.CloudStackClusterSpec{
+					ControlPlaneEndpoint: clusterv1beta1.APIEndpoint{
+						Host: "10.0.0.1",
+						Port: 8443,
+					},
+				},
+			},
+			expected: 8443,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
+			g.Expect(getAPIServerPort(tt.cluster)).To(Equal(tt.expected))
+		})
+	}
+}
 
 func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 	var (

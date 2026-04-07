@@ -38,24 +38,8 @@ type CloudStackClusterTemplateWebhook struct{}
 func (r *CloudStackClusterTemplateWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&CloudStackClusterTemplate{}).
-		WithDefaulter(r).
 		WithValidator(r).
 		Complete()
-}
-
-//+kubebuilder:webhook:path=/mutate-infrastructure-cluster-x-k8s-io-v1beta3-cloudstackclustertemplate,mutating=true,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=cloudstackclustertemplates,verbs=create;update,versions=v1beta3,name=mcloudstackclustertemplate.kb.io,admissionReviewVersions=v1
-
-var _ webhook.CustomDefaulter = &CloudStackClusterTemplateWebhook{}
-
-// Default implements webhook.CustomDefaulter so a webhook will be registered for the type.
-func (r *CloudStackClusterTemplateWebhook) Default(_ context.Context, objRaw runtime.Object) error {
-	obj, ok := objRaw.(*CloudStackClusterTemplate)
-	if !ok {
-		return apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackClusterTemplate but got a %T", objRaw))
-	}
-	defaultCloudStackClusterSpec(&obj.Spec.Template.Spec)
-
-	return nil
 }
 
 //+kubebuilder:webhook:path=/validate-infrastructure-cluster-x-k8s-io-v1beta3-cloudstackclustertemplate,mutating=false,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=cloudstackclustertemplates,verbs=create;update,versions=v1beta3,name=vcloudstackclustertemplate.kb.io,admissionReviewVersions=v1

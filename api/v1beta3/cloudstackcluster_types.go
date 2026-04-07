@@ -37,7 +37,8 @@ type CloudStackClusterSpec struct {
 	FailureDomains []CloudStackFailureDomainSpec `json:"failureDomains"`
 
 	// The kubernetes control plane endpoint.
-	ControlPlaneEndpoint clusterv1beta1.APIEndpoint `json:"controlPlaneEndpoint"`
+	//+optional
+	ControlPlaneEndpoint clusterv1beta1.APIEndpoint `json:"controlPlaneEndpoint,omitempty"`
 
 	// APIServerLoadBalancer configures the optional LoadBalancer for the APIServer.
 	// If not specified, no load balancer will be created for the API server.
