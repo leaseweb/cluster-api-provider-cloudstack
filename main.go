@@ -49,8 +49,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	infrav1beta1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta1"
-	infrav1beta2 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta2"
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/internal/controllers"
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/scope"
@@ -66,8 +64,6 @@ func init() {
 	utilruntime.Must(apiextensionsv1.AddToScheme(scheme))
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(clusterv1.AddToScheme(scheme))
-	utilruntime.Must(infrav1beta1.AddToScheme(scheme))
-	utilruntime.Must(infrav1beta2.AddToScheme(scheme))
 	utilruntime.Must(infrav1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
