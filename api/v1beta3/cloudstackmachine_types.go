@@ -138,12 +138,16 @@ type CloudStackMachineStatus struct {
 
 	// Status indicates the status of the provider resource.
 	//+optional
-	// Deprecated: This field has no function and is going to be removed in the next release.
+	// Deprecated:
+	//
+	// This field has no function and is going to be removed in the next release.
 	Status *string `json:"status,omitempty"`
 
 	// Reason indicates the reason of status failure.
 	//+optional
-	// Deprecated: This field has no function and is going to be removed in the next release.
+	// Deprecated:
+	//
+	// This field has no function and is going to be removed in the next release.
 	Reason *string `json:"reason,omitempty"`
 
 	// FailureReason will be set in the event that there is a terminal problem

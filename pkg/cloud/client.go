@@ -192,10 +192,7 @@ func NewClientFromConf(conf Config, clientConfig *corev1.ConfigMap, options ...C
 		return item.Value(), nil
 	}
 
-	verifySSL := true
-	if conf.VerifySSL == "false" {
-		verifySSL = false
-	}
+	verifySSL := conf.VerifySSL != "false"
 
 	// The client returned from NewAsyncClient works in a synchronous way. On the other hand,
 	// a client returned from NewClient works in an asynchronous way. Dive into the constructor definition
@@ -248,7 +245,7 @@ func NewClientFromConf(conf Config, clientConfig *corev1.ConfigMap, options ...C
 // NewClientInDomainAndAccount returns a new client in the specified domain and account.
 func NewClientInDomainAndAccount(c Client, domain string, account string, options ...ClientOption) (Client, error) {
 	user := &User{}
-	user.Account.Domain.Path = domain
+	user.Domain.Path = domain
 	user.Account.Name = account
 
 	client := c.(*client)

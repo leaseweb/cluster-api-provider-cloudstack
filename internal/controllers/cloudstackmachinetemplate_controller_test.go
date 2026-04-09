@@ -192,14 +192,25 @@ func TestGetCloudStackMachineCapacity(t *testing.T) {
 				corev1.ResourceCPU:    resource.MustParse("4"),
 				corev1.ResourceMemory: resource.MustParse("8192M"),
 			},
+			expectErr: false,
+		},
+		{
+			name:                      "with empty service offering response",
+			cloudStackServiceOffering: &cloudstack.ServiceOffering{},
+			expectErr:                 true,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(tt *testing.T) {
 			g := NewWithT(tt)
-			capacity := getCloudStackMachineCapacity(tc.cloudStackServiceOffering)
-			g.Expect(capacity).To(Equal(tc.expectedCapacity))
+			capacity, err := getCloudStackMachineCapacity(tc.cloudStackServiceOffering)
+			if tc.expectErr {
+				g.Expect(err).To(HaveOccurred())
+			} else {
+				g.Expect(err).ToNot(HaveOccurred())
+				g.Expect(capacity).To(Equal(tc.expectedCapacity))
+			}
 		})
 	}
 }

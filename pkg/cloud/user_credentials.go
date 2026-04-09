@@ -278,7 +278,7 @@ func (c *client) GetUserWithKeys(user *User) (bool, error) {
 	// List users and take first user that has already has api keys.
 	p := c.cs.User.NewListUsersParams()
 	p.SetAccount(user.Account.Name)
-	setIfNotEmpty(user.Account.Domain.ID, p.SetDomainid)
+	setIfNotEmpty(user.Domain.ID, p.SetDomainid)
 	p.SetListall(true)
 	resp, err := c.cs.User.ListUsers(p)
 	if err != nil {

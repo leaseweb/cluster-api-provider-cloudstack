@@ -697,7 +697,7 @@ func (r *CloudStackMachineReconciler) CloudStackClusterToCloudStackMachines(log 
 		log := log.WithValues("objectMapper", "cloudstackClusterToCloudStackMachine", "cluster", klog.KRef(csCluster.Namespace, csCluster.Name))
 
 		// Don't handle deleted CloudStackClusters
-		if !csCluster.ObjectMeta.DeletionTimestamp.IsZero() {
+		if !csCluster.DeletionTimestamp.IsZero() {
 			log.Trace("CloudStackCluster has a deletion timestamp, skipping mapping.")
 
 			return nil
@@ -727,7 +727,7 @@ func (r *CloudStackMachineReconciler) requeueCloudStackMachinesForUnpausedCluste
 		log := log.WithValues("objectMapper", "clusterToCloudStackMachine", "cluster", klog.KRef(cluster.Namespace, cluster.Name))
 
 		// Don't handle deleted clusters
-		if !cluster.ObjectMeta.DeletionTimestamp.IsZero() {
+		if !cluster.DeletionTimestamp.IsZero() {
 			log.Trace("Cluster has a deletion timestamp, skipping mapping.")
 			return nil
 		}
@@ -781,7 +781,7 @@ func (r *CloudStackMachineReconciler) CloudStackIsolatedNetworkToControlPlaneClo
 		log := log.WithValues("objectMapper", "cloudStackIsolatedNetworkToControlPlaneCloudStackMachines", "isonet", klog.KRef(csIsoNet.Namespace, csIsoNet.Name))
 
 		// Don't handle deleted CloudStackIsolatedNetworks
-		if !csIsoNet.ObjectMeta.DeletionTimestamp.IsZero() {
+		if !csIsoNet.DeletionTimestamp.IsZero() {
 			log.Trace("CloudStackIsolatedNetwork has a deletion timestamp, skipping mapping.")
 
 			return nil
@@ -898,7 +898,7 @@ func (r *CloudStackMachineReconciler) SetupWithManager(ctx context.Context, mgr 
 						}
 
 						// Only trigger a CloudStackMachine reconcile if the loadbalancer rules changed.
-						return len(oldCSIsoNet.Status.LoadBalancerRuleIDs) != len(newCSIsoNet.Status.LoadBalancerRuleIDs)
+						return !cmp.Equal(oldCSIsoNet.Status.LoadBalancerRuleIDs, newCSIsoNet.Status.LoadBalancerRuleIDs)
 					},
 				},
 			),

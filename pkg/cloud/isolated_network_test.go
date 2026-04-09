@@ -534,6 +534,55 @@ var _ = Describe("Network", func() {
 			Ω(assigned).Should(BeFalse())
 			Ω(err).ShouldNot(HaveOccurred())
 		})
+
+		It("Skips non-existent LB rule during assignment", func() {
+			dummies.CSISONet1.Status.LoadBalancerRuleIDs = []string{"stale-rule-id"}
+			lbip := &csapi.ListLoadBalancerRuleInstancesParams{}
+			lbs.EXPECT().NewListLoadBalancerRuleInstancesParams(dummies.CSISONet1.Status.LoadBalancerRuleIDs[0]).
+				Return(lbip)
+			lbs.EXPECT().ListLoadBalancerRuleInstances(lbip).Return(nil, errors.New("No match found for stale-rule-id"))
+
+			assigned, err := client.AssignVMToLoadBalancerRules(dummies.CSISONet1, *dummies.CSMachine1.Spec.InstanceID)
+			Ω(assigned).Should(BeFalse())
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		It("Skips non-existent LB rule and assigns to remaining rules", func() {
+			dummies.CSISONet1.Status.LoadBalancerRuleIDs = []string{"stale-rule-id", "valid-rule-id"}
+			lbip := &csapi.ListLoadBalancerRuleInstancesParams{}
+			albp := &csapi.AssignToLoadBalancerRuleParams{}
+			gomock.InOrder(
+				lbs.EXPECT().NewListLoadBalancerRuleInstancesParams("stale-rule-id").
+					Return(lbip),
+				lbs.EXPECT().ListLoadBalancerRuleInstances(lbip).
+					Return(nil, errors.New("entity does not exist")),
+
+				lbs.EXPECT().NewListLoadBalancerRuleInstancesParams("valid-rule-id").
+					Return(lbip),
+				lbs.EXPECT().ListLoadBalancerRuleInstances(lbip).
+					Return(&csapi.ListLoadBalancerRuleInstancesResponse{}, nil),
+				lbs.EXPECT().NewAssignToLoadBalancerRuleParams("valid-rule-id").Return(albp),
+				lbs.EXPECT().AssignToLoadBalancerRule(albp).Return(&csapi.AssignToLoadBalancerRuleResponse{Success: true}, nil),
+			)
+
+			assigned, err := client.AssignVMToLoadBalancerRules(dummies.CSISONet1, *dummies.CSMachine1.Spec.InstanceID)
+			Ω(assigned).Should(BeTrue())
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+	})
+
+	Context("Remove VM from Load Balancer rule", func() {
+		It("Skips non-existent LB rule during removal", func() {
+			dummies.CSISONet1.Status.LoadBalancerRuleIDs = []string{"stale-rule-id"}
+			lbip := &csapi.ListLoadBalancerRuleInstancesParams{}
+			lbs.EXPECT().NewListLoadBalancerRuleInstancesParams("stale-rule-id").
+				Return(lbip)
+			lbs.EXPECT().ListLoadBalancerRuleInstances(lbip).Return(nil, errors.New("Unable to find uuid for id stale-rule-id"))
+
+			removed, err := client.RemoveVMFromLoadBalancerRules(dummies.CSISONet1, *dummies.CSMachine1.Spec.InstanceID)
+			Ω(removed).Should(BeFalse())
+			Ω(err).ShouldNot(HaveOccurred())
+		})
 	})
 
 	Context("load balancer rule does not exist", func() {
