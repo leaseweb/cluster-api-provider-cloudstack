@@ -3,7 +3,7 @@ module sigs.k8s.io/cluster-api-provider-cloudstack
 go 1.24.0
 
 require (
-	github.com/apache/cloudstack-go/v2 v2.19.0
+	github.com/apache/cloudstack-go/v2 v2.17.1
 	github.com/go-logr/logr v1.4.3
 	github.com/google/go-cmp v0.7.0
 	github.com/hashicorp/go-multierror v1.1.1
