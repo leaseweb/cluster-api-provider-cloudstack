@@ -73,6 +73,18 @@ var _ = Describe("Network", func() {
 			Ω(err).ShouldNot(Succeed())
 			Ω(err.Error()).Should(ContainSubstring(fmt.Sprintf("expected 1 Network with name %s, but got %d", dummies.ISONet1.Name, 2)))
 		})
+
+		It("returns error without ID fallback when name not found and ID is empty", func() {
+			dummies.SetDummyIsoNetToNameOnly()
+			ns.EXPECT().GetNetworkByName(dummies.ISONet1.Name, gomock.Any()).Return(nil, -1, errors.New("No match found"))
+			// GetNetworkByID must NOT be called since the ID is empty.
+
+			err := client.ResolveNetwork(&dummies.ISONet1)
+			Ω(err).ShouldNot(Succeed())
+			Ω(err.Error()).Should(ContainSubstring("could not get Network ID from"))
+			Ω(dummies.ISONet1.ID).Should(BeEmpty())
+			Ω(dummies.ISONet1.Type).Should(BeEmpty())
+		})
 	})
 
 	Context("Remove cluster tag from network", func() {

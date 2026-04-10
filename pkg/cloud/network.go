@@ -59,6 +59,12 @@ func (c *client) ResolveNetwork(net *infrav1.Network) (retErr error) {
 		return nil
 	}
 
+	// Only fall back to ID-based lookup if an ID was actually provided.
+	// With an empty ID, the CloudStack API may return an unrelated network.
+	if net.ID == "" {
+		return retErr
+	}
+
 	// Now get network details.
 	netDetails, count, err = c.cs.Network.GetNetworkByID(net.ID, cloudstack.WithProject(c.user.Project.ID))
 	if err != nil {

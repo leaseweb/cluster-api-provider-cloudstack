@@ -197,9 +197,13 @@ func (r *CloudStackFailureDomainReconciler) reconcileNormal(ctx context.Context,
 	if err := scope.ResolveZone(); err != nil {
 		return ctrl.Result{}, errors.Wrap(err, "resolving CloudStack zone information")
 	}
-	if err := scope.ResolveNetwork(); err != nil &&
-		!strings.Contains(strings.ToLower(err.Error()), "no match") {
-		return ctrl.Result{}, errors.Wrap(err, "resolving Cloudstack network information")
+	if err := scope.ResolveNetwork(); err != nil {
+		// If the network ID was pre-populated and resolution still failed, that's a real error.
+		// If no ID was set, the network simply doesn't exist yet and we'll create an isolated one.
+		if scope.NetworkID() != "" {
+			return ctrl.Result{}, errors.Wrap(err, "resolving Cloudstack network information")
+		}
+		scope.Info("Network not found in CloudStack, will create isolated network", "error", err.Error())
 	}
 
 	if scope.NetworkID() == "" || scope.NetworkType() == infrav1.NetworkTypeIsolated {

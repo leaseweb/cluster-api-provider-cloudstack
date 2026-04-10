@@ -112,5 +112,17 @@ var _ = Describe("Zone", func() {
 
 			Ω(client.ResolveNetworkForZone(&dummies.CSFailureDomain2.Spec.Zone).Error()).Should(ContainSubstring("could not get Network by ID " + dummies.Zone2.Network.ID))
 		})
+
+		It("returns error without ID fallback when name not found and ID is empty", func() {
+			dummies.SetDummyIsoNetToNameOnly()
+			ns.EXPECT().GetNetworkByName(dummies.Zone1.Network.Name, gomock.Any()).Return(nil, -1, fakeError)
+			// GetNetworkByID must NOT be called since the ID is empty.
+
+			err := client.ResolveNetworkForZone(&dummies.Zone1)
+			Ω(err).ShouldNot(Succeed())
+			Ω(err.Error()).Should(ContainSubstring("could not get Network ID from"))
+			Ω(dummies.Zone1.Network.ID).Should(BeEmpty())
+			Ω(dummies.Zone1.Network.Type).Should(BeEmpty())
+		})
 	})
 })

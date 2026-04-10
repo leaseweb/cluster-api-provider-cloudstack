@@ -19,7 +19,10 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
+
+	pkgerrors "github.com/pkg/errors"
 
 	"github.com/go-logr/logr"
 	. "github.com/onsi/gomega"
@@ -226,5 +229,133 @@ func TestCloudStackFailureDomainReconcilerIntegrationTests(t *testing.T) {
 			}
 			return false
 		}, timeout).Should(BeTrue())
+	})
+
+	t.Run("Should create CloudStackIsolatedNetwork when network is not found", func(t *testing.T) {
+		g := NewWithT(t)
+
+		setup(t)
+		defer teardown()
+
+		expectClient := func(m *mocks.MockClientMockRecorder) {
+			m.ResolveZone(gomock.Any()).MinTimes(1)
+			// Simulate a network that doesn't exist yet in CloudStack:
+			// return an error WITHOUT modifying Network.ID or Network.Type.
+			m.ResolveNetworkForZone(gomock.Any()).Return(
+				pkgerrors.New("No match found for test-network"),
+			).MinTimes(1)
+		}
+		expectClient(mockCSClient.EXPECT())
+
+		ns, err := testEnv.CreateNamespace(ctx, fmt.Sprintf("integ-test-%s", util.RandomString(5)))
+		g.Expect(err).ToNot(HaveOccurred())
+		dummies.SetDummyVars(ns.Name)
+
+		// Ensure the failure domain has an empty network ID and type
+		// to simulate a new isolated network that doesn't exist yet.
+		dummies.CSFailureDomain1.Spec.Zone.Network.ID = ""
+		dummies.CSFailureDomain1.Spec.Zone.Network.Type = ""
+
+		// Create test objects
+		g.Expect(testEnv.Create(ctx, dummies.CAPICluster)).To(Succeed())
+		dummies.CSCluster.OwnerReferences = append(dummies.CSCluster.OwnerReferences, metav1.OwnerReference{
+			Kind:       "Cluster",
+			APIVersion: clusterv1.GroupVersion.String(),
+			Name:       dummies.CAPICluster.Name,
+			UID:        types.UID("cluster-uid"),
+		})
+		g.Expect(testEnv.Create(ctx, dummies.CSCluster)).To(Succeed())
+		g.Expect(testEnv.Create(ctx, dummies.ACSEndpointSecret1)).To(Succeed())
+		g.Expect(testEnv.Create(ctx, dummies.CSFailureDomain1)).To(Succeed())
+
+		defer func() {
+			g.Expect(testEnv.Cleanup(dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, dummies.CSFailureDomain1, ns)).To(Succeed())
+		}()
+
+		// Wait for the failure domain to be available.
+		fdKey := client.ObjectKey{Namespace: ns.Name, Name: dummies.CSFailureDomain1.Name}
+		fd := &infrav1.CloudStackFailureDomain{}
+		g.Eventually(func() bool {
+			return testEnv.Get(ctx, fdKey, fd) == nil
+		}, timeout).Should(BeTrue())
+
+		result, err := reconciler.Reconcile(ctx, ctrl.Request{
+			NamespacedName: types.NamespacedName{
+				Namespace: ns.Name,
+				Name:      dummies.CSFailureDomain1.Name,
+			},
+		})
+		g.Expect(err).ToNot(HaveOccurred())
+		// Should requeue because the IsolatedNetwork won't be ready yet.
+		g.Expect(result.RequeueAfter).ToNot(BeZero())
+
+		// Verify that a CloudStackIsolatedNetwork was created.
+		netName := dummies.CAPICluster.Name + "-" + strings.ToLower(dummies.CSFailureDomain1.Spec.Zone.Network.Name)
+		isoNetKey := client.ObjectKey{Namespace: ns.Name, Name: netName}
+		isoNet := &infrav1.CloudStackIsolatedNetwork{}
+		g.Eventually(func() bool {
+			return testEnv.Get(ctx, isoNetKey, isoNet) == nil
+		}, timeout).Should(BeTrue(), "CloudStackIsolatedNetwork should have been created")
+
+		// Verify the IsolatedNetwork has the correct owner reference and spec.
+		g.Expect(isoNet.Spec.FailureDomainName).To(Equal(dummies.CSFailureDomain1.Spec.Name))
+		g.Expect(isoNet.Labels[clusterv1.ClusterNameLabel]).To(Equal(dummies.CAPICluster.Name))
+	})
+
+	t.Run("Should skip isolated network creation for shared network", func(t *testing.T) {
+		g := NewWithT(t)
+
+		setup(t)
+		defer teardown()
+
+		expectClient := func(m *mocks.MockClientMockRecorder) {
+			m.ResolveZone(gomock.Any()).MinTimes(1)
+			m.ResolveNetworkForZone(gomock.Any()).AnyTimes().Do(
+				func(arg1 interface{}) {
+					arg1.(*infrav1.CloudStackZoneSpec).Network.ID = "SomeSharedNetID"
+					arg1.(*infrav1.CloudStackZoneSpec).Network.Type = cloud.NetworkTypeShared
+				}).MinTimes(1)
+		}
+		expectClient(mockCSClient.EXPECT())
+
+		ns, err := testEnv.CreateNamespace(ctx, fmt.Sprintf("integ-test-%s", util.RandomString(5)))
+		g.Expect(err).ToNot(HaveOccurred())
+		dummies.SetDummyVars(ns.Name)
+
+		// Create test objects
+		g.Expect(testEnv.Create(ctx, dummies.CAPICluster)).To(Succeed())
+		dummies.CSCluster.OwnerReferences = append(dummies.CSCluster.OwnerReferences, metav1.OwnerReference{
+			Kind:       "Cluster",
+			APIVersion: clusterv1.GroupVersion.String(),
+			Name:       dummies.CAPICluster.Name,
+			UID:        types.UID("cluster-uid"),
+		})
+		g.Expect(testEnv.Create(ctx, dummies.CSCluster)).To(Succeed())
+		g.Expect(testEnv.Create(ctx, dummies.ACSEndpointSecret1)).To(Succeed())
+		g.Expect(testEnv.Create(ctx, dummies.CSFailureDomain1)).To(Succeed())
+
+		defer func() {
+			g.Expect(testEnv.Cleanup(dummies.CAPICluster, dummies.CSCluster, dummies.ACSEndpointSecret1, dummies.CSFailureDomain1, ns)).To(Succeed())
+		}()
+
+		fdKey := client.ObjectKey{Namespace: ns.Name, Name: dummies.CSFailureDomain1.Name}
+		fd := &infrav1.CloudStackFailureDomain{}
+		g.Eventually(func() bool {
+			return testEnv.Get(ctx, fdKey, fd) == nil
+		}, timeout).Should(BeTrue())
+
+		result, err := reconciler.Reconcile(ctx, ctrl.Request{
+			NamespacedName: types.NamespacedName{
+				Namespace: ns.Name,
+				Name:      dummies.CSFailureDomain1.Name,
+			},
+		})
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(result.RequeueAfter).To(BeZero())
+
+		// Verify that NO CloudStackIsolatedNetwork was created.
+		isoNetList := &infrav1.CloudStackIsolatedNetworkList{}
+		g.Expect(testEnv.List(ctx, isoNetList, client.InNamespace(ns.Name))).To(Succeed())
+		g.Expect(isoNetList.Items).To(BeEmpty(), "No CloudStackIsolatedNetwork should be created for shared networks")
 	})
 }
