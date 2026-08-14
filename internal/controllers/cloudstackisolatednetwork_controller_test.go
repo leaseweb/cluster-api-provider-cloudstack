@@ -28,7 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/utils/ptr"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -104,7 +104,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 		mockCtrl               *gomock.Controller
 		mockClientScopeFactory *scope.MockClientScopeFactory
 		mockCSClient           *mocks.MockClient
-		recorder               *record.FakeRecorder
+		recorder               *events.FakeRecorder
 		ctx                    context.Context
 	)
 
@@ -113,7 +113,7 @@ func TestCloudStackIsolatedNetworkReconcilerIntegrationTests(t *testing.T) {
 		mockCtrl = gomock.NewController(t)
 		mockClientScopeFactory = scope.NewMockClientScopeFactory(mockCtrl, "")
 		mockCSClient = mockClientScopeFactory.MockCSClients().MockCSUser()
-		recorder = record.NewFakeRecorder(fakeEventBufferSize)
+		recorder = events.NewFakeRecorder(fakeEventBufferSize)
 		reconciler = CloudStackIsolatedNetworkReconciler{
 			Client:           testEnv.Client,
 			Recorder:         recorder,

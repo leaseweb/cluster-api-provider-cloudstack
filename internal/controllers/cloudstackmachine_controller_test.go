@@ -32,7 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
 	v1beta1patch "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch"
@@ -54,7 +54,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		mockClientScopeFactory *scope.MockClientScopeFactory
 		mockCSClient           *mocks.MockClient
 		mockCSCUser            *mocks.MockClient
-		recorder               *record.FakeRecorder
+		recorder               *events.FakeRecorder
 		ctx                    context.Context
 	)
 
@@ -64,7 +64,7 @@ func TestCloudStackMachineReconcilerIntegrationTests(t *testing.T) {
 		mockClientScopeFactory = scope.NewMockClientScopeFactory(mockCtrl, "")
 		mockCSClient = mockClientScopeFactory.MockCSClients().MockCSClient()
 		mockCSCUser = mockClientScopeFactory.MockCSClients().MockCSUser()
-		recorder = record.NewFakeRecorder(fakeEventBufferSize)
+		recorder = events.NewFakeRecorder(fakeEventBufferSize)
 		reconciler = CloudStackMachineReconciler{
 			Client:           testEnv.Client,
 			Recorder:         recorder,

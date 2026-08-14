@@ -33,7 +33,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -69,7 +69,7 @@ const (
 type CloudStackMachineReconciler struct {
 	Client           client.Client
 	Scheme           *runtime.Scheme
-	Recorder         record.EventRecorder
+	Recorder         events.EventRecorder
 	ScopeFactory     scope.ClientScopeFactory
 	WatchFilterValue string
 }
@@ -193,7 +193,7 @@ func (r *CloudStackMachineReconciler) reconcileDelete(ctx context.Context, scope
 	}
 	if vm == nil {
 		scope.Warn("VM instance not found, skipping deletion")
-		r.Recorder.Eventf(scope.CloudStackMachine, corev1.EventTypeWarning, "NoInstanceFound", "Unable to find matching CloudStack instance")
+		r.Recorder.Eventf(scope.CloudStackMachine, nil, corev1.EventTypeWarning, "NoInstanceFound", "DeleteMachine", "Unable to find matching CloudStack instance")
 		controllerutil.RemoveFinalizer(scope.CloudStackMachine, infrav1.MachineFinalizer)
 		return ctrl.Result{}, nil
 	}
@@ -246,12 +246,12 @@ func (r *CloudStackMachineReconciler) reconcileDelete(ctx context.Context, scope
 				return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 			}
 			scope.Error(err, "Failed to destroy VM instance")
-			r.Recorder.Eventf(scope.CloudStackMachine, corev1.EventTypeWarning, "FailedDestroyVM", "Failed to destroy VM instance %q: %v", vm.Id, err)
+			r.Recorder.Eventf(scope.CloudStackMachine, nil, corev1.EventTypeWarning, "FailedDestroyVM", "DestroyVM", "Failed to destroy VM instance %q: %v", vm.Id, err)
 			v1beta1conditions.MarkFalse(scope.CloudStackMachine, infrav1.InstanceReadyCondition, "DeletionFailed", clusterv1beta1.ConditionSeverityWarning, "%s", err.Error())
 			return ctrl.Result{}, err
 		}
 		scope.Info("VM instance successfully destroyed", "instance-id", vm.Id)
-		r.Recorder.Eventf(scope.CloudStackMachine, corev1.EventTypeNormal, "SuccessfullDestroyVM", "Destroyed VM instance %q", vm.Id)
+		r.Recorder.Eventf(scope.CloudStackMachine, nil, corev1.EventTypeNormal, "SuccessfullDestroyVM", "DestroyVM", "Destroyed VM instance %q", vm.Id)
 		v1beta1conditions.MarkFalse(scope.CloudStackMachine, infrav1.InstanceReadyCondition, clusterv1beta1.DeletedReason, clusterv1beta1.ConditionSeverityInfo, "")
 
 		// Requeue until the VM is expunging or destroyed, or can no longer be found.
@@ -361,12 +361,12 @@ func (r *CloudStackMachineReconciler) reconcileNormal(ctx context.Context, scope
 		vm, err = scope.CSUser().CreateVMInstance(scope.CloudStackMachine, scope.Machine, scope.CloudStackFailureDomain, scope.CloudStackAffinityGroup, userData)
 		if err != nil {
 			scope.Error(err, "failed to create VM instance")
-			r.Recorder.Eventf(scope.CloudStackMachine, corev1.EventTypeWarning, "InstanceCreatingError", CSMachineCreationFailed, err.Error())
+			r.Recorder.Eventf(scope.CloudStackMachine, nil, corev1.EventTypeWarning, "InstanceCreatingError", "CreateVM", CSMachineCreationFailed, err.Error())
 			v1beta1conditions.MarkFalse(scope.CloudStackMachine, infrav1.InstanceReadyCondition, infrav1.InstanceProvisionFailedReason, clusterv1beta1.ConditionSeverityError, "%s", err.Error())
 			scope.SetInstanceState(cloud.InstanceStateError)
 			return ctrl.Result{}, err
 		}
-		r.Recorder.Eventf(scope.CloudStackMachine, corev1.EventTypeNormal, "InstanceCreated", CSMachineCreationSuccess, vm.Name)
+		r.Recorder.Eventf(scope.CloudStackMachine, nil, corev1.EventTypeNormal, "InstanceCreated", "CreateVM", CSMachineCreationSuccess, vm.Name)
 		scope.Info("Created a new CloudStack instance", "instance-name", vm.Name, "instance-id", vm.Id)
 	}
 
@@ -389,7 +389,7 @@ func (r *CloudStackMachineReconciler) reconcileNormal(ctx context.Context, scope
 	case cloud.InstanceStateRunning:
 		if !scope.IsReady() {
 			scope.Info("Instance is running", "instance-id", scope.GetInstanceID())
-			r.Recorder.Event(scope.CloudStackMachine, corev1.EventTypeNormal, cloud.InstanceStateRunning, MachineInstanceRunning)
+			r.Recorder.Eventf(scope.CloudStackMachine, nil, corev1.EventTypeNormal, cloud.InstanceStateRunning, "CheckInstanceState", MachineInstanceRunning)
 		}
 		scope.SetReady()
 		v1beta1conditions.MarkTrue(scope.CloudStackMachine, infrav1.InstanceReadyCondition)
@@ -420,14 +420,14 @@ func (r *CloudStackMachineReconciler) reconcileNormal(ctx context.Context, scope
 	case cloud.InstanceStateExpunging, cloud.InstanceStateDestroyed:
 		scope.SetNotReady()
 		scope.Info("Unexpected instance termination", "state", vm.State, "instance-id", scope.GetInstanceID())
-		r.Recorder.Eventf(scope.CloudStackMachine, corev1.EventTypeWarning, "InstanceUnexpectedTermination", "Unexpected CloudStack instance termination")
+		r.Recorder.Eventf(scope.CloudStackMachine, nil, corev1.EventTypeWarning, "InstanceUnexpectedTermination", "CheckInstanceState", "Unexpected CloudStack instance termination")
 		v1beta1conditions.MarkFalse(scope.CloudStackMachine, infrav1.InstanceReadyCondition, infrav1.InstanceTerminatedReason, clusterv1beta1.ConditionSeverityError, "")
 		scope.SetFailureReason(UpdateMachineError)
 		scope.SetFailureMessage(errors.Errorf("CloudStack instance state %s is unexpected", vm.State))
 	default:
 		scope.SetNotReady()
 		scope.Info("Instance state is unexpected", "state", vm.State, "instance-id", scope.GetInstanceID())
-		r.Recorder.Eventf(scope.CloudStackMachine, corev1.EventTypeWarning, "InstanceStateUnexpected", "CloudStack instance state is unexpected")
+		r.Recorder.Eventf(scope.CloudStackMachine, nil, corev1.EventTypeWarning, "InstanceStateUnexpected", "CheckInstanceState", "CloudStack instance state is unexpected")
 		v1beta1conditions.MarkUnknown(scope.CloudStackMachine, infrav1.InstanceReadyCondition, "InstanceStateUnexpected", "Instance is in unexpected state")
 		shouldRequeue = true
 	}
@@ -485,14 +485,14 @@ func (r *CloudStackMachineReconciler) assignInstanceToLoadBalancer(scope *scope.
 	scope.Debug("Assigning VM to load balancer rule.", "instance-id", scope.GetInstanceID())
 	assigned, err := scope.CSUser().AssignVMToLoadBalancerRules(scope.CloudStackIsolatedNetwork, scope.GetInstanceID())
 	if err != nil {
-		r.Recorder.Eventf(scope.CloudStackMachine, corev1.EventTypeWarning, "FailedAttachControlPlaneLB",
+		r.Recorder.Eventf(scope.CloudStackMachine, nil, corev1.EventTypeWarning, "FailedAttachControlPlaneLB", "AttachLoadBalancer",
 			"Failed to assign control plane instance %q to load balancer: %v", scope.GetInstanceID(), err)
 		v1beta1conditions.MarkFalse(scope.CloudStackMachine, infrav1.LoadBalancerAttachedCondition, infrav1.LoadBalancerAttachFailedReason, clusterv1beta1.ConditionSeverityError, "%s", err.Error())
 		return err
 	}
 	if assigned {
 		scope.Debug("VM attached to load balancer rule", "instance-id", scope.GetInstanceID())
-		r.Recorder.Eventf(scope.CloudStackMachine, corev1.EventTypeNormal, "SuccessfulAttachControlPlaneLB",
+		r.Recorder.Eventf(scope.CloudStackMachine, nil, corev1.EventTypeNormal, "SuccessfulAttachControlPlaneLB", "AttachLoadBalancer",
 			"Control plane instance %q is assigned to load balancer", scope.GetInstanceID())
 		v1beta1conditions.MarkTrue(scope.CloudStackMachine, infrav1.LoadBalancerAttachedCondition)
 	}
@@ -504,14 +504,14 @@ func (r *CloudStackMachineReconciler) removeInstanceFromLoadBalancer(scope *scop
 	scope.Debug("Removing VM from load balancer rule.", "instance-id", scope.GetInstanceID())
 	removed, err := scope.CSUser().RemoveVMFromLoadBalancerRules(scope.CloudStackIsolatedNetwork, scope.GetInstanceID())
 	if err != nil {
-		r.Recorder.Eventf(scope.CloudStackMachine, corev1.EventTypeWarning, "FailedDetachControlPlaneLB",
+		r.Recorder.Eventf(scope.CloudStackMachine, nil, corev1.EventTypeWarning, "FailedDetachControlPlaneLB", "DetachLoadBalancer",
 			"Failed to remove control plane instance %q from load balancer: %v", scope.GetInstanceID(), err)
 		v1beta1conditions.MarkFalse(scope.CloudStackMachine, infrav1.LoadBalancerAttachedCondition, infrav1.LoadBalancerDetachFailedReason, clusterv1beta1.ConditionSeverityError, "%s", err.Error())
 		return err
 	}
 	if removed {
 		scope.Debug("VM detached from load balancer rule", "instance-id", scope.GetInstanceID())
-		r.Recorder.Eventf(scope.CloudStackMachine, corev1.EventTypeNormal, "SuccessfulDetachControlPlaneLB",
+		r.Recorder.Eventf(scope.CloudStackMachine, nil, corev1.EventTypeNormal, "SuccessfulDetachControlPlaneLB", "DetachLoadBalancer",
 			"Control plane instance %q is removed from load balancer", scope.GetInstanceID())
 	}
 
