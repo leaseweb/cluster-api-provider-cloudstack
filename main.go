@@ -159,10 +159,10 @@ func initFlags(fs *pflag.FlagSet) {
 		"The minimum interval at which watched resources are reconciled (e.g. 15m)",
 	)
 
-	fs.Float32Var(&restConfigQPS, "kube-api-qps", 20,
+	fs.Float32Var(&restConfigQPS, "kube-api-qps", 100,
 		"Maximum queries per second from the controller client to the Kubernetes API server.")
 
-	fs.IntVar(&restConfigBurst, "kube-api-burst", 30,
+	fs.IntVar(&restConfigBurst, "kube-api-burst", 200,
 		"Maximum number of queries that should be allowed in one burst from the controller client to the Kubernetes API server.")
 
 	fs.IntVar(&webhookPort, "webhook-port", 9443,
@@ -368,7 +368,7 @@ func setupReconcilers(ctx context.Context, mgr manager.Manager) {
 	if err := (&controllers.CloudStackClusterReconciler{
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
-		Recorder:         mgr.GetEventRecorderFor("cloudstackcluster-controller"),
+		Recorder:         mgr.GetEventRecorder("cloudstackcluster-controller"),
 		WatchFilterValue: watchFilterValue,
 	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackClusterConcurrency}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CloudStackCluster")
@@ -377,7 +377,7 @@ func setupReconcilers(ctx context.Context, mgr manager.Manager) {
 	if err := (&controllers.CloudStackMachineReconciler{
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
-		Recorder:         mgr.GetEventRecorderFor("cloudstackmachine-controller"),
+		Recorder:         mgr.GetEventRecorder("cloudstackmachine-controller"),
 		WatchFilterValue: watchFilterValue,
 		ScopeFactory:     scopeFactory,
 	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackMachineConcurrency}); err != nil {
@@ -396,7 +396,7 @@ func setupReconcilers(ctx context.Context, mgr manager.Manager) {
 	if err := (&controllers.CloudStackIsolatedNetworkReconciler{
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
-		Recorder:         mgr.GetEventRecorderFor("cloudstackisolatednetwork-controller"),
+		Recorder:         mgr.GetEventRecorder("cloudstackisolatednetwork-controller"),
 		WatchFilterValue: watchFilterValue,
 		ScopeFactory:     scopeFactory,
 	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackIsolatedNetworkConcurrency}); err != nil {
@@ -406,7 +406,7 @@ func setupReconcilers(ctx context.Context, mgr manager.Manager) {
 	if err := (&controllers.CloudStackAffinityGroupReconciler{
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
-		Recorder:         mgr.GetEventRecorderFor("cloudstackaffinitygroup-controller"),
+		Recorder:         mgr.GetEventRecorder("cloudstackaffinitygroup-controller"),
 		WatchFilterValue: watchFilterValue,
 		ScopeFactory:     scopeFactory,
 	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackAffinityGroupConcurrency}); err != nil {
@@ -416,7 +416,7 @@ func setupReconcilers(ctx context.Context, mgr manager.Manager) {
 	if err := (&controllers.CloudStackFailureDomainReconciler{
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
-		Recorder:         mgr.GetEventRecorderFor("cloudstackfailuredomain-controller"),
+		Recorder:         mgr.GetEventRecorder("cloudstackfailuredomain-controller"),
 		WatchFilterValue: watchFilterValue,
 		ScopeFactory:     scopeFactory,
 	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: cloudStackFailureDomainConcurrency}); err != nil {

@@ -27,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -47,7 +47,7 @@ func TestCloudStackFailureDomainReconcilerIntegrationTests(t *testing.T) {
 		mockCtrl               *gomock.Controller
 		mockClientScopeFactory *scope.MockClientScopeFactory
 		mockCSClient           *mocks.MockClient
-		recorder               *record.FakeRecorder
+		recorder               *events.FakeRecorder
 		ctx                    context.Context
 	)
 
@@ -56,7 +56,7 @@ func TestCloudStackFailureDomainReconcilerIntegrationTests(t *testing.T) {
 		mockCtrl = gomock.NewController(t)
 		mockClientScopeFactory = scope.NewMockClientScopeFactory(mockCtrl, "")
 		mockCSClient = mockClientScopeFactory.MockCSClients().MockCSUser()
-		recorder = record.NewFakeRecorder(fakeEventBufferSize)
+		recorder = events.NewFakeRecorder(fakeEventBufferSize)
 		reconciler = CloudStackFailureDomainReconciler{
 			Client:           testEnv.Client,
 			Recorder:         recorder,
