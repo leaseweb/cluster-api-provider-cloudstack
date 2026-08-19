@@ -17,6 +17,22 @@ export REPO_ROOT := $(shell git rev-parse --show-toplevel)
 include $(REPO_ROOT)/common.mk
 
 #
+# Go.
+#
+GO_VERSION ?= 1.25.14
+
+# Ensure correct toolchain is used
+GOTOOLCHAIN = go$(GO_VERSION)
+export GOTOOLCHAIN
+
+# Use GOPROXY environment variable if set
+GOPROXY := $(shell go env GOPROXY)
+ifeq ($(GOPROXY),)
+GOPROXY := https://proxy.golang.org
+endif
+export GOPROXY
+
+#
 # Kubebuilder.
 #
 export KUBEBUILDER_ENVTEST_KUBERNETES_VERSION ?= 1.36.0
@@ -448,3 +464,12 @@ $(GOLANGCI_LINT): # Build golangci-lint from tools folder.
 
 $(MOCKGEN): # Build mockgen from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(MOCKGEN_PKG) $(MOCKGEN_BIN) $(MOCKGEN_VER)
+
+## --------------------------------------
+## Helpers
+## --------------------------------------
+
+##@ helpers:
+
+go-version: ## Print the go version we use to compile our binaries and images
+	@echo $(GO_VERSION)
