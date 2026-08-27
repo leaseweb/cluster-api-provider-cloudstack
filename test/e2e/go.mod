@@ -4,13 +4,13 @@ go 1.25.0
 
 require (
 	github.com/Shopify/toxiproxy/v2 v2.12.0
-	github.com/apache/cloudstack-go/v2 v2.19.0
+	github.com/apache/cloudstack-go/v2 v2.17.1
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/onsi/ginkgo/v2 v2.28.1
-	github.com/onsi/gomega v1.39.1
+	github.com/onsi/ginkgo/v2 v2.28.3
+	github.com/onsi/gomega v1.40.0
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/api v0.35.4
-	k8s.io/apimachinery v0.35.4
+	k8s.io/api v0.35.8
+	k8s.io/apimachinery v0.35.8
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4
 	sigs.k8s.io/cluster-api v1.13.5
@@ -54,7 +54,7 @@ require (
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/go-github/v82 v82.0.0 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
-	github.com/google/pprof v0.0.0-20260115054156-294ebfa9ad83 // indirect
+	github.com/google/pprof v0.0.0-20260402051712-545e8a4df936 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
@@ -112,14 +112,14 @@ require (
 	golang.org/x/time v0.11.0 // indirect
 	golang.org/x/tools v0.47.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.5.0 // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
+	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	k8s.io/apiextensions-apiserver v0.35.4 // indirect
-	k8s.io/apiserver v0.35.4 // indirect
-	k8s.io/client-go v0.35.4 // indirect
+	k8s.io/apiextensions-apiserver v0.35.8 // indirect
+	k8s.io/apiserver v0.35.8 // indirect
+	k8s.io/client-go v0.35.8 // indirect
 	k8s.io/cluster-bootstrap v0.35.4 // indirect
-	k8s.io/component-base v0.35.4 // indirect
+	k8s.io/component-base v0.35.8 // indirect
 	k8s.io/kube-openapi v0.0.0-20250910181357-589584f1c912 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/kind v0.32.0 // indirect
