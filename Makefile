@@ -19,7 +19,7 @@ include $(REPO_ROOT)/common.mk
 #
 # Go.
 #
-GO_VERSION ?= 1.25.14
+GO_VERSION ?= 1.26.7
 
 # Ensure correct toolchain is used
 GOTOOLCHAIN = go$(GO_VERSION)
@@ -42,6 +42,7 @@ export KUBEBUILDER_CONTROLPLANE_STOP_TIMEOUT ?=
 # Directories
 TOOLS_DIR := $(REPO_ROOT)/hack/tools
 TOOLS_BIN_DIR := $(TOOLS_DIR)/bin
+E2E_DIR := $(REPO_ROOT)/test/e2e
 BIN_DIR ?= bin
 RELEASE_DIR ?= out
 GO_INSTALL := ./hack/go_install.sh
@@ -98,7 +99,7 @@ GINKGO := $(abspath $(TOOLS_BIN_DIR)/$(GINKGO_BIN)-$(GINGKO_VER))
 GINKGO_PKG := github.com/onsi/ginkgo/v2/ginkgo
 
 GOLANGCI_LINT_BIN := golangci-lint
-GOLANGCI_LINT_VER := v2.7.2
+GOLANGCI_LINT_VER := v2.13.1
 GOLANGCI_LINT := $(abspath $(TOOLS_BIN_DIR)/$(GOLANGCI_LINT_BIN)-$(GOLANGCI_LINT_VER))
 GOLANGCI_LINT_PKG := github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
@@ -189,8 +190,9 @@ lint: $(GOLANGCI_LINT) generate-mocks ## Run linting for the project.
 
 .PHONY: modules
 modules: ## Runs go mod to ensure proper vendoring.
-	go mod tidy -compat=1.25
-	cd $(TOOLS_DIR); go mod tidy -compat=1.25
+	go mod tidy -compat=1.26
+	cd $(TOOLS_DIR); go mod tidy -compat=1.26
+	cd $(E2E_DIR); go mod tidy -compat=1.26
 
 .PHONY: generate-all
 generate-all: generate-mocks generate-deepcopy generate-manifests
