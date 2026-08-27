@@ -25,8 +25,12 @@ GO_VERSION ?= 1.26.7
 GOTOOLCHAIN = go$(GO_VERSION)
 export GOTOOLCHAIN
 
-# Use GOPROXY environment variable if set
-GOPROXY := $(shell go env GOPROXY)
+# Use GOPROXY environment variable if set.
+# Note: make's `export` does not reach $(shell ...) calls evaluated at parse
+# time, so GOTOOLCHAIN is set explicitly here. Without it these lookups run
+# with GOTOOLCHAIN=auto and download a toolchain matching the go.mod directive,
+# which pollutes GOMODCACHE before actions/setup-go restores its cache.
+GOPROXY := $(shell GOTOOLCHAIN=local go env GOPROXY)
 ifeq ($(GOPROXY),)
 GOPROXY := https://proxy.golang.org
 endif
@@ -49,8 +53,10 @@ GO_INSTALL := ./hack/go_install.sh
 
 GH_REPO ?= kubernetes-sigs/cluster-api-provider-cloudstack
 
-# Helper function to get dependency version from go.mod
-get_go_version = $(shell go list -m $1 | awk '{print $$2}')
+# Helper function to get dependency version from go.mod.
+# GOTOOLCHAIN=local for the same reason as above: this runs at parse time on
+# every make invocation, and must not trigger a toolchain download.
+get_go_version = $(shell GOTOOLCHAIN=local go list -m $1 | awk '{print $$2}')
 
 # Set build time variables including version details
 LDFLAGS := $(shell source ./hack/version.sh; version::ldflags)
@@ -132,10 +138,10 @@ CONFIG_DIR := config
 NAMESPACE := capc-system
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
-ifeq (,$(shell go env GOBIN))
-GOBIN=$(shell go env GOPATH)/bin
+ifeq (,$(shell GOTOOLCHAIN=local go env GOBIN))
+GOBIN=$(shell GOTOOLCHAIN=local go env GOPATH)/bin
 else
-GOBIN=$(shell go env GOBIN)
+GOBIN=$(shell GOTOOLCHAIN=local go env GOBIN)
 endif
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
