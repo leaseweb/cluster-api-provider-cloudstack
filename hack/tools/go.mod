@@ -1,6 +1,6 @@
 module sigs.k8s.io/cluster-api-provider-cloudstack/hack/tools
 
-go 1.25.0
+go 1.26.0
 
 require sigs.k8s.io/cluster-api/hack/tools v0.0.0-20260811155519-4b85c3d44290
 

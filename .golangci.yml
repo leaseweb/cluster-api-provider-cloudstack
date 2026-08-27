@@ -1,6 +1,6 @@
 version: "2"
 run:
-  go: "1.25"
+  go: "1.26"
   build-tags:
     - tools
     - e2e
@@ -184,10 +184,10 @@ linters:
         text: 'SA1019: .+LBRuleID is deprecated'
       - linters:
           - staticcheck
-        text: 'SA1019: "sigs.k8s.io/cluster-api/(.*)" is deprecated: This package is deprecated and is going to be removed when support for v1beta1 will be dropped.'
+        text: 'SA1019: "?sigs.k8s.io/cluster-api/(.*)"? is deprecated: This package is deprecated and is going to be removed when support for v1beta1 will be dropped.'
       - linters:
           - staticcheck
-        text: 'SA1019: scope.Cluster.Status.Deprecated.V1Beta1.Conditions is deprecated'
+        text: 'SA1019: .*(ClusterV1Beta1DeprecatedStatus\)|Deprecated\.V1Beta1)\.Conditions is deprecated'
       - linters:
           - revive
           - staticcheck

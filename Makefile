@@ -19,14 +19,18 @@ include $(REPO_ROOT)/common.mk
 #
 # Go.
 #
-GO_VERSION ?= 1.25.14
+GO_VERSION ?= 1.26.7
 
 # Ensure correct toolchain is used
 GOTOOLCHAIN = go$(GO_VERSION)
 export GOTOOLCHAIN
 
-# Use GOPROXY environment variable if set
-GOPROXY := $(shell go env GOPROXY)
+# Use GOPROXY environment variable if set.
+# Note: make's `export` does not reach $(shell ...) calls evaluated at parse
+# time, so GOTOOLCHAIN is set explicitly here. Without it these lookups run
+# with GOTOOLCHAIN=auto and download a toolchain matching the go.mod directive,
+# which pollutes GOMODCACHE before actions/setup-go restores its cache.
+GOPROXY := $(shell GOTOOLCHAIN=local go env GOPROXY)
 ifeq ($(GOPROXY),)
 GOPROXY := https://proxy.golang.org
 endif
@@ -42,14 +46,17 @@ export KUBEBUILDER_CONTROLPLANE_STOP_TIMEOUT ?=
 # Directories
 TOOLS_DIR := $(REPO_ROOT)/hack/tools
 TOOLS_BIN_DIR := $(TOOLS_DIR)/bin
+E2E_DIR := $(REPO_ROOT)/test/e2e
 BIN_DIR ?= bin
 RELEASE_DIR ?= out
 GO_INSTALL := ./hack/go_install.sh
 
 GH_REPO ?= kubernetes-sigs/cluster-api-provider-cloudstack
 
-# Helper function to get dependency version from go.mod
-get_go_version = $(shell go list -m $1 | awk '{print $$2}')
+# Helper function to get dependency version from go.mod.
+# GOTOOLCHAIN=local for the same reason as above: this runs at parse time on
+# every make invocation, and must not trigger a toolchain download.
+get_go_version = $(shell GOTOOLCHAIN=local go list -m $1 | awk '{print $$2}')
 
 # Set build time variables including version details
 LDFLAGS := $(shell source ./hack/version.sh; version::ldflags)
@@ -98,7 +105,7 @@ GINKGO := $(abspath $(TOOLS_BIN_DIR)/$(GINKGO_BIN)-$(GINGKO_VER))
 GINKGO_PKG := github.com/onsi/ginkgo/v2/ginkgo
 
 GOLANGCI_LINT_BIN := golangci-lint
-GOLANGCI_LINT_VER := v2.7.2
+GOLANGCI_LINT_VER := v2.13.1
 GOLANGCI_LINT := $(abspath $(TOOLS_BIN_DIR)/$(GOLANGCI_LINT_BIN)-$(GOLANGCI_LINT_VER))
 GOLANGCI_LINT_PKG := github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
@@ -131,10 +138,10 @@ CONFIG_DIR := config
 NAMESPACE := capc-system
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
-ifeq (,$(shell go env GOBIN))
-GOBIN=$(shell go env GOPATH)/bin
+ifeq (,$(shell GOTOOLCHAIN=local go env GOBIN))
+GOBIN=$(shell GOTOOLCHAIN=local go env GOPATH)/bin
 else
-GOBIN=$(shell go env GOBIN)
+GOBIN=$(shell GOTOOLCHAIN=local go env GOBIN)
 endif
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
@@ -189,8 +196,9 @@ lint: $(GOLANGCI_LINT) generate-mocks ## Run linting for the project.
 
 .PHONY: modules
 modules: ## Runs go mod to ensure proper vendoring.
-	go mod tidy -compat=1.25
-	cd $(TOOLS_DIR); go mod tidy -compat=1.25
+	go mod tidy -compat=1.26
+	cd $(TOOLS_DIR); go mod tidy -compat=1.26
+	cd $(E2E_DIR); go mod tidy -compat=1.26
 
 .PHONY: generate-all
 generate-all: generate-mocks generate-deepcopy generate-manifests
