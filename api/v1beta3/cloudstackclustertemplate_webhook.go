@@ -18,14 +18,10 @@ package v1beta3
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/webhookutil"
@@ -36,38 +32,25 @@ const cloudStackClusterTemplateImmutableMsg = "CloudStackClusterTemplate spec.te
 type CloudStackClusterTemplateWebhook struct{}
 
 func (r *CloudStackClusterTemplateWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&CloudStackClusterTemplate{}).
+	return ctrl.NewWebhookManagedBy(mgr, &CloudStackClusterTemplate{}).
 		WithValidator(r).
 		Complete()
 }
 
 //+kubebuilder:webhook:path=/validate-infrastructure-cluster-x-k8s-io-v1beta3-cloudstackclustertemplate,mutating=false,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=cloudstackclustertemplates,verbs=create;update,versions=v1beta3,name=vcloudstackclustertemplate.kb.io,admissionReviewVersions=v1
 
-var _ webhook.CustomValidator = &CloudStackClusterTemplateWebhook{}
+var _ admission.Validator[*CloudStackClusterTemplate] = &CloudStackClusterTemplateWebhook{}
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type.
-func (r *CloudStackClusterTemplateWebhook) ValidateCreate(_ context.Context, objRaw runtime.Object) (admission.Warnings, error) {
-	obj, ok := objRaw.(*CloudStackClusterTemplate)
-	if !ok {
-		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackClusterTemplate but got a %T", objRaw))
-	}
+func (r *CloudStackClusterTemplateWebhook) ValidateCreate(_ context.Context, obj *CloudStackClusterTemplate) (admission.Warnings, error) {
 	allErrs := validateCloudStackClusterSpec(obj.Spec.Template.Spec)
 
 	return nil, webhookutil.AggregateObjErrors(obj.GroupVersionKind().GroupKind(), obj.Name, allErrs)
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type.
-func (r *CloudStackClusterTemplateWebhook) ValidateUpdate(_ context.Context, oldRaw runtime.Object, newRaw runtime.Object) (admission.Warnings, error) {
+func (r *CloudStackClusterTemplateWebhook) ValidateUpdate(_ context.Context, oldObj, newObj *CloudStackClusterTemplate) (admission.Warnings, error) {
 	var allErrs field.ErrorList
-	newObj, ok := newRaw.(*CloudStackClusterTemplate)
-	if !ok {
-		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackClusterTemplate but got a %T", newRaw))
-	}
-	oldObj, ok := oldRaw.(*CloudStackClusterTemplate)
-	if !ok {
-		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackClusterTemplate but got a %T", oldRaw))
-	}
 
 	if !reflect.DeepEqual(newObj.Spec.Template.Spec, oldObj.Spec.Template.Spec) {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "template", "spec"), newObj,
@@ -78,6 +61,6 @@ func (r *CloudStackClusterTemplateWebhook) ValidateUpdate(_ context.Context, old
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *CloudStackClusterTemplateWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (r *CloudStackClusterTemplateWebhook) ValidateDelete(_ context.Context, _ *CloudStackClusterTemplate) (admission.Warnings, error) {
 	return nil, nil
 }

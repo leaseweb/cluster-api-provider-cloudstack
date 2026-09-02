@@ -27,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -42,14 +42,14 @@ func TestCloudStackClusterReconcilerIntegrationTests(t *testing.T) {
 	var (
 		reconciler CloudStackClusterReconciler
 		mockCtrl   *gomock.Controller
-		recorder   *record.FakeRecorder
+		recorder   *events.FakeRecorder
 		ctx        context.Context
 	)
 
 	setup := func(t *testing.T) {
 		t.Helper()
 		mockCtrl = gomock.NewController(t)
-		recorder = record.NewFakeRecorder(fakeEventBufferSize)
+		recorder = events.NewFakeRecorder(fakeEventBufferSize)
 		reconciler = CloudStackClusterReconciler{
 			Client:           testEnv.Client,
 			Recorder:         recorder,

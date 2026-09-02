@@ -18,14 +18,10 @@ package v1beta3
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/webhookutil"
@@ -34,23 +30,17 @@ import (
 type CloudStackMachineWebhook struct{}
 
 func (r *CloudStackMachineWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&CloudStackMachine{}).
+	return ctrl.NewWebhookManagedBy(mgr, &CloudStackMachine{}).
 		WithValidator(r).
 		Complete()
 }
 
 // +kubebuilder:webhook:verbs=create;update,path=/validate-infrastructure-cluster-x-k8s-io-v1beta3-cloudstackmachine,mutating=false,failurePolicy=fail,matchPolicy=Equivalent,groups=infrastructure.cluster.x-k8s.io,resources=cloudstackmachines,versions=v1beta3,name=validation.cloudstackmachine.infrastructure.cluster.x-k8s.io,sideEffects=None,admissionReviewVersions=v1;v1beta1
 
-var _ webhook.CustomValidator = &CloudStackMachineWebhook{}
+var _ admission.Validator[*CloudStackMachine] = &CloudStackMachineWebhook{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (r *CloudStackMachineWebhook) ValidateCreate(_ context.Context, objRaw runtime.Object) (admission.Warnings, error) {
-	obj, ok := objRaw.(*CloudStackMachine)
-	if !ok {
-		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackMachine but got a %T", objRaw))
-	}
-
+func (r *CloudStackMachineWebhook) ValidateCreate(_ context.Context, obj *CloudStackMachine) (admission.Warnings, error) {
 	var errorList field.ErrorList
 
 	errorList = webhookutil.EnsureAtLeastOneFieldExists(obj.Spec.Offering.ID, obj.Spec.Offering.Name, "Offering", errorList)
@@ -63,15 +53,7 @@ func (r *CloudStackMachineWebhook) ValidateCreate(_ context.Context, objRaw runt
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *CloudStackMachineWebhook) ValidateUpdate(_ context.Context, oldRaw runtime.Object, newRaw runtime.Object) (admission.Warnings, error) {
-	oldObj, ok := oldRaw.(*CloudStackMachine)
-	if !ok {
-		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackMachine but got a %T", oldRaw))
-	}
-	newObj, ok := newRaw.(*CloudStackMachine)
-	if !ok {
-		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a CloudStackMachine but got a %T", newRaw))
-	}
+func (r *CloudStackMachineWebhook) ValidateUpdate(_ context.Context, oldObj, newObj *CloudStackMachine) (admission.Warnings, error) {
 	var errorList field.ErrorList
 
 	oldSpec := oldObj.Spec
@@ -101,6 +83,6 @@ func (r *CloudStackMachineWebhook) ValidateUpdate(_ context.Context, oldRaw runt
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *CloudStackMachineWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (r *CloudStackMachineWebhook) ValidateDelete(_ context.Context, _ *CloudStackMachine) (admission.Warnings, error) {
 	return nil, nil
 }

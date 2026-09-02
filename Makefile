@@ -17,23 +17,46 @@ export REPO_ROOT := $(shell git rev-parse --show-toplevel)
 include $(REPO_ROOT)/common.mk
 
 #
+# Go.
+#
+GO_VERSION ?= 1.26.7
+
+# Ensure correct toolchain is used
+GOTOOLCHAIN = go$(GO_VERSION)
+export GOTOOLCHAIN
+
+# Use GOPROXY environment variable if set.
+# Note: make's `export` does not reach $(shell ...) calls evaluated at parse
+# time, so GOTOOLCHAIN is set explicitly here. Without it these lookups run
+# with GOTOOLCHAIN=auto and download a toolchain matching the go.mod directive,
+# which pollutes GOMODCACHE before actions/setup-go restores its cache.
+GOPROXY := $(shell GOTOOLCHAIN=local go env GOPROXY)
+ifeq ($(GOPROXY),)
+GOPROXY := https://proxy.golang.org
+endif
+export GOPROXY
+
+#
 # Kubebuilder.
 #
-export KUBEBUILDER_ENVTEST_KUBERNETES_VERSION ?= 1.35.0
+export KUBEBUILDER_ENVTEST_KUBERNETES_VERSION ?= 1.36.0
 export KUBEBUILDER_CONTROLPLANE_START_TIMEOUT ?= 60s
 export KUBEBUILDER_CONTROLPLANE_STOP_TIMEOUT ?=
 
 # Directories
 TOOLS_DIR := $(REPO_ROOT)/hack/tools
 TOOLS_BIN_DIR := $(TOOLS_DIR)/bin
+E2E_DIR := $(REPO_ROOT)/test/e2e
 BIN_DIR ?= bin
 RELEASE_DIR ?= out
 GO_INSTALL := ./hack/go_install.sh
 
 GH_REPO ?= kubernetes-sigs/cluster-api-provider-cloudstack
 
-# Helper function to get dependency version from go.mod
-get_go_version = $(shell go list -m $1 | awk '{print $$2}')
+# Helper function to get dependency version from go.mod.
+# GOTOOLCHAIN=local for the same reason as above: this runs at parse time on
+# every make invocation, and must not trigger a toolchain download.
+get_go_version = $(shell GOTOOLCHAIN=local go list -m $1 | awk '{print $$2}')
 
 # Set build time variables including version details
 LDFLAGS := $(shell source ./hack/version.sh; version::ldflags)
@@ -44,12 +67,12 @@ KUSTOMIZE_BIN := kustomize
 KUSTOMIZE := $(abspath $(TOOLS_BIN_DIR)/$(KUSTOMIZE_BIN)-$(KUSTOMIZE_VER))
 KUSTOMIZE_PKG := sigs.k8s.io/kustomize/kustomize/v5
 
-SETUP_ENVTEST_VER := release-0.22
+SETUP_ENVTEST_VER := release-0.23
 SETUP_ENVTEST_BIN := setup-envtest
 SETUP_ENVTEST := $(abspath $(TOOLS_BIN_DIR)/$(SETUP_ENVTEST_BIN)-$(SETUP_ENVTEST_VER))
 SETUP_ENVTEST_PKG := sigs.k8s.io/controller-runtime/tools/setup-envtest
 
-CONTROLLER_GEN_VER := v0.19.0
+CONTROLLER_GEN_VER := v0.20.0
 CONTROLLER_GEN_BIN := controller-gen
 CONTROLLER_GEN := $(abspath $(TOOLS_BIN_DIR)/$(CONTROLLER_GEN_BIN)-$(CONTROLLER_GEN_VER))
 CONTROLLER_GEN_PKG := sigs.k8s.io/controller-tools/cmd/controller-gen
@@ -59,7 +82,7 @@ GOTESTSUM_BIN := gotestsum
 GOTESTSUM := $(abspath $(TOOLS_BIN_DIR)/$(GOTESTSUM_BIN)-$(GOTESTSUM_VER))
 GOTESTSUM_PKG := gotest.tools/gotestsum
 
-CONVERSION_GEN_VER := v0.34.0
+CONVERSION_GEN_VER := v0.35.0
 CONVERSION_GEN_BIN := conversion-gen
 # We are intentionally using the binary without version suffix, to avoid the version
 # in generated files.
@@ -82,7 +105,7 @@ GINKGO := $(abspath $(TOOLS_BIN_DIR)/$(GINKGO_BIN)-$(GINGKO_VER))
 GINKGO_PKG := github.com/onsi/ginkgo/v2/ginkgo
 
 GOLANGCI_LINT_BIN := golangci-lint
-GOLANGCI_LINT_VER := v2.7.2
+GOLANGCI_LINT_VER := v2.13.1
 GOLANGCI_LINT := $(abspath $(TOOLS_BIN_DIR)/$(GOLANGCI_LINT_BIN)-$(GOLANGCI_LINT_VER))
 GOLANGCI_LINT_PKG := github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
@@ -115,10 +138,10 @@ CONFIG_DIR := config
 NAMESPACE := capc-system
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
-ifeq (,$(shell go env GOBIN))
-GOBIN=$(shell go env GOPATH)/bin
+ifeq (,$(shell GOTOOLCHAIN=local go env GOBIN))
+GOBIN=$(shell GOTOOLCHAIN=local go env GOPATH)/bin
 else
-GOBIN=$(shell go env GOBIN)
+GOBIN=$(shell GOTOOLCHAIN=local go env GOBIN)
 endif
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
@@ -173,8 +196,9 @@ lint: $(GOLANGCI_LINT) generate-mocks ## Run linting for the project.
 
 .PHONY: modules
 modules: ## Runs go mod to ensure proper vendoring.
-	go mod tidy -compat=1.25
-	cd $(TOOLS_DIR); go mod tidy -compat=1.25
+	go mod tidy -compat=1.26
+	cd $(TOOLS_DIR); go mod tidy -compat=1.26
+	cd $(E2E_DIR); go mod tidy -compat=1.26
 
 .PHONY: generate-all
 generate-all: generate-mocks generate-deepcopy generate-manifests
@@ -288,7 +312,7 @@ delete-kind-cluster:
 	kind delete cluster --name $(KIND_CLUSTER_NAME)
 
 cluster-api: ## Clone cluster-api repository for tilt use.
-	git clone --branch v1.12.11 --depth 1 https://github.com/kubernetes-sigs/cluster-api.git
+	git clone --branch v1.13.5 --depth 1 https://github.com/kubernetes-sigs/cluster-api.git
 
 cluster-api/tilt-settings.json: hack/tilt-settings.json cluster-api
 	cp ./hack/tilt-settings.json cluster-api
@@ -448,3 +472,12 @@ $(GOLANGCI_LINT): # Build golangci-lint from tools folder.
 
 $(MOCKGEN): # Build mockgen from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(MOCKGEN_PKG) $(MOCKGEN_BIN) $(MOCKGEN_VER)
+
+## --------------------------------------
+## Helpers
+## --------------------------------------
+
+##@ helpers:
+
+go-version: ## Print the go version we use to compile our binaries and images
+	@echo $(GO_VERSION)
