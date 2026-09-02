@@ -4,10 +4,10 @@ go 1.26.0
 
 require (
 	github.com/Shopify/toxiproxy/v2 v2.12.0
-	github.com/apache/cloudstack-go/v2 v2.17.1
+	github.com/apache/cloudstack-go/v2 v2.19.1
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/onsi/ginkgo/v2 v2.28.3
-	github.com/onsi/gomega v1.40.0
+	github.com/onsi/ginkgo/v2 v2.32.1
+	github.com/onsi/gomega v1.43.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.35.8
 	k8s.io/apimachinery v0.35.8
