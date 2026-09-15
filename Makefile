@@ -227,15 +227,11 @@ config/.flag.mk: $(CONTROLLER_GEN) generate-mocks $(MANIFEST_GEN_INPUTS)
 	@touch config/.flag.mk
 
 .PHONY: generate-conversion
-generate-conversion: $(CONVERSION_GEN) ## Generate code to convert api/v1beta1 and api/v1beta2 to api/v1beta3
+generate-conversion: $(CONVERSION_GEN) ## Generate conversions to the hub API version
 	$(CONVERSION_GEN) \
 		--output-file=zz_generated.conversion.go \
 		--go-header-file=./hack/boilerplate.go.txt \
-		./api/v1beta1
-	$(CONVERSION_GEN) \
-		--output-file=zz_generated.conversion.go \
-		--go-header-file=./hack/boilerplate.go.txt \
-		./api/v1beta2
+		./api/v1beta3
 
 ##@ Build
 ## --------------------------------------

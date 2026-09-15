@@ -1,0 +1,6 @@
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta3
+kind: CloudStackMachineStateChecker
+metadata:
+  name: cloudstackmachinestatechecker-sample
+spec:
+  instanceID: 8a3b2c1d-0e4f-4a5b-9c6d-7e8f9a0b1c2d

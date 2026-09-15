@@ -117,10 +117,6 @@ linters:
           alias: machineryconversion
         - pkg: sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3
           alias: infrav1
-        - pkg: sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta2
-          alias: infrav1beta2
-        - pkg: sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta1
-          alias: infrav1beta1
         - pkg: sigs.k8s.io/cluster-api/api/core/v1beta2
           alias: clusterv1
         - pkg: sigs.k8s.io/cluster-api/api/core/v1beta1

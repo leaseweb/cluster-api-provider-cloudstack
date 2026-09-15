@@ -102,7 +102,7 @@ providers:
     versions:
       - name: v1.0.0
         value: ../../../config/default
-        contract: v1beta3
+        contract: v1beta1
         replacements:
           - old: --metrics-bind-addr=localhost:8080
             new: --metrics-bind-addr=:8080

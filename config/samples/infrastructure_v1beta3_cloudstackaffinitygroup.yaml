@@ -1,0 +1,8 @@
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta3
+kind: CloudStackAffinityGroup
+metadata:
+  name: cloudstackaffinitygroup-sample
+spec:
+  name: cloudstackaffinitygroup-sample
+  type: host anti-affinity
+  failureDomainName: failure-domain-1
