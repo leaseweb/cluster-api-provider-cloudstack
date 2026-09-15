@@ -58,5 +58,5 @@ type CloudStackClusterTemplateList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&CloudStackClusterTemplate{}, &CloudStackClusterTemplateList{})
+	objectTypes = append(objectTypes, &CloudStackClusterTemplate{}, &CloudStackClusterTemplateList{})
 }

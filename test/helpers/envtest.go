@@ -317,7 +317,10 @@ func getFilePathToCAPICRDs(root string) string {
 	}
 
 	gopath := envOr("GOPATH", build.Default.GOPATH)
-	return filepath.Join(gopath, "pkg", "mod", "sigs.k8s.io", fmt.Sprintf("cluster-api@v%s", clusterAPIVersion), "config", "crd", "bases")
+
+	// Since CAPI v1.14 the core provider manifests live under core/config instead
+	// of config, as a result of the upstream code organization proposal.
+	return filepath.Join(gopath, "pkg", "mod", "sigs.k8s.io", fmt.Sprintf("cluster-api@v%s", clusterAPIVersion), "core", "config", "crd", "bases")
 }
 
 func envOr(envKey, defaultValue string) string {

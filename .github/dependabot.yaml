@@ -35,6 +35,8 @@ updates:
   # Ignore capi since it's tied to controller-runtime.
   - dependency-name: "sigs.k8s.io/cluster-api"
     update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+  - dependency-name: "sigs.k8s.io/cluster-api/api"
+    update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
   - dependency-name: "sigs.k8s.io/cluster-api/test"
     update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
     # Ignore k8s and its transitives modules as they are upgraded manually together with controller-runtime.

@@ -5,7 +5,7 @@ import (
 	"hash"
 	"hash/fnv"
 
-	"k8s.io/apimachinery/pkg/util/dump"
+	"k8s.io/utils/dump"
 )
 
 // HashConfig returns the hash of the config. It is used as the key for the client cache.
