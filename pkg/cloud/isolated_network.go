@@ -27,7 +27,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	utilsnet "k8s.io/utils/net"
-	"sigs.k8s.io/cluster-api/util/record"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 	capcstrings "sigs.k8s.io/cluster-api-provider-cloudstack/pkg/utils/strings"
@@ -686,7 +685,9 @@ func getCanonicalAllowedCIDRs(isoNet *infrav1.CloudStackIsolatedNetwork, csClust
 		allowedCIDRs = append(allowedCIDRs, "0.0.0.0/0")
 	}
 
-	// Filter invalid CIDRs and convert any IPs into CIDRs.
+	// Filter invalid CIDRs and convert any IPs into CIDRs. Entries that are
+	// neither a valid IPv4 address nor a valid IPv4 CIDR are dropped and never
+	// make it into a firewall rule.
 	validCIDRs := []string{}
 	for _, v := range allowedCIDRs {
 		switch {
@@ -694,8 +695,6 @@ func getCanonicalAllowedCIDRs(isoNet *infrav1.CloudStackIsolatedNetwork, csClust
 			validCIDRs = append(validCIDRs, v+"/32")
 		case utilsnet.IsIPv4CIDRString(v):
 			validCIDRs = append(validCIDRs, v)
-		default:
-			record.Warnf(csCluster, "FailedIPAddressValidation", "%s is not a valid IPv4 nor CIDR address and will not get applied to firewall rules", v)
 		}
 	}
 
@@ -807,9 +806,6 @@ func (c *client) AssignVMToLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedN
 			if isLBRuleNotFound(err) {
 				// The load balancer rule no longer exists in CloudStack. Skip it; the
 				// isolated network controller will re-create it on its next reconciliation.
-				record.Warnf(isoNet, "LoadBalancerRuleNotFound",
-					"Load balancer rule %s no longer exists, skipping assignment for instance %s", lbRuleID, instanceID)
-
 				continue
 			}
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
@@ -855,9 +851,6 @@ func (c *client) RemoveVMFromLoadBalancerRules(isoNet *infrav1.CloudStackIsolate
 			if isLBRuleNotFound(err) {
 				// The load balancer rule no longer exists in CloudStack, so the VM
 				// is implicitly not assigned to it. Skip it.
-				record.Warnf(isoNet, "LoadBalancerRuleNotFound",
-					"Load balancer rule %s no longer exists, skipping removal for instance %s", lbRuleID, instanceID)
-
 				continue
 			}
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
