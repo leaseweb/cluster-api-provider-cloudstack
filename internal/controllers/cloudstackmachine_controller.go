@@ -212,7 +212,7 @@ func (r *CloudStackMachineReconciler) reconcileDelete(ctx context.Context, scope
 
 	if err := r.reconcileLBattachments(scope); err != nil {
 		v1beta1conditions.MarkFalse(scope.CloudStackMachine, infrav1.LoadBalancerAttachedCondition, "DeletingFailed", clusterv1beta1.ConditionSeverityWarning, "%s", err.Error())
-		return ctrl.Result{}, pkgerrors.Errorf("failed to reconcile LB attachment: %+v", err)
+		return ctrl.Result{}, pkgerrors.Wrap(err, "failed to reconcile LB attachment")
 	}
 
 	if scope.IsControlPlane() {
