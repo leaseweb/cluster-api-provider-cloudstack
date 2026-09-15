@@ -18,6 +18,7 @@ package cloud
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -115,7 +116,7 @@ func UnmarshalAllSecretConfigs(in []byte, out *[]SecretConfig) error {
 		var conf SecretConfig
 		if err := decoder.Decode(&conf); err != nil {
 			// Break when there are no more documents to decode
-			if pkgerrors.Is(err, io.EOF) {
+			if errors.Is(err, io.EOF) {
 				return err
 			}
 

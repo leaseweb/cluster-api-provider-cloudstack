@@ -18,6 +18,7 @@ package cloud
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -52,7 +53,7 @@ const (
 )
 
 var (
-	ErrNotFound = pkgerrors.New("not found")
+	ErrNotFound = errors.New("not found")
 
 	// InstanceRunningStates are the states that indicate the instance is running.
 	InstanceRunningStates = sets.NewString(InstanceStateStarting, InstanceStateRunning)
@@ -183,7 +184,7 @@ func (c *client) CreateVMInstance(csMachine *infrav1.CloudStackMachine, capiMach
 		// clean up.
 		vm, findErr := findVirtualMachine(c.cs.VirtualMachine, c.user.Project.ID, templateID, fd, csMachine)
 		if findErr != nil {
-			if pkgerrors.Is(findErr, ErrNotFound) {
+			if errors.Is(findErr, ErrNotFound) {
 				// We didn't find a VM so return the original error.
 				return nil, err
 			}

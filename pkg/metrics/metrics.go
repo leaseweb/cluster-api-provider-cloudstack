@@ -18,9 +18,9 @@ limitations under the License.
 package metrics
 
 import (
+	"errors"
 	"regexp"
 
-	pkgerrors "github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	crtlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 )
@@ -43,7 +43,7 @@ func NewCustomMetrics() ACSCustomMetrics {
 	)
 	if err := crtlmetrics.Registry.Register(customMetrics.acsReconciliationErrorCount); err != nil {
 		are := prometheus.AlreadyRegisteredError{}
-		if pkgerrors.As(err, &are) {
+		if errors.As(err, &are) {
 			customMetrics.acsReconciliationErrorCount = are.ExistingCollector.(*prometheus.CounterVec)
 		} else {
 			// Something else went wrong!

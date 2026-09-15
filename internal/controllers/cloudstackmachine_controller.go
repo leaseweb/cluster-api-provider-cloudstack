@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"hash/crc32"
 	"sort"
@@ -188,7 +189,7 @@ func (r *CloudStackMachineReconciler) reconcileDelete(ctx context.Context, scope
 	scope.Info("Reconcile CloudStackMachine deletion")
 
 	vm, err := r.findInstance(scope)
-	if err != nil && !pkgerrors.Is(err, cloud.ErrNotFound) {
+	if err != nil && !errors.Is(err, cloud.ErrNotFound) {
 		return ctrl.Result{}, err
 	}
 	if vm == nil {
@@ -339,7 +340,7 @@ func (r *CloudStackMachineReconciler) reconcileNormal(ctx context.Context, scope
 	}
 
 	vm, err := r.findInstance(scope)
-	if err != nil && !pkgerrors.Is(err, cloud.ErrNotFound) {
+	if err != nil && !errors.Is(err, cloud.ErrNotFound) {
 		v1beta1conditions.MarkUnknown(scope.CloudStackMachine, infrav1.InstanceReadyCondition, infrav1.InstanceNotFoundReason, "%s", err.Error())
 		return ctrl.Result{}, err
 	}
@@ -527,7 +528,7 @@ func (r *CloudStackMachineReconciler) findInstance(scope *scope.MachineScope) (*
 
 	if scope.GetInstanceID() != "" {
 		instance, err = scope.CSUser().GetVMInstanceByID(scope.GetInstanceID())
-		if err != nil && !pkgerrors.Is(err, cloud.ErrNotFound) {
+		if err != nil && !errors.Is(err, cloud.ErrNotFound) {
 			return nil, err
 		}
 		if instance != nil {
