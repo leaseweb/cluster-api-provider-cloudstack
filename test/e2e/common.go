@@ -30,7 +30,7 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/apache/cloudstack-go/v2/cloudstack"
-	"github.com/blang/semver"
+	"github.com/blang/semver/v4"
 	. "github.com/onsi/ginkgo/v2"
 	corev1 "k8s.io/api/core/v1"
 
