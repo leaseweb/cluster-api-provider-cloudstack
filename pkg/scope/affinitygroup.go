@@ -19,7 +19,7 @@ package scope
 import (
 	"context"
 
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"k8s.io/klog/v2"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util/patch"
@@ -43,10 +43,10 @@ type AffinityGroupScopeParams struct {
 // This is meant to be called for each reconcile iteration.
 func NewAffinityGroupScope(params AffinityGroupScopeParams) (*AffinityGroupScope, error) {
 	if params.Cluster == nil {
-		return nil, errors.New("failed to generate new scope from nil Cluster")
+		return nil, pkgerrors.New("failed to generate new scope from nil Cluster")
 	}
 	if params.CloudStackAffinityGroup == nil {
-		return nil, errors.New("failed to generate new scope from nil CloudStackAffinityGroup")
+		return nil, pkgerrors.New("failed to generate new scope from nil CloudStackAffinityGroup")
 	}
 
 	if params.Logger == nil {
@@ -65,7 +65,7 @@ func NewAffinityGroupScope(params AffinityGroupScopeParams) (*AffinityGroupScope
 
 	helper, err := patch.NewHelper(params.CloudStackAffinityGroup, params.Client)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to init patch helper")
+		return nil, pkgerrors.Wrap(err, "failed to init patch helper")
 	}
 
 	affinityGroupScope.patchHelper = helper

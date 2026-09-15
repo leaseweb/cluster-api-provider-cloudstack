@@ -18,9 +18,9 @@ limitations under the License.
 package metrics
 
 import (
+	"errors"
 	"regexp"
 
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	crtlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 )

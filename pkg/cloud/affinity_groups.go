@@ -18,7 +18,7 @@ package cloud
 
 import (
 	"github.com/apache/cloudstack-go/v2/cloudstack"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 )
@@ -54,7 +54,7 @@ func (c *client) FetchAffinityGroup(group *AffinityGroup) error {
 			return err
 		} else if count > 1 {
 			// handle via creating a new error.
-			return errors.New("count bad")
+			return pkgerrors.New("count bad")
 		}
 		group.Name = affinityGroup.Name
 		group.Type = affinityGroup.Type
@@ -70,7 +70,7 @@ func (c *client) FetchAffinityGroup(group *AffinityGroup) error {
 			return err
 		} else if count > 1 {
 			// handle via creating a new error.
-			return errors.New("count bad")
+			return pkgerrors.New("count bad")
 		}
 		group.ID = affinityGroup.Id
 		group.Type = affinityGroup.Type
@@ -78,7 +78,7 @@ func (c *client) FetchAffinityGroup(group *AffinityGroup) error {
 		return nil
 	}
 
-	return errors.Errorf(`could not fetch AffinityGroup by name "%s" or id "%s"`, group.Name, group.ID)
+	return pkgerrors.Errorf(`could not fetch AffinityGroup by name "%s" or id "%s"`, group.Name, group.ID)
 }
 
 func (c *client) GetOrCreateAffinityGroup(group *AffinityGroup) error {
@@ -119,7 +119,7 @@ func (c *client) getCurrentAffinityGroups(csMachine *infrav1.CloudStackMachine) 
 
 		return nil, err
 	} else if count > 1 {
-		return nil, errors.Errorf("found more than one VM for ID: %s", *csMachine.Spec.InstanceID)
+		return nil, pkgerrors.Errorf("found more than one VM for ID: %s", *csMachine.Spec.InstanceID)
 	}
 	groups := make([]AffinityGroup, 0, len(virtM.Affinitygroup))
 	for _, v := range virtM.Affinitygroup {

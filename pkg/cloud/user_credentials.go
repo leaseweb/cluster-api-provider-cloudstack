@@ -19,7 +19,7 @@ package cloud
 import (
 	"strings"
 
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 )
 
 const (
@@ -115,10 +115,10 @@ func (c *client) ResolveDomain(domain *Domain) error {
 	// If the Id was provided.
 	if domain.ID != "" {
 		if resp.Count != 1 {
-			return errors.Errorf("domain ID %s provided, expected exactly one domain, got %d", domain.ID, resp.Count)
+			return pkgerrors.Errorf("domain ID %s provided, expected exactly one domain, got %d", domain.ID, resp.Count)
 		}
 		if domain.Path != "" && !strings.EqualFold(resp.Domains[0].Path, domain.Path) {
-			return errors.Errorf("domain Path %s did not match domain ID %s", domain.Path, domain.ID)
+			return pkgerrors.Errorf("domain Path %s did not match domain ID %s", domain.Path, domain.ID)
 		}
 		domain.Path = resp.Domains[0].Path
 		domain.Name = resp.Domains[0].Name
@@ -132,7 +132,7 @@ func (c *client) ResolveDomain(domain *Domain) error {
 	// Consider the case where only the domain name is provided.
 	if domain.Path == "" && domain.Name != "" {
 		if resp.Count != 1 {
-			return errors.Errorf(
+			return pkgerrors.Errorf(
 				"only domain name: %s provided, expected exactly one domain, got %d", domain.Name, resp.Count)
 		}
 	}
@@ -150,7 +150,7 @@ func (c *client) ResolveDomain(domain *Domain) error {
 		return nil
 	}
 
-	return errors.Errorf("domain not found for domain path %s", domain.Path)
+	return pkgerrors.Errorf("domain not found for domain path %s", domain.Path)
 }
 
 // ResolveAccount resolves an account's information.
@@ -158,7 +158,7 @@ func (c *client) ResolveAccount(account *Account) error {
 	// Resolve domain prior to any account resolution activity.
 	if err := c.ResolveDomain(&account.Domain); err != nil &&
 		!strings.Contains(err.Error(), "The API [listDomains] does not exist or is not available for the account Account") {
-		return errors.Wrapf(err, "resolving domain %s details", account.Domain.Name)
+		return pkgerrors.Wrapf(err, "resolving domain %s details", account.Domain.Name)
 	}
 
 	p := c.cs.Account.NewListAccountsParams()
@@ -171,9 +171,9 @@ func (c *client) ResolveAccount(account *Account) error {
 
 		return retErr
 	} else if resp.Count == 0 {
-		return errors.Errorf("could not find account %s", account.Name)
+		return pkgerrors.Errorf("could not find account %s", account.Name)
 	} else if resp.Count != 1 {
-		return errors.Errorf("expected 1 Account with account name %s in domain ID %s, but got %d",
+		return pkgerrors.Errorf("expected 1 Account with account name %s in domain ID %s, but got %d",
 			account.Name, account.Domain.ID, resp.Count)
 	}
 	account.ID = resp.Accounts[0].Id
@@ -202,9 +202,9 @@ func (c *client) ResolveProject(user *User) error {
 
 		return err
 	} else if resp.Count == 0 {
-		return errors.Errorf("could not find project with ID '%s'", user.Project.ID)
+		return pkgerrors.Errorf("could not find project with ID '%s'", user.Project.ID)
 	} else if resp.Count != 1 {
-		return errors.Errorf("expected 1 Project with ID '%s' in domain ID '%s', but got %d",
+		return pkgerrors.Errorf("expected 1 Project with ID '%s' in domain ID '%s', but got %d",
 			user.Project.ID, c.user.Domain.ID, resp.Count)
 	}
 	c.user.Project.ID = resp.Projects[0].Id
@@ -220,7 +220,7 @@ func (c *client) ResolveProject(user *User) error {
 func (c *client) ResolveUser(user *User) error {
 	// Resolve account prior to any user resolution activity.
 	if err := c.ResolveAccount(&user.Account); err != nil {
-		return errors.Wrapf(err, "resolving account %s details", user.Account.Name)
+		return pkgerrors.Wrapf(err, "resolving account %s details", user.Account.Name)
 	}
 
 	p := c.cs.User.NewListUsersParams()
@@ -234,7 +234,7 @@ func (c *client) ResolveUser(user *User) error {
 
 		return err
 	} else if resp.Count != 1 {
-		return errors.Errorf("expected 1 User with username %s but got %d", user.Name, resp.Count)
+		return pkgerrors.Errorf("expected 1 User with username %s but got %d", user.Name, resp.Count)
 	}
 
 	user.ID = resp.Users[0].Id
@@ -247,7 +247,7 @@ func (c *client) ResolveUser(user *User) error {
 func (c *client) ResolveUserKeys(user *User) error {
 	// Resolve user prior to any api key resolution activity.
 	if err := c.ResolveUser(user); err != nil {
-		return errors.Wrap(err, "error encountered when resolving user details")
+		return pkgerrors.Wrap(err, "error encountered when resolving user details")
 	}
 
 	p := c.cs.User.NewGetUserKeysParams(user.ID)
@@ -255,7 +255,7 @@ func (c *client) ResolveUserKeys(user *User) error {
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
-		return errors.Errorf("error encountered when resolving user api keys for user %s", user.Name)
+		return pkgerrors.Errorf("error encountered when resolving user api keys for user %s", user.Name)
 	}
 	user.APIKey = resp.Apikey
 	user.SecretKey = resp.Secretkey
@@ -268,11 +268,11 @@ func (c *client) ResolveUserKeys(user *User) error {
 func (c *client) GetUserWithKeys(user *User) (bool, error) {
 	// Resolve account prior to any user resolution activity.
 	if err := c.ResolveAccount(&user.Account); err != nil {
-		return false, errors.Wrapf(err, "resolving account %s details", user.Account.Name)
+		return false, pkgerrors.Wrapf(err, "resolving account %s details", user.Account.Name)
 	}
 
 	if err := c.ResolveProject(user); err != nil {
-		return false, errors.Wrapf(err, "resolving project %s details", user.Project.Name)
+		return false, pkgerrors.Wrapf(err, "resolving project %s details", user.Project.Name)
 	}
 
 	// List users and take first user that has already has api keys.

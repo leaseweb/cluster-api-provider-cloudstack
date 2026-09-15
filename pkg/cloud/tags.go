@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 )
@@ -61,7 +61,7 @@ func ignoreAlreadyPresentErrors(err error, rType ResourceType, rID string) error
 func (c *client) IsCapcManaged(resourceType ResourceType, resourceID string) (bool, error) {
 	tags, err := c.GetTags(resourceType, resourceID)
 	if err != nil {
-		return false, errors.Wrapf(err,
+		return false, pkgerrors.Wrapf(err,
 			"checking if %s with ID: %s is tagged as CAPC managed", resourceType, resourceID)
 	}
 	_, CreatedByCAPC := tags[CreatedByCAPCTagName]
@@ -166,7 +166,7 @@ func (c *client) DeleteTags(rType ResourceType, rID string, tagsToDelete map[str
 			if tags, err2 := c.GetTags(rType, rID); len(tags) != 0 {
 				c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err2)
 				if _, foundTag := tags[tagkey]; foundTag {
-					return errors.Wrapf(multierror.Append(err1, err2),
+					return pkgerrors.Wrapf(multierror.Append(err1, err2),
 						"could not remove tag %s from %s with ID %s", currTag, rType, rID)
 				}
 			}

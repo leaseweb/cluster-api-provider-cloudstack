@@ -18,6 +18,7 @@ linters:
     - durationcheck
     - errcheck
     - errchkjson
+    - errorlint
     - ginkgolinter
     - goconst
     - gocritic
@@ -109,6 +110,8 @@ linters:
           alias: metav1
         - pkg: k8s.io/apimachinery/pkg/util/errors
           alias: kerrors
+        - pkg: github.com/pkg/errors
+          alias: pkgerrors
         - pkg: sigs.k8s.io/controller-runtime/pkg/conversion
           alias: ctrlconversion
         - pkg: sigs.k8s.io/cluster-api/util/conversion

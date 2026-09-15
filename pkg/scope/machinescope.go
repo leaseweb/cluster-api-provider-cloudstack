@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -59,13 +59,13 @@ type MachineScopeParams struct {
 // This is meant to be called for each reconcile iteration.
 func NewMachineScope(params MachineScopeParams) (*MachineScope, error) {
 	if params.Cluster == nil {
-		return nil, errors.New("failed to generate new scope from nil Cluster")
+		return nil, pkgerrors.New("failed to generate new scope from nil Cluster")
 	}
 	if params.Machine == nil {
-		return nil, errors.New("failed to generate new scope from nil Machine")
+		return nil, pkgerrors.New("failed to generate new scope from nil Machine")
 	}
 	if params.CloudStackMachine == nil {
-		return nil, errors.New("failed to generate new scope from nil CloudStackMachine")
+		return nil, pkgerrors.New("failed to generate new scope from nil CloudStackMachine")
 	}
 
 	if params.Logger == nil {
@@ -87,7 +87,7 @@ func NewMachineScope(params MachineScopeParams) (*MachineScope, error) {
 
 	helper, err := v1beta1patch.NewHelper(params.CloudStackMachine, params.Client)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to init patch helper")
+		return nil, pkgerrors.Wrap(err, "failed to init patch helper")
 	}
 
 	machineScope.patchHelper = helper
@@ -211,7 +211,7 @@ func (s *MachineScope) IsolatedNetwork(ctx context.Context) (*infrav1.CloudStack
 	isonet := &infrav1.CloudStackIsolatedNetwork{}
 	err := s.client.Get(ctx, client.ObjectKey{Name: s.IsolatedNetworkName(), Namespace: s.Namespace()}, isonet)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get isolated network with name %s", s.IsolatedNetworkName())
+		return nil, pkgerrors.Wrapf(err, "failed to get isolated network with name %s", s.IsolatedNetworkName())
 	}
 
 	return isonet, nil
@@ -286,18 +286,18 @@ func (s *MachineScope) SetInstanceID(id string) {
 // GetBootstrapData returns the bootstrap data from the secret in the Machine's bootstrap.dataSecretName.
 func (s *MachineScope) GetBootstrapData() ([]byte, error) {
 	if s.Machine.Spec.Bootstrap.DataSecretName == nil {
-		return nil, errors.New("error retrieving bootstrap data: linked Machine's bootstrap.dataSecretName is nil")
+		return nil, pkgerrors.New("error retrieving bootstrap data: linked Machine's bootstrap.dataSecretName is nil")
 	}
 
 	secret := &corev1.Secret{}
 	key := types.NamespacedName{Namespace: s.Machine.Namespace, Name: *s.Machine.Spec.Bootstrap.DataSecretName}
 	if err := s.client.Get(context.TODO(), key, secret); err != nil {
-		return nil, errors.Wrapf(err, "failed to retrieve bootstrap data secret for CloudStackMachine %s/%s", s.Namespace(), s.Name())
+		return nil, pkgerrors.Wrapf(err, "failed to retrieve bootstrap data secret for CloudStackMachine %s/%s", s.Namespace(), s.Name())
 	}
 
 	value, ok := secret.Data["value"]
 	if !ok {
-		return nil, errors.New("error retrieving bootstrap data: secret value key is missing")
+		return nil, pkgerrors.New("error retrieving bootstrap data: secret value key is missing")
 	}
 
 	return value, nil
