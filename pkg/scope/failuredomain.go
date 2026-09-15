@@ -23,7 +23,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -50,10 +50,10 @@ var metaNameRegex = regexp.MustCompile(`[^a-z0-9-]+`)
 // This is meant to be called for each reconcile iteration.
 func NewFailureDomainScope(params FailureDomainScopeParams) (*FailureDomainScope, error) {
 	if params.Cluster == nil {
-		return nil, errors.New("failed to generate new scope from nil Cluster")
+		return nil, pkgerrors.New("failed to generate new scope from nil Cluster")
 	}
 	if params.CloudStackFailureDomain == nil {
-		return nil, errors.New("failed to generate new scope from nil CloudStackFailureDomain")
+		return nil, pkgerrors.New("failed to generate new scope from nil CloudStackFailureDomain")
 	}
 
 	if params.Logger == nil {
@@ -72,7 +72,7 @@ func NewFailureDomainScope(params FailureDomainScopeParams) (*FailureDomainScope
 
 	helper, err := patch.NewHelper(params.CloudStackFailureDomain, params.Client)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to init patch helper")
+		return nil, pkgerrors.Wrap(err, "failed to init patch helper")
 	}
 
 	failureDomainScope.patchHelper = helper

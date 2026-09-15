@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -169,7 +169,7 @@ func (r *CloudStackClusterReconciler) reconcileNormal(ctx context.Context, scope
 		if err := r.CreateFailureDomain(ctx, scope, fdSpec); err != nil {
 			if !apierrors.IsAlreadyExists(err) {
 				v1beta1conditions.MarkFalse(scope.CloudStackCluster, infrav1.FailureDomainsReadyCondition, infrav1.FailureDomainsErrorReason, clusterv1beta1.ConditionSeverityError, "%s", err.Error())
-				return ctrl.Result{}, errors.Wrap(err, "creating CloudStackFailureDomains")
+				return ctrl.Result{}, pkgerrors.Wrap(err, "creating CloudStackFailureDomains")
 			}
 		}
 		scope.SetFailureDomain(fdSpec.Name, clusterv1beta1.FailureDomainSpec{
@@ -237,7 +237,7 @@ func (r *CloudStackClusterReconciler) GetFailureDomains(ctx context.Context, clu
 		client.InNamespace(clusterScope.CloudStackCluster.Namespace),
 		client.MatchingLabels(capiClusterLabel),
 	); err != nil {
-		return errors.Wrap(err, "failed to list failure domains")
+		return pkgerrors.Wrap(err, "failed to list failure domains")
 	}
 
 	return nil
@@ -280,7 +280,7 @@ func (r *CloudStackClusterReconciler) DeleteRemovedFailureDomains(ctx context.Co
 		if _, present := fdPresenceByName[fd.Spec.Name]; !present {
 			toDelete := fd
 			if err := r.Client.Delete(ctx, &toDelete); err != nil {
-				return errors.Wrap(err, "failed to delete obsolete failure domain")
+				return pkgerrors.Wrap(err, "failed to delete obsolete failure domain")
 			}
 		}
 	}
@@ -328,7 +328,7 @@ func (r *CloudStackClusterReconciler) SetupWithManager(ctx context.Context, mgr 
 		WithEventFilter(predicates.ResourceIsNotExternallyManaged(r.Scheme, log.GetLogger())).
 		Complete(r)
 	if err != nil {
-		return errors.Wrap(err, "failed setting up with a controller manager")
+		return pkgerrors.Wrap(err, "failed setting up with a controller manager")
 	}
 
 	return nil

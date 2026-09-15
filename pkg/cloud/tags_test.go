@@ -20,7 +20,7 @@ import (
 	csapi "github.com/apache/cloudstack-go/v2/cloudstack"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"go.uber.org/mock/gomock"
 
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
@@ -32,7 +32,7 @@ var _ = Describe("Tag Unit Tests", func() {
 		errorMessage = "Error"
 	)
 
-	fakeError := errors.New(errorMessage)
+	fakeError := pkgerrors.New(errorMessage)
 	var ( // Declare shared vars.
 		mockCtrl   *gomock.Controller
 		mockClient *csapi.CloudStackClient

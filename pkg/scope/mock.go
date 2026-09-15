@@ -19,7 +19,7 @@ package scope
 import (
 	"context"
 
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"go.uber.org/mock/gomock"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -43,7 +43,7 @@ func NewMockClientScopeFactory(mockCtrl *gomock.Controller, projectID string) *M
 
 func (m *MockClientScopeFactory) NewClientScopeForFailureDomain(_ context.Context, _ client.Client, fd *infrav1.CloudStackFailureDomain) (Scope, error) {
 	if fd == nil {
-		return nil, errors.New("failure domain is nil")
+		return nil, pkgerrors.New("failure domain is nil")
 	}
 
 	return m, nil

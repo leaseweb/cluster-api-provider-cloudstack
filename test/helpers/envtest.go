@@ -32,7 +32,7 @@ import (
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -237,11 +237,11 @@ func buildModifiedWebhook(tag string, relativeFilePath string) (admissionv1.Muta
 	var validatingWebhook admissionv1.ValidatingWebhookConfiguration
 	data, err := os.ReadFile(filepath.Clean(filepath.Join(root, relativeFilePath)))
 	if err != nil {
-		return mutatingWebhook, validatingWebhook, errors.Wrap(err, "failed to read webhook configuration file")
+		return mutatingWebhook, validatingWebhook, pkgerrors.Wrap(err, "failed to read webhook configuration file")
 	}
 	objs, err := utilyaml.ToUnstructured(data)
 	if err != nil {
-		return mutatingWebhook, validatingWebhook, errors.Wrap(err, "failed to parse yaml")
+		return mutatingWebhook, validatingWebhook, pkgerrors.Wrap(err, "failed to parse yaml")
 	}
 	for i := range objs {
 		o := objs[i]

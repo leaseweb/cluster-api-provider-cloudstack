@@ -27,7 +27,7 @@ import (
 	"github.com/apache/cloudstack-go/v2/cloudstack"
 	"github.com/hashicorp/go-multierror"
 	"github.com/jellydator/ttlcache/v3"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 
@@ -60,13 +60,13 @@ type Config struct {
 
 func (c *Config) Validate() (err error) {
 	if c.APIUrl == "" {
-		err = multierror.Append(err, errors.New("api-url is required"))
+		err = multierror.Append(err, pkgerrors.New("api-url is required"))
 	}
 	if c.APIKey == "" {
-		err = multierror.Append(err, errors.New("api-key is required"))
+		err = multierror.Append(err, pkgerrors.New("api-key is required"))
 	}
 	if c.SecretKey == "" {
-		err = multierror.Append(err, errors.New("secret-key is required"))
+		err = multierror.Append(err, pkgerrors.New("secret-key is required"))
 	}
 
 	return err
@@ -115,7 +115,7 @@ func UnmarshalAllSecretConfigs(in []byte, out *[]SecretConfig) error {
 		var conf SecretConfig
 		if err := decoder.Decode(&conf); err != nil {
 			// Break when there are no more documents to decode
-			if errors.Is(err, io.EOF) {
+			if pkgerrors.Is(err, io.EOF) {
 				return err
 			}
 
@@ -172,7 +172,7 @@ func NewClientFromYamlPath(confPath string, secretName string, options ...Client
 		}
 	}
 	if conf.APIKey == "" {
-		return nil, errors.Errorf("config with secret name %s not found", secretName)
+		return nil, pkgerrors.Errorf("config with secret name %s not found", secretName)
 	}
 
 	return NewClientFromConf(conf, nil, options...)
@@ -234,7 +234,7 @@ func NewClientFromConf(conf Config, clientConfig *corev1.ConfigMap, options ...C
 	if found, err := c.GetUserWithKeys(user); err != nil {
 		return nil, err
 	} else if !found {
-		return nil, errors.Errorf(
+		return nil, pkgerrors.Errorf(
 			"could not find sufficient user (with API keys) in domain/account %s/%s", userResponse.Users[0].Domain, userResponse.Users[0].Account)
 	}
 	clientCache.Set(clientCacheKey, c, ttlcache.DefaultTTL)
@@ -262,7 +262,7 @@ func NewClientInDomainAndAccount(c Client, domain string, account string, option
 	if found, err := client.GetUserWithKeys(user); err != nil {
 		return nil, err
 	} else if !found {
-		return nil, errors.Errorf(
+		return nil, pkgerrors.Errorf(
 			"could not find sufficient user (with API keys) in domain/account %s/%s", domain, account)
 	}
 	client.config.APIKey = user.APIKey
@@ -345,7 +345,7 @@ type ClientOption func(*client) error
 func WithProject(project string) ClientOption {
 	return func(c *client) error {
 		if c == nil || c.user == nil {
-			return errors.New("cannot create client with nil user")
+			return pkgerrors.New("cannot create client with nil user")
 		}
 
 		// project arg empty or project ID already set through cloud config.

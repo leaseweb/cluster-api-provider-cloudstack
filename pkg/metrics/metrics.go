@@ -20,7 +20,7 @@ package metrics
 import (
 	"regexp"
 
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	crtlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 )
@@ -43,7 +43,7 @@ func NewCustomMetrics() ACSCustomMetrics {
 	)
 	if err := crtlmetrics.Registry.Register(customMetrics.acsReconciliationErrorCount); err != nil {
 		are := prometheus.AlreadyRegisteredError{}
-		if errors.As(err, &are) {
+		if pkgerrors.As(err, &are) {
 			customMetrics.acsReconciliationErrorCount = are.ExistingCollector.(*prometheus.CounterVec)
 		} else {
 			// Something else went wrong!

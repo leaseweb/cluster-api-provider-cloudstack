@@ -19,7 +19,7 @@ package controllers
 import (
 	"context"
 
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -73,7 +73,7 @@ func GetFailureDomainByName(ctx context.Context, k8sClient client.Client, name, 
 	fd := &infrav1.CloudStackFailureDomain{}
 	metaHashName := infrav1.FailureDomainHashedMetaName(name, clusterName)
 	if err := k8sClient.Get(ctx, client.ObjectKey{Name: metaHashName, Namespace: namespace}, fd); err != nil {
-		return nil, errors.Wrapf(err, "failed to get failure domain with name %s", name)
+		return nil, pkgerrors.Wrapf(err, "failed to get failure domain with name %s", name)
 	}
 
 	return fd, nil

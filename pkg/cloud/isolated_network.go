@@ -25,7 +25,7 @@ import (
 
 	"github.com/apache/cloudstack-go/v2/cloudstack"
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	utilsnet "k8s.io/utils/net"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
@@ -62,7 +62,7 @@ func (c *client) getNetworkOfferingID() (string, error) {
 
 		return "", retErr
 	} else if count != 1 {
-		return "", errors.New("found more than one network offering")
+		return "", pkgerrors.New("found more than one network offering")
 	}
 
 	return offeringID, nil
@@ -77,7 +77,7 @@ func (c *client) AssociatePublicIPAddress(
 	// Check specified IP address is available or get an unused one if not specified.
 	publicAddress, err := c.GetPublicIP(fd, desiredIP)
 	if err != nil {
-		return nil, errors.Wrap(err, "fetching a public IP address")
+		return nil, pkgerrors.Wrap(err, "fetching a public IP address")
 	}
 
 	// Check if the address is already associated with the network.
@@ -93,11 +93,11 @@ func (c *client) AssociatePublicIPAddress(
 	if _, err := c.cs.Address.AssociateIpAddress(p); err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
-		return nil, errors.Wrapf(err,
+		return nil, pkgerrors.Wrapf(err,
 			"associating public IP address with ID %s to network with ID %s",
 			publicAddress.Id, isoNet.Spec.ID)
 	} else if err := c.AddCreatedByCAPCTag(ResourceTypeIPAddress, publicAddress.Id); err != nil {
-		return nil, errors.Wrapf(err,
+		return nil, pkgerrors.Wrapf(err,
 			"adding tag to public IP address with ID %s", publicAddress.Id)
 	}
 
@@ -119,7 +119,7 @@ func (c *client) CreateIsolatedNetwork(fd *infrav1.CloudStackFailureDomain, isoN
 	if isoNet.Spec.CIDR != "" {
 		m, err := parseCIDR(isoNet.Spec.CIDR)
 		if err != nil {
-			return errors.Wrap(err, "parsing CIDR")
+			return pkgerrors.Wrap(err, "parsing CIDR")
 		}
 		// Set the needed IP subnet config
 		p.SetGateway(m["gateway"])
@@ -131,7 +131,7 @@ func (c *client) CreateIsolatedNetwork(fd *infrav1.CloudStackFailureDomain, isoN
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
-		return errors.Wrapf(err, "creating network with name %s", isoNet.Spec.Name)
+		return pkgerrors.Wrapf(err, "creating network with name %s", isoNet.Spec.Name)
 	}
 	isoNet.Spec.ID = resp.Id
 	isoNet.Spec.CIDR = resp.Cidr
@@ -156,7 +156,7 @@ func (c *client) CreateEgressFirewallRules(isoNet *infrav1.CloudStackIsolatedNet
 			!strings.Contains(strings.ToLower(err.Error()), "there is already") &&
 			// Ignore errors regarding already existing fw rule for ICMP
 			!strings.Contains(strings.ToLower(err.Error()), "new rule conflicts with existing rule") {
-			retErr = multierror.Append(retErr, errors.Wrapf(
+			retErr = multierror.Append(retErr, pkgerrors.Wrapf(
 				err, "failed creating egress firewall rule for network ID %s protocol %s", isoNet.Spec.ID, proto))
 		}
 	}
@@ -192,10 +192,10 @@ func (c *client) GetPublicIP(
 			}
 		}
 
-		return nil, errors.New("all Public IP Address(es) found were already allocated")
+		return nil, pkgerrors.New("all Public IP Address(es) found were already allocated")
 	}
 
-	return nil, errors.New("no public addresses found in available networks")
+	return nil, pkgerrors.New("no public addresses found in available networks")
 }
 
 // GetIsolatedNetwork gets an isolated network in the relevant Zone.
@@ -203,9 +203,9 @@ func (c *client) GetIsolatedNetwork(isoNet *infrav1.CloudStackIsolatedNetwork) (
 	netDetails, count, err := c.cs.Network.GetNetworkByName(isoNet.Spec.Name, cloudstack.WithProject(c.user.Project.ID))
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
-		retErr = multierror.Append(retErr, errors.Wrapf(err, "could not get Network ID from %s", isoNet.Spec.Name))
+		retErr = multierror.Append(retErr, pkgerrors.Wrapf(err, "could not get Network ID from %s", isoNet.Spec.Name))
 	} else if count != 1 {
-		retErr = multierror.Append(retErr, errors.Errorf(
+		retErr = multierror.Append(retErr, pkgerrors.Errorf(
 			"expected 1 Network with name %s, but got %d", isoNet.Name, count))
 	} else { // Got netID from the network's name.
 		isoNet.Spec.ID = netDetails.Id
@@ -218,9 +218,9 @@ func (c *client) GetIsolatedNetwork(isoNet *infrav1.CloudStackIsolatedNetwork) (
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
-		return multierror.Append(retErr, errors.Wrapf(err, "could not get Network by ID %s", isoNet.Spec.ID))
+		return multierror.Append(retErr, pkgerrors.Wrapf(err, "could not get Network by ID %s", isoNet.Spec.ID))
 	} else if count != 1 {
-		return multierror.Append(retErr, errors.Errorf("expected 1 Network with UUID %s, but got %d", isoNet.Spec.ID, count))
+		return multierror.Append(retErr, pkgerrors.Errorf("expected 1 Network with UUID %s, but got %d", isoNet.Spec.ID, count))
 	}
 	isoNet.Spec.Name = netDetails.Name
 	isoNet.Spec.CIDR = netDetails.Cidr
@@ -237,7 +237,7 @@ func (c *client) GetLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNetwork)
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
-		return nil, errors.Wrap(err, "listing load balancer rules")
+		return nil, pkgerrors.Wrap(err, "listing load balancer rules")
 	}
 
 	return loadBalancerRules.LoadBalancerRules, nil
@@ -254,7 +254,7 @@ func (c *client) ReconcileLoadBalancerRules(isoNet *infrav1.CloudStackIsolatedNe
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
-		return errors.Wrap(err, "retrieving load balancer rules")
+		return pkgerrors.Wrap(err, "retrieving load balancer rules")
 	}
 
 	portsAndIDs := mapExistingLoadBalancerRules(lbr)
@@ -339,7 +339,7 @@ func (c *client) getOrCreateLoadBalancerRule(isoNet *infrav1.CloudStackIsolatedN
 	// If not found, create the lb rule for port
 	ruleID, err := c.CreateLoadBalancerRule(isoNet, port)
 	if err != nil {
-		return "", errors.Wrap(err, "creating load balancer rule")
+		return "", pkgerrors.Wrap(err, "creating load balancer rule")
 	}
 
 	return ruleID, nil
@@ -350,7 +350,7 @@ func (c *client) cleanupObsoleteLoadBalancerRules(portsAndIDs map[string]string,
 	for port, ruleID := range portsAndIDs {
 		intPort, err := strconv.Atoi(port)
 		if err != nil {
-			return errors.Wrap(err, "converting port to int")
+			return pkgerrors.Wrap(err, "converting port to int")
 		}
 		if !slices.Contains(ports, intPort) {
 			if err := c.deleteLoadBalancerRuleByID(ruleID); err != nil {
@@ -377,10 +377,10 @@ func (c *client) cleanupAllLoadBalancerRules(portsAndIDs map[string]string) erro
 func (c *client) deleteLoadBalancerRuleByID(ruleID string) error {
 	success, err := c.DeleteLoadBalancerRule(ruleID)
 	if err != nil {
-		return errors.Wrap(err, "deleting load balancer rule")
+		return pkgerrors.Wrap(err, "deleting load balancer rule")
 	}
 	if !success {
-		return errors.New("delete load balancer rule returned unsuccessful")
+		return pkgerrors.New("delete load balancer rule returned unsuccessful")
 	}
 
 	return nil
@@ -409,7 +409,7 @@ func (c *client) CreateLoadBalancerRule(isoNet *infrav1.CloudStackIsolatedNetwor
 		return "", err
 	}
 	if err := c.AddCreatedByCAPCTag(ResourceTypeLoadBalancerRule, resp.Id); err != nil {
-		return "", errors.Wrap(err, "adding created by CAPC tag")
+		return "", pkgerrors.Wrap(err, "adding created by CAPC tag")
 	}
 
 	return resp.Id, nil
@@ -423,7 +423,7 @@ func (c *client) DeleteLoadBalancerRule(id string) (bool, error) {
 	}
 
 	if !isCAPCManaged {
-		return false, errors.Errorf("load balancer rule with id %s is not managed by CAPC", id)
+		return false, pkgerrors.Errorf("load balancer rule with id %s is not managed by CAPC", id)
 	}
 
 	p := c.csAsync.LoadBalancer.NewDeleteLoadBalancerRuleParams(id)
@@ -447,7 +447,7 @@ func (c *client) GetFirewallRules(isoNet *infrav1.CloudStackIsolatedNetwork) ([]
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
-		return nil, errors.Wrap(err, "listing firewall rules")
+		return nil, pkgerrors.Wrap(err, "listing firewall rules")
 	}
 
 	return fwRules.FirewallRules, nil
@@ -464,7 +464,7 @@ func (c *client) ReconcileFirewallRules(isoNet *infrav1.CloudStackIsolatedNetwor
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
-		return errors.Wrap(err, "retrieving firewall rules")
+		return pkgerrors.Wrap(err, "retrieving firewall rules")
 	}
 
 	portsAndIDs := mapExistingFirewallRules(fwr)
@@ -577,7 +577,7 @@ func (c *client) createMissingFirewallRules(isoNet *infrav1.CloudStackIsolatedNe
 	_, createCIDRs := capcstrings.SliceDiff(foundCIDRs, allowedCIDRS)
 	for _, cidr := range createCIDRs {
 		if err := c.CreateFirewallRule(isoNet, port, cidr); err != nil {
-			return errors.Wrap(err, "creating firewall rule")
+			return pkgerrors.Wrap(err, "creating firewall rule")
 		}
 	}
 
@@ -616,10 +616,10 @@ func (c *client) cleanupAllFirewallRules(portsAndIDs map[int][]string) error {
 func (c *client) deleteFirewallRuleByID(ruleID string) error {
 	success, err := c.DeleteFirewallRule(ruleID)
 	if err != nil {
-		return errors.Wrap(err, "deleting firewall rule")
+		return pkgerrors.Wrap(err, "deleting firewall rule")
 	}
 	if !success {
-		return errors.New("delete firewall rule returned unsuccessful")
+		return pkgerrors.New("delete firewall rule returned unsuccessful")
 	}
 
 	return nil
@@ -639,7 +639,7 @@ func (c *client) CreateFirewallRule(isoNet *infrav1.CloudStackIsolatedNetwork, p
 		return err
 	}
 	if err := c.AddCreatedByCAPCTag(ResourceTypeFirewallRule, resp.Id); err != nil {
-		return errors.Wrap(err, "adding created by CAPC tag")
+		return pkgerrors.Wrap(err, "adding created by CAPC tag")
 	}
 
 	return nil
@@ -653,7 +653,7 @@ func (c *client) DeleteFirewallRule(id string) (bool, error) {
 	}
 
 	if !isCAPCManaged {
-		return false, errors.Errorf("firewall rule with id %s is not managed by CAPC", id)
+		return false, pkgerrors.Errorf("firewall rule with id %s is not managed by CAPC", id)
 	}
 
 	p := c.csAsync.Firewall.NewDeleteFirewallRuleParams(id)
@@ -711,7 +711,7 @@ func (c *client) GetOrCreateIsolatedNetwork(
 	network := isoNet.Network()
 	if err := c.ResolveNetwork(network); err != nil { // Doesn't exist, create isolated network.
 		if err = c.CreateIsolatedNetwork(fd, isoNet); err != nil {
-			return errors.Wrap(err, "creating a new isolated network")
+			return pkgerrors.Wrap(err, "creating a new isolated network")
 		}
 	} else {
 		// Network existed and was resolved. Set ID on isoNet CloudStackIsolatedNetwork in case it only had name set.
@@ -720,7 +720,7 @@ func (c *client) GetOrCreateIsolatedNetwork(
 	}
 
 	// Open the Isolated Network egress firewall.
-	return errors.Wrap(c.CreateEgressFirewallRules(isoNet), "opening the isolated network's egress firewall")
+	return pkgerrors.Wrap(c.CreateEgressFirewallRules(isoNet), "opening the isolated network's egress firewall")
 }
 
 // ReconcileLoadBalancer configures the API server load balancer.
@@ -745,25 +745,25 @@ func (c *client) ReconcileLoadBalancer(
 	if csCluster.Spec.APIServerLoadBalancer.IsEnabled() {
 		// Associate Public IP with CloudStackIsolatedNetwork
 		if err := c.AssociatePublicIPAddress(fd, isoNet, csCluster); err != nil {
-			return errors.Wrapf(err, "associating public IP address to csCluster")
+			return pkgerrors.Wrapf(err, "associating public IP address to csCluster")
 		}
 	}*/
 
 	// Set up load balancing rules to map VM ports to Public IP ports.
 	if err := c.ReconcileLoadBalancerRules(isoNet, csCluster); err != nil {
-		return errors.Wrap(err, "reconciling load balancing rules")
+		return pkgerrors.Wrap(err, "reconciling load balancing rules")
 	}
 
 	// Set up firewall rules to manage access to load balancer public IP ports.
 	if err := c.ReconcileFirewallRules(isoNet, csCluster); err != nil {
-		return errors.Wrap(err, "reconciling firewall rules")
+		return pkgerrors.Wrap(err, "reconciling firewall rules")
 	}
 
 	if !csCluster.Spec.APIServerLoadBalancer.IsEnabled() && isoNet.Status.APIServerLoadBalancer != nil {
 		// If the APIServerLoadBalancer has been disabled, release its IP unless it's the SNAT IP.
 		released, err := c.DisassociatePublicIPAddressIfNotInUse(isoNet.Status.APIServerLoadBalancer.IPAddressID)
 		if err != nil {
-			return errors.Wrap(err, "disassociating public IP address")
+			return pkgerrors.Wrap(err, "disassociating public IP address")
 		}
 		if released {
 			isoNet.Status.APIServerLoadBalancer.IPAddress = ""
@@ -888,7 +888,7 @@ func (c *client) DeleteNetwork(net infrav1.Network) error {
 	_, err := c.cs.Network.DeleteNetwork(c.cs.Network.NewDeleteNetworkParams(net.ID))
 	c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
-	return errors.Wrapf(err, "deleting network with id %s", net.ID)
+	return pkgerrors.Wrapf(err, "deleting network with id %s", net.ID)
 }
 
 // DisposeIsoNetResources cleans up isolated network resources.
@@ -952,7 +952,7 @@ func (c *client) DeleteNetworkIfNotInUse(net infrav1.Network) error {
 // disassociated, and an error in case an error occurred.
 func (c *client) DisassociatePublicIPAddressIfNotInUse(ipAddressID string) (bool, error) {
 	if ipAddressID == "" {
-		return false, errors.New("ipAddressID cannot be empty")
+		return false, pkgerrors.New("ipAddressID cannot be empty")
 	}
 	if tagsAllowDisposal, err := c.DoClusterTagsAllowDisposal(ResourceTypeIPAddress, ipAddressID); err != nil {
 		return false, err
@@ -976,7 +976,7 @@ func (c *client) DisassociatePublicIPAddressIfNotInUse(ipAddressID string) (bool
 // DisassociatePublicIPAddress removes a CloudStack public IP association an isolated network.
 func (c *client) DisassociatePublicIPAddress(ipAddressID string) error {
 	if ipAddressID == "" {
-		return errors.New("ipAddressID cannot be empty")
+		return pkgerrors.New("ipAddressID cannot be empty")
 	}
 
 	// Remove the CAPC creation tag, so it won't be there the next time this address is associated.

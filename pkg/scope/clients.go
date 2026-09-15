@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -94,17 +94,17 @@ func NewClientScopeFactory(maxCacheSize int) ClientScopeFactory {
 
 func (s *clientScopeFactory) NewClientScopeForFailureDomain(ctx context.Context, k8sClient client.Client, fd *infrav1.CloudStackFailureDomain) (scope Scope, err error) {
 	if fd == nil {
-		return nil, errors.New("failure domain is nil")
+		return nil, pkgerrors.New("failure domain is nil")
 	}
 
 	cloudConfig, err := getCloudConfigFromSecret(ctx, k8sClient, fd.Spec.ACSEndpoint.Namespace, fd.Spec.ACSEndpoint.Name)
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting client config from secret")
+		return nil, pkgerrors.Wrapf(err, "getting client config from secret")
 	}
 
 	clientConfig, err := getClientConfig(ctx, k8sClient, fd.Spec.ACSEndpoint.Namespace, fd.Spec.ACSEndpoint.Name)
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting client configuration configmap")
+		return nil, pkgerrors.Wrapf(err, "getting client configuration configmap")
 	}
 
 	return NewClientScope(s.clientCache, fd, cloudConfig, clientConfig)
@@ -128,14 +128,14 @@ func NewClientScope(cache *cache.LRUExpireCache, fd *infrav1.CloudStackFailureDo
 
 	csClient, err := cloud.NewClientFromConf(cloudConfig, clientConfig, cloud.WithProject(fd.Spec.Project))
 	if err != nil {
-		return nil, errors.Wrapf(err, "parsing ACSEndpoint secret with ref: %v", fd.Spec.ACSEndpoint)
+		return nil, pkgerrors.Wrapf(err, "parsing ACSEndpoint secret with ref: %v", fd.Spec.ACSEndpoint)
 	}
 	csUser := csClient
 	if fd.Spec.Account != "" {
 		// Set CSUser CloudStack Client per Account and Domain.
 		csUser, err = cloud.NewClientInDomainAndAccount(csClient, fd.Spec.Domain, fd.Spec.Account, cloud.WithProject(fd.Spec.Project))
 		if err != nil {
-			return nil, errors.Wrapf(err, "creating CloudStack User Client with domain %s and account %s", fd.Spec.Domain, fd.Spec.Account)
+			return nil, pkgerrors.Wrapf(err, "creating CloudStack User Client with domain %s and account %s", fd.Spec.Domain, fd.Spec.Account)
 		}
 	}
 
@@ -162,7 +162,7 @@ func getCloudConfigFromSecret(ctx context.Context, k8sClient client.Client, secr
 	endpointSecret := &corev1.Secret{}
 	key := client.ObjectKey{Name: secretName, Namespace: secretNamespace}
 	if err := k8sClient.Get(ctx, key, endpointSecret); err != nil {
-		return cloudConfig, errors.Wrapf(err, "getting ACSEndpoint secret with ref: %s/%s", secretNamespace, secretName)
+		return cloudConfig, pkgerrors.Wrapf(err, "getting ACSEndpoint secret with ref: %s/%s", secretNamespace, secretName)
 	}
 
 	endpointSecretStrings := map[string]string{}
@@ -179,7 +179,7 @@ func getCloudConfigFromSecret(ctx context.Context, k8sClient client.Client, secr
 	}
 
 	if err := cloudConfig.Validate(); err != nil {
-		return cloudConfig, errors.Wrapf(err, "invalid cloud config")
+		return cloudConfig, pkgerrors.Wrapf(err, "invalid cloud config")
 	}
 
 	return cloudConfig, nil
@@ -191,7 +191,7 @@ func getClientConfig(ctx context.Context, k8sClient client.Client, configMapName
 	key := client.ObjectKey{Name: configMapName, Namespace: configMapNamespace}
 	if err := k8sClient.Get(ctx, key, clientConfig); err != nil {
 		if !k8serrors.IsNotFound(err) {
-			return nil, errors.Wrapf(err, "getting client configuration configmap with ref: %s/%s", configMapNamespace, configMapName)
+			return nil, pkgerrors.Wrapf(err, "getting client configuration configmap with ref: %s/%s", configMapNamespace, configMapName)
 		}
 	}
 

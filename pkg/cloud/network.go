@@ -19,7 +19,7 @@ package cloud
 import (
 	"github.com/apache/cloudstack-go/v2/cloudstack"
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 )
@@ -46,9 +46,9 @@ func (c *client) ResolveNetwork(net *infrav1.Network) (retErr error) {
 	netDetails, count, err := c.cs.Network.GetNetworkByName(netName, cloudstack.WithProject(c.user.Project.ID))
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
-		retErr = multierror.Append(retErr, errors.Wrapf(err, "could not get Network ID from %s", netName))
+		retErr = multierror.Append(retErr, pkgerrors.Wrapf(err, "could not get Network ID from %s", netName))
 	} else if count != 1 {
-		retErr = multierror.Append(retErr, errors.Errorf(
+		retErr = multierror.Append(retErr, pkgerrors.Errorf(
 			"expected 1 Network with name %s, but got %d", netName, count))
 	} else { // Got netID from the network's name.
 		net.ID = netDetails.Id
@@ -62,11 +62,11 @@ func (c *client) ResolveNetwork(net *infrav1.Network) (retErr error) {
 	// Now get network details.
 	netDetails, count, err = c.cs.Network.GetNetworkByID(net.ID, cloudstack.WithProject(c.user.Project.ID))
 	if err != nil {
-		return multierror.Append(retErr, errors.Wrapf(err, "could not get Network by ID %s", net.ID))
+		return multierror.Append(retErr, pkgerrors.Wrapf(err, "could not get Network by ID %s", net.ID))
 	} else if count != 1 {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
-		return multierror.Append(retErr, errors.Errorf("expected 1 Network with UUID %s, but got %d", net.ID, count))
+		return multierror.Append(retErr, pkgerrors.Errorf("expected 1 Network with UUID %s, but got %d", net.ID, count))
 	}
 	net.Name = netDetails.Name
 	net.ID = netDetails.Id

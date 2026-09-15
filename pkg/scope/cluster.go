@@ -20,7 +20,7 @@ package scope
 import (
 	"context"
 
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
@@ -47,10 +47,10 @@ type ClusterScopeParams struct {
 // This is meant to be called for each reconcile iteration.
 func NewClusterScope(params ClusterScopeParams) (*ClusterScope, error) {
 	if params.Cluster == nil {
-		return nil, errors.New("failed to generate new scope from nil Cluster")
+		return nil, pkgerrors.New("failed to generate new scope from nil Cluster")
 	}
 	if params.CloudStackCluster == nil {
-		return nil, errors.New("failed to generate new scope from nil CloudStackCluster")
+		return nil, pkgerrors.New("failed to generate new scope from nil CloudStackCluster")
 	}
 
 	if params.Logger == nil {
@@ -68,7 +68,7 @@ func NewClusterScope(params ClusterScopeParams) (*ClusterScope, error) {
 
 	helper, err := v1beta1patch.NewHelper(params.CloudStackCluster, params.Client)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to init patch helper")
+		return nil, pkgerrors.Wrap(err, "failed to init patch helper")
 	}
 
 	clusterScope.patchHelper = helper

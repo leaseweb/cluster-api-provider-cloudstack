@@ -26,7 +26,7 @@ import (
 
 	"github.com/apache/cloudstack-go/v2/cloudstack"
 	"github.com/google/go-cmp/cmp"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	corev1 "k8s.io/api/core/v1"
@@ -188,7 +188,7 @@ func (r *CloudStackMachineReconciler) reconcileDelete(ctx context.Context, scope
 	scope.Info("Reconcile CloudStackMachine deletion")
 
 	vm, err := r.findInstance(scope)
-	if err != nil && !errors.Is(err, cloud.ErrNotFound) {
+	if err != nil && !pkgerrors.Is(err, cloud.ErrNotFound) {
 		return ctrl.Result{}, err
 	}
 	if vm == nil {
@@ -211,7 +211,7 @@ func (r *CloudStackMachineReconciler) reconcileDelete(ctx context.Context, scope
 
 	if err := r.reconcileLBattachments(scope); err != nil {
 		v1beta1conditions.MarkFalse(scope.CloudStackMachine, infrav1.LoadBalancerAttachedCondition, "DeletingFailed", clusterv1beta1.ConditionSeverityWarning, "%s", err.Error())
-		return ctrl.Result{}, errors.Errorf("failed to reconcile LB attachment: %+v", err)
+		return ctrl.Result{}, pkgerrors.Errorf("failed to reconcile LB attachment: %+v", err)
 	}
 
 	if scope.IsControlPlane() {
@@ -339,7 +339,7 @@ func (r *CloudStackMachineReconciler) reconcileNormal(ctx context.Context, scope
 	}
 
 	vm, err := r.findInstance(scope)
-	if err != nil && !errors.Is(err, cloud.ErrNotFound) {
+	if err != nil && !pkgerrors.Is(err, cloud.ErrNotFound) {
 		v1beta1conditions.MarkUnknown(scope.CloudStackMachine, infrav1.InstanceReadyCondition, infrav1.InstanceNotFoundReason, "%s", err.Error())
 		return ctrl.Result{}, err
 	}
@@ -414,7 +414,7 @@ func (r *CloudStackMachineReconciler) reconcileNormal(ctx context.Context, scope
 		// If it does have a node reference, it could be a temporary condition.
 		if !scope.Machine.Status.NodeRef.IsDefined() {
 			scope.SetFailureReason(UpdateMachineError)
-			scope.SetFailureMessage(errors.Errorf("CloudStack instance state %s is unexpected", vm.State))
+			scope.SetFailureMessage(pkgerrors.Errorf("CloudStack instance state %s is unexpected", vm.State))
 		}
 		shouldRequeue = true
 	case cloud.InstanceStateExpunging, cloud.InstanceStateDestroyed:
@@ -423,7 +423,7 @@ func (r *CloudStackMachineReconciler) reconcileNormal(ctx context.Context, scope
 		r.Recorder.Eventf(scope.CloudStackMachine, nil, corev1.EventTypeWarning, "InstanceUnexpectedTermination", "CheckInstanceState", "Unexpected CloudStack instance termination")
 		v1beta1conditions.MarkFalse(scope.CloudStackMachine, infrav1.InstanceReadyCondition, infrav1.InstanceTerminatedReason, clusterv1beta1.ConditionSeverityError, "")
 		scope.SetFailureReason(UpdateMachineError)
-		scope.SetFailureMessage(errors.Errorf("CloudStack instance state %s is unexpected", vm.State))
+		scope.SetFailureMessage(pkgerrors.Errorf("CloudStack instance state %s is unexpected", vm.State))
 	default:
 		scope.SetNotReady()
 		scope.Info("Instance state is unexpected", "state", vm.State, "instance-id", scope.GetInstanceID())
@@ -464,7 +464,7 @@ func (r *CloudStackMachineReconciler) reconcileNormal(ctx context.Context, scope
 func (r *CloudStackMachineReconciler) reconcileLBattachments(scope *scope.MachineScope) error {
 	if !scope.IsExternallyManaged() && scope.IsControlPlane() && scope.NetworkType() == cloud.NetworkTypeIsolated && scope.IsLBEnabled() {
 		if scope.CloudStackIsolatedNetwork == nil {
-			return errors.New("Could not get required Isolated Network for VM")
+			return pkgerrors.New("Could not get required Isolated Network for VM")
 		}
 
 		if scope.CloudStackMachineIsDeleted() || scope.MachineIsDeleted() || !scope.InstanceIsRunning() {
@@ -527,7 +527,7 @@ func (r *CloudStackMachineReconciler) findInstance(scope *scope.MachineScope) (*
 
 	if scope.GetInstanceID() != "" {
 		instance, err = scope.CSUser().GetVMInstanceByID(scope.GetInstanceID())
-		if err != nil && !errors.Is(err, cloud.ErrNotFound) {
+		if err != nil && !pkgerrors.Is(err, cloud.ErrNotFound) {
 			return nil, err
 		}
 		if instance != nil {
@@ -546,7 +546,7 @@ func (r *CloudStackMachineReconciler) findInstance(scope *scope.MachineScope) (*
 func GenerateAffinityGroupName(csMachine infrav1.CloudStackMachine, capiMachine *clusterv1.Machine, capiCluster *clusterv1.Cluster) (string, error) {
 	managerOwnerRef := GetManagementOwnerRef(capiMachine)
 	if managerOwnerRef == nil {
-		return "", errors.Errorf("could not find owner UID for %s/%s", capiMachine.Namespace, capiMachine.Name)
+		return "", pkgerrors.Errorf("could not find owner UID for %s/%s", capiMachine.Namespace, capiMachine.Name)
 	}
 	titleCaser := cases.Title(language.English)
 
@@ -585,7 +585,7 @@ func (r *CloudStackMachineReconciler) GetOrCreateAffinityGroup(ctx context.Conte
 	case infrav1.AffinityTypeSoftAnti:
 		scope.CloudStackAffinityGroup.Spec.Type = "non-strict host anti-affinity"
 	default:
-		return errors.Errorf("unrecognized affinity type %s", scope.AffinityType())
+		return pkgerrors.Errorf("unrecognized affinity type %s", scope.AffinityType())
 	}
 
 	// Setup basic metadata.
@@ -610,7 +610,7 @@ func (r *CloudStackMachineReconciler) GetOrCreateAffinityGroup(ctx context.Conte
 		})
 
 	if err := r.Client.Create(ctx, scope.CloudStackAffinityGroup); err != nil && !strings.Contains(strings.ToLower(err.Error()), "already exists") {
-		return errors.Wrap(err, "creating CloudStackAffinityGroup CRD")
+		return pkgerrors.Wrap(err, "creating CloudStackAffinityGroup CRD")
 	}
 
 	return nil
@@ -789,7 +789,7 @@ func (r *CloudStackMachineReconciler) CloudStackIsolatedNetworkToControlPlaneClo
 
 		clusterName, ok := csIsoNet.GetLabels()[clusterv1.ClusterNameLabel]
 		if !ok {
-			log.Error(errors.New("failed to find cluster name label"), "CloudStackIsolatedNetwork is missing cluster name label or cluster does not exist, skipping mapping.")
+			log.Error(pkgerrors.New("failed to find cluster name label"), "CloudStackIsolatedNetwork is missing cluster name label or cluster does not exist, skipping mapping.")
 		}
 
 		machineList := &clusterv1.MachineList{}
@@ -905,7 +905,7 @@ func (r *CloudStackMachineReconciler) SetupWithManager(ctx context.Context, mgr 
 		).
 		Complete(r)
 	if err != nil {
-		return errors.Wrap(err, "failed setting up with a controller manager")
+		return pkgerrors.Wrap(err, "failed setting up with a controller manager")
 	}
 
 	return nil

@@ -22,7 +22,7 @@ import (
 	csapi "github.com/apache/cloudstack-go/v2/cloudstack"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"go.uber.org/mock/gomock"
 	"k8s.io/utils/ptr"
 
@@ -36,7 +36,7 @@ var _ = Describe("Network", func() {
 		errorMessage = "Error"
 	)
 
-	fakeError := errors.New(errorMessage)
+	fakeError := pkgerrors.New(errorMessage)
 	var ( // Declare shared vars.
 		mockCtrl   *gomock.Controller
 		mockClient *csapi.CloudStackClient
@@ -285,7 +285,7 @@ var _ = Describe("Network", func() {
 				}, nil)
 			aip := &csapi.AssociateIpAddressParams{}
 			as.EXPECT().NewAssociateIpAddressParams().Return(aip)
-			as.EXPECT().AssociateIpAddress(aip).Return(nil, errors.New("Failed to allocate IP address"))
+			as.EXPECT().AssociateIpAddress(aip).Return(nil, pkgerrors.New("Failed to allocate IP address"))
 
 			_, err := client.AssociatePublicIPAddress(dummies.CSFailureDomain1, dummies.CSISONet1, dummies.CSCluster.Spec.ControlPlaneEndpoint.Host)
 			Ω(err.Error()).Should(ContainSubstring("associating public IP address with ID"))
@@ -540,7 +540,7 @@ var _ = Describe("Network", func() {
 			lbip := &csapi.ListLoadBalancerRuleInstancesParams{}
 			lbs.EXPECT().NewListLoadBalancerRuleInstancesParams(dummies.CSISONet1.Status.LoadBalancerRuleIDs[0]).
 				Return(lbip)
-			lbs.EXPECT().ListLoadBalancerRuleInstances(lbip).Return(nil, errors.New("No match found for stale-rule-id"))
+			lbs.EXPECT().ListLoadBalancerRuleInstances(lbip).Return(nil, pkgerrors.New("No match found for stale-rule-id"))
 
 			assigned, err := client.AssignVMToLoadBalancerRules(dummies.CSISONet1, *dummies.CSMachine1.Spec.InstanceID)
 			Ω(assigned).Should(BeFalse())
@@ -555,7 +555,7 @@ var _ = Describe("Network", func() {
 				lbs.EXPECT().NewListLoadBalancerRuleInstancesParams("stale-rule-id").
 					Return(lbip),
 				lbs.EXPECT().ListLoadBalancerRuleInstances(lbip).
-					Return(nil, errors.New("entity does not exist")),
+					Return(nil, pkgerrors.New("entity does not exist")),
 
 				lbs.EXPECT().NewListLoadBalancerRuleInstancesParams("valid-rule-id").
 					Return(lbip),
@@ -577,7 +577,7 @@ var _ = Describe("Network", func() {
 			lbip := &csapi.ListLoadBalancerRuleInstancesParams{}
 			lbs.EXPECT().NewListLoadBalancerRuleInstancesParams("stale-rule-id").
 				Return(lbip)
-			lbs.EXPECT().ListLoadBalancerRuleInstances(lbip).Return(nil, errors.New("Unable to find uuid for id stale-rule-id"))
+			lbs.EXPECT().ListLoadBalancerRuleInstances(lbip).Return(nil, pkgerrors.New("Unable to find uuid for id stale-rule-id"))
 
 			removed, err := client.RemoveVMFromLoadBalancerRules(dummies.CSISONet1, *dummies.CSMachine1.Spec.InstanceID)
 			Ω(removed).Should(BeFalse())

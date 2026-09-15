@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -173,7 +173,7 @@ func (r *CloudStackIsolatedNetworkReconciler) reconcileNormal(ctx context.Contex
 	// Set endpoint of CloudStackCluster if it is not currently set. (uses patcher to do so)
 	csClusterPatcher, err := patch.NewHelper(scope.CloudStackCluster, r.Client)
 	if err != nil {
-		return ctrl.Result{}, errors.Wrap(err, "setting up CloudStackCluster patcher")
+		return ctrl.Result{}, pkgerrors.Wrap(err, "setting up CloudStackCluster patcher")
 	}
 	if scope.FailureDomainZoneID() == "" {
 		scope.Info("Zone ID not resolved yet.")
@@ -186,14 +186,14 @@ func (r *CloudStackIsolatedNetworkReconciler) reconcileNormal(ctx context.Contex
 	}
 	// Tag the created network.
 	if err := scope.CSUser().AddClusterTag(cloud.ResourceTypeNetwork, scope.CloudStackIsolatedNetwork.Spec.ID, scope.CloudStackCluster); err != nil {
-		return ctrl.Result{}, errors.Wrapf(err, "tagging network with id %s", scope.CloudStackIsolatedNetwork.Spec.ID)
+		return ctrl.Result{}, pkgerrors.Wrapf(err, "tagging network with id %s", scope.CloudStackIsolatedNetwork.Spec.ID)
 	}
 
 	// Assign IP and configure API server load balancer, if enabled and this cluster is not externally managed.
 	if !annotations.IsExternallyManaged(scope.CloudStackCluster) {
 		pubIP, err := scope.CSUser().AssociatePublicIPAddress(scope.CloudStackFailureDomain, scope.CloudStackIsolatedNetwork, scope.CloudStackCluster.Spec.ControlPlaneEndpoint.Host)
 		if err != nil {
-			return ctrl.Result{}, errors.Wrap(err, "failed to associate public IP address")
+			return ctrl.Result{}, pkgerrors.Wrap(err, "failed to associate public IP address")
 		}
 		scope.SetControlPlaneEndpointHost(pubIP.Ipaddress)
 		scope.SetControlPlaneEndpointPort(getAPIServerPort(scope.CloudStackCluster))
@@ -206,17 +206,17 @@ func (r *CloudStackIsolatedNetworkReconciler) reconcileNormal(ctx context.Contex
 		scope.APIServerLoadBalancer().IPAddressID = pubIP.Id
 		scope.APIServerLoadBalancer().IPAddress = pubIP.Ipaddress
 		if err := scope.CSUser().AddClusterTag(cloud.ResourceTypeIPAddress, pubIP.Id, scope.CloudStackCluster); err != nil {
-			return ctrl.Result{}, errors.Wrapf(err,
+			return ctrl.Result{}, pkgerrors.Wrapf(err,
 				"adding cluster tag to public IP address with ID %s", pubIP.Id)
 		}
 
 		if err := scope.CSUser().ReconcileLoadBalancer(scope.CloudStackFailureDomain, scope.CloudStackIsolatedNetwork, scope.CloudStackCluster); err != nil {
-			return ctrl.Result{}, errors.Wrap(err, "reconciling load balancer")
+			return ctrl.Result{}, pkgerrors.Wrap(err, "reconciling load balancer")
 		}
 	}
 
 	if err := csClusterPatcher.Patch(ctx, scope.CloudStackCluster); err != nil {
-		return ctrl.Result{}, errors.Wrap(err, "patching endpoint update to CloudStackCluster")
+		return ctrl.Result{}, pkgerrors.Wrap(err, "patching endpoint update to CloudStackCluster")
 	}
 
 	scope.SetReady()
@@ -251,7 +251,7 @@ func getAPIServerPort(csc *infrav1.CloudStackCluster) int32 {
 func (r *CloudStackIsolatedNetworkReconciler) CloudStackClusterToCloudStackIsolatedNetworks(obj client.ObjectList, scheme *runtime.Scheme, log logger.Wrapper) (handler.MapFunc, error) {
 	gvk, err := apiutil.GVKForObject(obj, scheme)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to find GVK for CloudStackIsolatedNetwork")
+		return nil, pkgerrors.Wrap(err, "failed to find GVK for CloudStackIsolatedNetwork")
 	}
 
 	return func(ctx context.Context, o client.Object) []ctrl.Request {
@@ -306,7 +306,7 @@ func (r *CloudStackIsolatedNetworkReconciler) SetupWithManager(ctx context.Conte
 	log := logger.FromContext(ctx)
 	cloudStackClusterToCloudStackIsolatedNetworksMapper, err := r.CloudStackClusterToCloudStackIsolatedNetworks(&infrav1.CloudStackIsolatedNetworkList{}, r.Scheme, log)
 	if err != nil {
-		return errors.Wrap(err, "failed to create CloudStackClusterToCloudStackIsolatedNetworks mapper")
+		return pkgerrors.Wrap(err, "failed to create CloudStackClusterToCloudStackIsolatedNetworks mapper")
 	}
 
 	err = ctrl.NewControllerManagedBy(mgr).
@@ -339,7 +339,7 @@ func (r *CloudStackIsolatedNetworkReconciler) SetupWithManager(ctx context.Conte
 		).
 		Complete(r)
 	if err != nil {
-		return errors.Wrap(err, "failed setting up with a controller manager")
+		return pkgerrors.Wrap(err, "failed setting up with a controller manager")
 	}
 
 	return nil

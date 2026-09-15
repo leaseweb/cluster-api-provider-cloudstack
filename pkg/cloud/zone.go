@@ -19,7 +19,7 @@ package cloud
 import (
 	"github.com/apache/cloudstack-go/v2/cloudstack"
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
 )
@@ -31,11 +31,11 @@ type ZoneIFace interface {
 
 func (c *client) ResolveZone(zSpec *infrav1.CloudStackZoneSpec) (retErr error) {
 	if zoneID, count, err := c.cs.Zone.GetZoneID(zSpec.Name); err != nil {
-		retErr = multierror.Append(retErr, errors.Wrapf(err, "could not get Zone ID from %v", zSpec.Name))
+		retErr = multierror.Append(retErr, pkgerrors.Wrapf(err, "could not get Zone ID from %v", zSpec.Name))
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
-		retErr = multierror.Append(retErr, errors.Wrapf(err, "could not get Zone ID from %v", zSpec.Name))
+		retErr = multierror.Append(retErr, pkgerrors.Wrapf(err, "could not get Zone ID from %v", zSpec.Name))
 	} else if count != 1 {
-		retErr = multierror.Append(retErr, errors.Errorf(
+		retErr = multierror.Append(retErr, pkgerrors.Errorf(
 			"expected 1 Zone with name %s, but got %d", zSpec.Name, count))
 	} else {
 		zSpec.ID = zoneID
@@ -45,9 +45,9 @@ func (c *client) ResolveZone(zSpec *infrav1.CloudStackZoneSpec) (retErr error) {
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
-		return multierror.Append(retErr, errors.Wrapf(err, "could not get Zone by ID %v", zSpec.ID))
+		return multierror.Append(retErr, pkgerrors.Wrapf(err, "could not get Zone by ID %v", zSpec.ID))
 	} else if count != 1 {
-		return multierror.Append(retErr, errors.Errorf(
+		return multierror.Append(retErr, pkgerrors.Errorf(
 			"expected 1 Zone with UUID %s, but got %d", zSpec.ID, count))
 	}
 	zSpec.Name = resp.Name
@@ -61,9 +61,9 @@ func (c *client) ResolveNetworkForZone(zSpec *infrav1.CloudStackZoneSpec) (retEr
 	netDetails, count, err := c.cs.Network.GetNetworkByName(netName, cloudstack.WithProject(c.user.Project.ID))
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
-		retErr = multierror.Append(retErr, errors.Wrapf(err, "could not get Network ID from %v", netName))
+		retErr = multierror.Append(retErr, pkgerrors.Wrapf(err, "could not get Network ID from %v", netName))
 	} else if count != 1 {
-		retErr = multierror.Append(retErr, errors.Errorf(
+		retErr = multierror.Append(retErr, pkgerrors.Errorf(
 			"expected 1 Network with name %s, but got %d", netName, count))
 	} else { // Got netID from the network's name.
 		zSpec.Network.ID = netDetails.Id
@@ -75,11 +75,11 @@ func (c *client) ResolveNetworkForZone(zSpec *infrav1.CloudStackZoneSpec) (retEr
 	// Now get network details.
 	netDetails, count, err = c.cs.Network.GetNetworkByID(zSpec.Network.ID, cloudstack.WithProject(c.user.Project.ID))
 	if err != nil {
-		return multierror.Append(retErr, errors.Wrapf(err, "could not get Network by ID %s", zSpec.Network.ID))
+		return multierror.Append(retErr, pkgerrors.Wrapf(err, "could not get Network by ID %s", zSpec.Network.ID))
 	} else if count != 1 {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
-		return multierror.Append(retErr, errors.Errorf("expected 1 Network with UUID %v, but got %d", zSpec.Network.ID, count))
+		return multierror.Append(retErr, pkgerrors.Errorf("expected 1 Network with UUID %v, but got %d", zSpec.Network.ID, count))
 	}
 	zSpec.Network.Name = netDetails.Name
 	zSpec.Network.ID = netDetails.Id
