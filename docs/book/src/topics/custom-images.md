@@ -31,7 +31,7 @@ To use a custom image, it needs to be referenced in an `image:` section of your 
 Be sure to also update the `version` in the `KubeadmControlPlane` and `MachineDeployment` cluster spec.
 
 ```yaml
-apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta3
 kind: CloudStackMachineTemplate
 metadata:
   name: capi-quickstart-control-plane

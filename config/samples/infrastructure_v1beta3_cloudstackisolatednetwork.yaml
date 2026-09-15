@@ -1,0 +1,7 @@
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta3
+kind: CloudStackIsolatedNetwork
+metadata:
+  name: guest-network-1
+spec:
+  name: guest-network-1
+  failureDomainName: failure-domain-1
