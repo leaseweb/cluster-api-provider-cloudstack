@@ -74,10 +74,10 @@ func (c *client) ResolveNetworkForZone(zSpec *infrav1.CloudStackZoneSpec) (retEr
 	// Now get network details.
 	netDetails, count, err = c.cs.Network.GetNetworkByID(zSpec.Network.ID, cloudstack.WithProject(c.user.Project.ID))
 	if err != nil {
-		return multierror.Append(retErr, pkgerrors.Wrapf(err, "could not get Network by ID %s", zSpec.Network.ID))
-	} else if count != 1 {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
+		return multierror.Append(retErr, pkgerrors.Wrapf(err, "could not get Network by ID %s", zSpec.Network.ID))
+	} else if count != 1 {
 		return multierror.Append(retErr, pkgerrors.Errorf("expected 1 Network with UUID %v, but got %d", zSpec.Network.ID, count))
 	}
 	zSpec.Network.Name = netDetails.Name
