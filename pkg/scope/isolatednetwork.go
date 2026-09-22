@@ -20,7 +20,7 @@ package scope
 import (
 	"context"
 
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -47,10 +47,10 @@ type IsolatedNetworkScopeParams struct {
 // This is meant to be called for each reconcile iteration.
 func NewIsolatedNetworkScope(params IsolatedNetworkScopeParams) (*IsolatedNetworkScope, error) {
 	if params.Cluster == nil {
-		return nil, errors.New("failed to generate new scope from nil Cluster")
+		return nil, pkgerrors.New("failed to generate new scope from nil Cluster")
 	}
 	if params.CloudStackIsolatedNetwork == nil {
-		return nil, errors.New("failed to generate new scope from nil CloudStackIsolatedNetwork")
+		return nil, pkgerrors.New("failed to generate new scope from nil CloudStackIsolatedNetwork")
 	}
 
 	if params.Logger == nil {
@@ -71,7 +71,7 @@ func NewIsolatedNetworkScope(params IsolatedNetworkScopeParams) (*IsolatedNetwor
 
 	helper, err := patch.NewHelper(params.CloudStackIsolatedNetwork, params.Client)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to init patch helper")
+		return nil, pkgerrors.Wrap(err, "failed to init patch helper")
 	}
 
 	isolatedNetworkScope.patchHelper = helper

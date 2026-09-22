@@ -72,5 +72,5 @@ type CloudStackMachineTemplateList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&CloudStackMachineTemplate{}, &CloudStackMachineTemplateList{})
+	objectTypes = append(objectTypes, &CloudStackMachineTemplate{}, &CloudStackMachineTemplateList{})
 }

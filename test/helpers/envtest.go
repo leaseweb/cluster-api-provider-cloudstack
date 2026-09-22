@@ -32,7 +32,7 @@ import (
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -237,11 +237,11 @@ func buildModifiedWebhook(tag string, relativeFilePath string) (admissionv1.Muta
 	var validatingWebhook admissionv1.ValidatingWebhookConfiguration
 	data, err := os.ReadFile(filepath.Clean(filepath.Join(root, relativeFilePath)))
 	if err != nil {
-		return mutatingWebhook, validatingWebhook, errors.Wrap(err, "failed to read webhook configuration file")
+		return mutatingWebhook, validatingWebhook, pkgerrors.Wrap(err, "failed to read webhook configuration file")
 	}
 	objs, err := utilyaml.ToUnstructured(data)
 	if err != nil {
-		return mutatingWebhook, validatingWebhook, errors.Wrap(err, "failed to parse yaml")
+		return mutatingWebhook, validatingWebhook, pkgerrors.Wrap(err, "failed to parse yaml")
 	}
 	for i := range objs {
 		o := objs[i]
@@ -317,7 +317,10 @@ func getFilePathToCAPICRDs(root string) string {
 	}
 
 	gopath := envOr("GOPATH", build.Default.GOPATH)
-	return filepath.Join(gopath, "pkg", "mod", "sigs.k8s.io", fmt.Sprintf("cluster-api@v%s", clusterAPIVersion), "config", "crd", "bases")
+
+	// Since CAPI v1.14 the core provider manifests live under core/config instead
+	// of config, as a result of the upstream code organization proposal.
+	return filepath.Join(gopath, "pkg", "mod", "sigs.k8s.io", fmt.Sprintf("cluster-api@v%s", clusterAPIVersion), "core", "config", "crd", "bases")
 }
 
 func envOr(envKey, defaultValue string) string {

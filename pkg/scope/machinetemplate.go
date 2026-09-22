@@ -3,7 +3,7 @@ package scope
 import (
 	"context"
 
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"k8s.io/klog/v2"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util/patch"
@@ -27,10 +27,10 @@ type MachineTemplateScopeParams struct {
 // This is meant to be called for each reconcile iteration.
 func NewMachineTemplateScope(params MachineTemplateScopeParams) (*MachineTemplateScope, error) {
 	if params.Cluster == nil {
-		return nil, errors.New("failed to generate new scope from nil Cluster")
+		return nil, pkgerrors.New("failed to generate new scope from nil Cluster")
 	}
 	if params.CloudStackMachineTemplate == nil {
-		return nil, errors.New("failed to generate new scope from nil CloudStackMachineTemplate")
+		return nil, pkgerrors.New("failed to generate new scope from nil CloudStackMachineTemplate")
 	}
 
 	if params.Logger == nil {
@@ -49,7 +49,7 @@ func NewMachineTemplateScope(params MachineTemplateScopeParams) (*MachineTemplat
 
 	helper, err := patch.NewHelper(params.CloudStackMachineTemplate, params.Client)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to init patch helper")
+		return nil, pkgerrors.Wrap(err, "failed to init patch helper")
 	}
 
 	machineTemplateScope.patchHelper = helper

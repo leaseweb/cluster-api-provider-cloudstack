@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"compress/gzip"
 
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 )
 
 type (
@@ -55,11 +55,11 @@ func GzipBytes(dat []byte) ([]byte, error) {
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
 	if _, err := gz.Write(dat); err != nil {
-		return []byte{}, errors.Wrap(err, "failed to gzip bytes")
+		return []byte{}, pkgerrors.Wrap(err, "failed to gzip bytes")
 	}
 
 	if err := gz.Close(); err != nil {
-		return []byte{}, errors.Wrap(err, "failed to gzip bytes")
+		return []byte{}, pkgerrors.Wrap(err, "failed to gzip bytes")
 	}
 
 	return buf.Bytes(), nil

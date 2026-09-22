@@ -22,7 +22,7 @@ import (
 	csapi "github.com/apache/cloudstack-go/v2/cloudstack"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"go.uber.org/mock/gomock"
 
 	"sigs.k8s.io/cluster-api-provider-cloudstack/pkg/cloud"
@@ -34,7 +34,7 @@ var _ = Describe("Zone", func() {
 		errorMessage = "Error"
 	)
 
-	fakeError := errors.New(errorMessage)
+	fakeError := pkgerrors.New(errorMessage)
 	var (
 		client     cloud.Client
 		mockCtrl   *gomock.Controller
@@ -58,17 +58,17 @@ var _ = Describe("Zone", func() {
 
 	Context("an existing abstract dummies.CSCluster", func() {
 		It("handles zone not found.", func() {
-			expectedErr := errors.New("Not found")
+			expectedErr := pkgerrors.New("Not found")
 			zs.EXPECT().GetZoneID(dummies.Zone1.Name).Return("", -1, expectedErr)
 			zs.EXPECT().GetZoneByID(dummies.Zone1.ID).Return(nil, -1, expectedErr)
 
 			err := client.ResolveZone(&dummies.CSFailureDomain1.Spec.Zone)
-			Expect(errors.Cause(err)).To(MatchError(expectedErr))
+			Expect(pkgerrors.Cause(err)).To(MatchError(expectedErr))
 		})
 
 		It("handles multiple zone IDs returned", func() {
 			zs.EXPECT().GetZoneID(dummies.Zone1.Name).Return(dummies.Zone1.ID, 2, nil)
-			zs.EXPECT().GetZoneByID(dummies.Zone1.ID).Return(nil, -1, errors.New("Not found"))
+			zs.EXPECT().GetZoneByID(dummies.Zone1.ID).Return(nil, -1, pkgerrors.New("Not found"))
 
 			Ω(client.ResolveZone(&dummies.CSFailureDomain1.Spec.Zone)).Should(MatchError(And(
 				ContainSubstring("expected 1 Zone with name "+dummies.Zone1.Name+", but got 2"),

@@ -18,13 +18,14 @@ package cloud
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/apache/cloudstack-go/v2/cloudstack"
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -74,7 +75,7 @@ type VMIface interface {
 // GetVMInstanceByID returns the VM instance with the given instance ID.
 func (c *client) GetVMInstanceByID(id string) (*cloudstack.VirtualMachine, error) {
 	if id == "" {
-		return nil, errors.New("instance ID is required")
+		return nil, pkgerrors.New("instance ID is required")
 	}
 
 	params := c.cs.VirtualMachine.NewListVirtualMachinesParams()
@@ -100,7 +101,7 @@ func (c *client) GetVMInstanceByID(id string) (*cloudstack.VirtualMachine, error
 // GetVMInstanceByName returns the VM instance with the given name.
 func (c *client) GetVMInstanceByName(name string) (*cloudstack.VirtualMachine, error) {
 	if name == "" {
-		return nil, errors.New("instance name is required")
+		return nil, pkgerrors.New("instance name is required")
 	}
 
 	params := c.cs.VirtualMachine.NewListVirtualMachinesParams()
@@ -211,7 +212,7 @@ func (c *client) GetInstanceAddresses(vm *cloudstack.VirtualMachine) ([]corev1.N
 			}
 		}
 	} else {
-		return addresses, errors.New("instance does not have any NIC (yet)")
+		return addresses, pkgerrors.New("instance does not have any NIC (yet)")
 	}
 	return addresses, nil
 }
@@ -264,7 +265,7 @@ func (c *client) ResolveVMInstanceDetails(csMachine *infrav1.CloudStackMachine) 
 		}
 	}
 
-	return errors.New("no match found")
+	return pkgerrors.New("no match found")
 }
 
 // resolveServiceOffering attempts to look up the service offering of a CloudStackMachine by ID first and name second.
@@ -274,15 +275,15 @@ func (c *client) resolveServiceOffering(csMachine *infrav1.CloudStackMachine, zo
 		if err != nil {
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
-			return nil, multierror.Append(retErr, errors.Wrapf(
+			return nil, multierror.Append(retErr, pkgerrors.Wrapf(
 				err, "could not get Service Offering by ID %s", csMachine.Spec.Offering.ID))
 		} else if count != 1 {
-			return csOffering, multierror.Append(retErr, errors.Errorf(
+			return csOffering, multierror.Append(retErr, pkgerrors.Errorf(
 				"expected 1 Service Offering with UUID %s, but got %d", csMachine.Spec.Offering.ID, count))
 		}
 
 		if len(csMachine.Spec.Offering.Name) > 0 && csMachine.Spec.Offering.Name != csOffering.Name {
-			return csOffering, multierror.Append(retErr, errors.Errorf(
+			return csOffering, multierror.Append(retErr, pkgerrors.Errorf(
 				"offering name %s does not match name %s returned using UUID %s", csMachine.Spec.Offering.Name, csOffering.Name, csMachine.Spec.Offering.ID))
 		}
 
@@ -292,10 +293,10 @@ func (c *client) resolveServiceOffering(csMachine *infrav1.CloudStackMachine, zo
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
-		return nil, multierror.Append(retErr, errors.Wrapf(
+		return nil, multierror.Append(retErr, pkgerrors.Wrapf(
 			err, "could not get Service Offering ID from %s in zone %s", csMachine.Spec.Offering.Name, zoneID))
 	} else if count != 1 {
-		return csOffering, multierror.Append(retErr, errors.Errorf(
+		return csOffering, multierror.Append(retErr, pkgerrors.Errorf(
 			"expected 1 Service Offering with name %s in zone %s, but got %d", csMachine.Spec.Offering.Name, zoneID, count))
 	}
 
@@ -312,15 +313,15 @@ func (c *client) resolveTemplate(
 		if err != nil {
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
-			return "", multierror.Append(retErr, errors.Wrapf(
+			return "", multierror.Append(retErr, pkgerrors.Wrapf(
 				err, "could not get Template by ID %s", csMachine.Spec.Template.ID))
 		} else if count != 1 {
-			return "", multierror.Append(retErr, errors.Errorf(
+			return "", multierror.Append(retErr, pkgerrors.Errorf(
 				"expected 1 Template with UUID %s, but got %d", csMachine.Spec.Template.ID, count))
 		}
 
 		if len(csMachine.Spec.Template.Name) > 0 && csMachine.Spec.Template.Name != csTemplate.Name {
-			return "", multierror.Append(retErr, errors.Errorf(
+			return "", multierror.Append(retErr, pkgerrors.Errorf(
 				"template name %s does not match name %s returned using UUID %s", csMachine.Spec.Template.Name, csTemplate.Name, csMachine.Spec.Template.ID))
 		}
 
@@ -340,10 +341,10 @@ func (c *client) resolveTemplate(
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
-		return "", multierror.Append(retErr, errors.Wrapf(
+		return "", multierror.Append(retErr, pkgerrors.Wrapf(
 			err, "could not get Template ID from %s", csMachine.Spec.Template.Name))
 	} else if count != 1 {
-		return "", multierror.Append(retErr, errors.Errorf(
+		return "", multierror.Append(retErr, pkgerrors.Errorf(
 			"expected 1 Template with name %s, but got %d", csMachine.Spec.Template.Name, count))
 	}
 
@@ -363,17 +364,17 @@ func (c *client) resolveDiskOffering(csMachine *infrav1.CloudStackMachine, zoneI
 		if err != nil {
 			c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
-			return "", multierror.Append(retErr, errors.Wrapf(
+			return "", multierror.Append(retErr, pkgerrors.Wrapf(
 				err, "could not get DiskOffering ID from %s", csMachine.Spec.DiskOffering.Name))
 		} else if count != 1 {
-			return "", multierror.Append(retErr, errors.Errorf(
+			return "", multierror.Append(retErr, pkgerrors.Errorf(
 				"expected 1 DiskOffering with name %s in zone %s, but got %d", csMachine.Spec.DiskOffering.Name, zoneID, count))
 		} else if len(csMachine.Spec.DiskOffering.ID) > 0 && diskID != csMachine.Spec.DiskOffering.ID {
-			return "", multierror.Append(retErr, errors.Errorf(
+			return "", multierror.Append(retErr, pkgerrors.Errorf(
 				"diskOffering ID %s does not match ID %s returned using name %s in zone %s",
 				csMachine.Spec.DiskOffering.ID, diskID, csMachine.Spec.DiskOffering.Name, zoneID))
 		} else if len(diskID) == 0 {
-			return "", multierror.Append(retErr, errors.Errorf(
+			return "", multierror.Append(retErr, pkgerrors.Errorf(
 				"empty diskOffering ID %s returned using name %s in zone %s",
 				diskID, csMachine.Spec.DiskOffering.Name, zoneID))
 		}
@@ -392,21 +393,21 @@ func verifyDiskoffering(csMachine *infrav1.CloudStackMachine, c *client, diskOff
 	if err != nil {
 		c.customMetrics.EvaluateErrorAndIncrementAcsReconciliationErrorCounter(err)
 
-		return "", multierror.Append(retErr, errors.Wrapf(
+		return "", multierror.Append(retErr, pkgerrors.Wrapf(
 			err, "could not get DiskOffering by ID %s", diskOfferingID))
 	} else if count != 1 {
-		return "", multierror.Append(retErr, errors.Errorf(
+		return "", multierror.Append(retErr, pkgerrors.Errorf(
 			"expected 1 DiskOffering with UUID %s, but got %d", diskOfferingID, count))
 	}
 
 	if csDiskOffering.Iscustomized && csMachine.Spec.DiskOffering.CustomSize == 0 {
-		return "", multierror.Append(retErr, errors.Errorf(
+		return "", multierror.Append(retErr, pkgerrors.Errorf(
 			"diskOffering with UUID %s is customized, disk size can not be 0 GB",
 			diskOfferingID))
 	}
 
 	if !csDiskOffering.Iscustomized && csMachine.Spec.DiskOffering.CustomSize > 0 {
-		return "", multierror.Append(retErr, errors.Errorf(
+		return "", multierror.Append(retErr, pkgerrors.Errorf(
 			"diskOffering with UUID %s is not customized, disk size can not be specified",
 			diskOfferingID))
 	}
@@ -433,7 +434,7 @@ func (c *client) checkAccountLimits(offering *cloudstack.ServiceOffering) error 
 	if c.user.Account.VMAvailable != LimitUnlimited {
 		vmAvailable, err := strconv.ParseInt(c.user.Account.VMAvailable, 10, 0)
 		if err == nil && vmAvailable < 1 {
-			return errors.New("VM limit in account has reached its maximum value")
+			return pkgerrors.New("VM limit in account has reached its maximum value")
 		}
 	}
 
@@ -459,7 +460,7 @@ func (c *client) checkDomainLimits(offering *cloudstack.ServiceOffering) error {
 	if c.user.Domain.VMAvailable != LimitUnlimited {
 		vmAvailable, err := strconv.ParseInt(c.user.Domain.VMAvailable, 10, 0)
 		if err == nil && vmAvailable < 1 {
-			return errors.New("VM limit in domain has reached its maximum value")
+			return pkgerrors.New("VM limit in domain has reached its maximum value")
 		}
 	}
 
@@ -500,7 +501,7 @@ func (c *client) checkLimits(
 	offering *cloudstack.ServiceOffering,
 ) error {
 	if offering == nil {
-		return errors.New("offering cannot be nil")
+		return pkgerrors.New("offering cannot be nil")
 	}
 
 	err := c.checkAccountLimits(offering)
@@ -592,7 +593,7 @@ func (c *client) DestroyVMInstance(csMachine *infrav1.CloudStackMachine) error {
 		return err
 	}
 
-	return errors.New("VM deletion in progress")
+	return pkgerrors.New("VM deletion in progress")
 }
 
 // listVMInstanceDatadiskVolumeIDs fetches a list of any data disks associated with the VM (that were created upon VM

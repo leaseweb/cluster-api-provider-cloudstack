@@ -22,7 +22,7 @@ import (
 	"github.com/apache/cloudstack-go/v2/cloudstack"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"go.uber.org/mock/gomock"
 	"k8s.io/utils/ptr"
 
@@ -42,8 +42,8 @@ var _ = Describe("Instance", func() {
 		templateName = "template"
 	)
 
-	notFoundError := errors.New("no match found")
-	unknownError := errors.New(unknownErrorMessage)
+	notFoundError := pkgerrors.New("no match found")
+	unknownError := pkgerrors.New(unknownErrorMessage)
 
 	var (
 		mockCtrl      *gomock.Controller
@@ -798,7 +798,7 @@ var _ = Describe("Instance", func() {
 			listVolumesParams.SetKeyword("DATA-")
 			vms.EXPECT().NewDestroyVirtualMachineParams(*dummies.CSMachine1.Spec.InstanceID).
 				Return(expungeDestroyParams)
-			vms.EXPECT().DestroyVirtualMachine(expungeDestroyParams).Return(nil, errors.New("unable to find uuid for id"))
+			vms.EXPECT().DestroyVirtualMachine(expungeDestroyParams).Return(nil, pkgerrors.New("unable to find uuid for id"))
 			vs.EXPECT().NewListVolumesParams().Return(listVolumesParams)
 			vs.EXPECT().ListVolumes(listVolumesParams).Return(listVolumesResponse, nil)
 			Ω(client.DestroyVMInstance(dummies.CSMachine1)).
@@ -811,7 +811,7 @@ var _ = Describe("Instance", func() {
 			listVolumesParams.SetKeyword("DATA-")
 			vms.EXPECT().NewDestroyVirtualMachineParams(*dummies.CSMachine1.Spec.InstanceID).
 				Return(expungeDestroyParams)
-			vms.EXPECT().DestroyVirtualMachine(expungeDestroyParams).Return(nil, errors.New("new error"))
+			vms.EXPECT().DestroyVirtualMachine(expungeDestroyParams).Return(nil, pkgerrors.New("new error"))
 			vs.EXPECT().NewListVolumesParams().Return(listVolumesParams)
 			vs.EXPECT().ListVolumes(listVolumesParams).Return(listVolumesResponse, nil)
 			Ω(client.DestroyVMInstance(dummies.CSMachine1)).Should(MatchError("new error"))

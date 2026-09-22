@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -195,16 +195,16 @@ func (r *CloudStackFailureDomainReconciler) reconcileNormal(ctx context.Context,
 
 	// Get the zone and network information.
 	if err := scope.ResolveZone(); err != nil {
-		return ctrl.Result{}, errors.Wrap(err, "resolving CloudStack zone information")
+		return ctrl.Result{}, pkgerrors.Wrap(err, "resolving CloudStack zone information")
 	}
 	if err := scope.ResolveNetwork(); err != nil &&
 		!strings.Contains(strings.ToLower(err.Error()), "no match") {
-		return ctrl.Result{}, errors.Wrap(err, "resolving Cloudstack network information")
+		return ctrl.Result{}, pkgerrors.Wrap(err, "resolving Cloudstack network information")
 	}
 
 	if scope.NetworkID() == "" || scope.NetworkType() == infrav1.NetworkTypeIsolated {
 		if err := r.GenerateIsolatedNetwork(ctx, scope); err != nil {
-			return ctrl.Result{}, errors.Wrap(err, "generating isolated network")
+			return ctrl.Result{}, pkgerrors.Wrap(err, "generating isolated network")
 		}
 
 		// Get the isolated network from the cluster.
@@ -212,7 +212,7 @@ func (r *CloudStackFailureDomainReconciler) reconcileNormal(ctx context.Context,
 		objectKey := client.ObjectKey{Name: scope.IsolatedNetworkName(), Namespace: scope.Namespace()}
 		err := client.IgnoreNotFound(r.Client.Get(ctx, objectKey, r.IsoNet))
 		if err != nil {
-			return ctrl.Result{}, errors.Wrap(err, "failed to get CloudStackIsolatedNetwork")
+			return ctrl.Result{}, pkgerrors.Wrap(err, "failed to get CloudStackIsolatedNetwork")
 		}
 
 		if r.IsoNet.Name == "" {
@@ -257,7 +257,7 @@ func (r *CloudStackFailureDomainReconciler) GenerateIsolatedNetwork(ctx context.
 	csIsoNet.Spec.ControlPlaneEndpoint.Port = scope.Cluster.Spec.ControlPlaneEndpoint.Port
 
 	if err := r.Client.Create(ctx, csIsoNet); err != nil && !strings.Contains(strings.ToLower(err.Error()), "already exists") {
-		return errors.Wrap(err, "failed to create CloudStackIsolatedNetwork resource")
+		return pkgerrors.Wrap(err, "failed to create CloudStackIsolatedNetwork resource")
 	}
 
 	return nil
@@ -375,7 +375,7 @@ func (r *CloudStackFailureDomainReconciler) SetupWithManager(ctx context.Context
 		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(r.Scheme, log.GetLogger(), r.WatchFilterValue)).
 		Complete(r)
 	if err != nil {
-		return errors.Wrap(err, "failed setting up with a controller manager")
+		return pkgerrors.Wrap(err, "failed setting up with a controller manager")
 	}
 
 	return nil

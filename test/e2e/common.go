@@ -30,7 +30,7 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/apache/cloudstack-go/v2/cloudstack"
-	"github.com/blang/semver"
+	"github.com/blang/semver/v4"
 	. "github.com/onsi/ginkgo/v2"
 	corev1 "k8s.io/api/core/v1"
 
@@ -402,8 +402,17 @@ func CreateCloudStackClient(ctx context.Context, kubeConfigPath string) *cloudst
 	apiKey := string(secret.Data["api-key"])
 	secretKey := string(secret.Data["secret-key"])
 	verifySSL := string(secret.Data["verify-ssl"])
-	if apiURL == "" || apiKey == "" || secretKey == "" {
-		Fail(fmt.Sprintf("Invalid secret: %+v, %s, %s, %s", secret.Data, apiURL, apiKey, secretKey))
+	// Report which keys are missing by name only. The values are CloudStack
+	// credentials, so neither they nor secret.Data may reach the test output.
+	var missing []string
+	for _, key := range []string{"api-url", "api-key", "secret-key"} {
+		if len(secret.Data[key]) == 0 {
+			missing = append(missing, key)
+		}
+	}
+	if len(missing) > 0 {
+		Fail(fmt.Sprintf("Invalid secret %s/%s: missing or empty keys: %s",
+			namepace, name, strings.Join(missing, ", ")))
 	}
 
 	return cloudstack.NewClient(apiURL, apiKey, secretKey, strings.ToLower(verifySSL) == "true")
