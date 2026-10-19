@@ -20,6 +20,9 @@ jobs:
         with:
           go-version: ${{ steps.vars.outputs.go_version }}
 
+      - name: Verify generated mocks
+        run: make verify-mocks
+
       - name: Run lint checks
         run: make lint
 

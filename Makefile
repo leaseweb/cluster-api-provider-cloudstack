@@ -189,6 +189,15 @@ lint: $(GOLANGCI_LINT) generate-mocks ## Run linting for the project.
 	$(MAKE) vet
 	$(GOLANGCI_LINT) run -v --timeout 360s ./...
 
+.PHONY: verify-mocks
+verify-mocks: $(MOCKGEN) generate-deepcopy ## Verify generated mocks are up to date.
+	go generate ./pkg/cloud/...
+	@if !(git diff --quiet HEAD -- pkg/mocks) || [ -n "$$(git ls-files --others --exclude-standard pkg/mocks)" ]; then \
+		git diff HEAD -- pkg/mocks; \
+		git status --short pkg/mocks; \
+		echo "generated mocks are out of date, run make generate-mocks"; exit 1; \
+	fi
+
 ##@ Generate
 ## --------------------------------------
 ## Generate
