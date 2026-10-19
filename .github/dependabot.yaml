@@ -46,6 +46,11 @@ updates:
     update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
   - dependency-name: "github.com/prometheus/*"
     update-types: [ "version-update:semver-major", "version-update:semver-minor"]
+    # Ignore indirect dependencies of k8s.io/* as they are only bumped together with k8s.io/*.
+  - dependency-name: "go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+  - dependency-name: "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+  - dependency-name: "go.opentelemetry.io/otel/sdk"
+  - dependency-name: "google.golang.org/grpc"
     # Ignore kind as its upgraded manually.
   - dependency-name: "sigs.k8s.io/kind"
     update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
