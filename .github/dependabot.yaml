@@ -39,6 +39,8 @@ updates:
     update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
   - dependency-name: "sigs.k8s.io/cluster-api/test"
     update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+    # Ignore capi hack/tools as it has no tags of its own and is pinned to a pseudo-version manually.
+  - dependency-name: "sigs.k8s.io/cluster-api/hack/tools"
     # Ignore k8s and its transitives modules as they are upgraded manually together with controller-runtime.
   - dependency-name: "k8s.io/*"
     update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
