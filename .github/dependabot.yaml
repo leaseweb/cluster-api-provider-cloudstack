@@ -52,6 +52,9 @@ updates:
     update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
     # Ignore the CloudStack Go SDK as its version is pinned and upgraded manually.
   - dependency-name: "github.com/apache/cloudstack-go/v2"
+    # toxiproxy v2.13.0 and later require Go 1.27, which would bump the go directive.
+  - dependency-name: "github.com/Shopify/toxiproxy/v2"
+    versions: [ ">= 2.13.0" ]
   commit-message:
     prefix: ":seedling:"
   labels:
