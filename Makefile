@@ -19,7 +19,7 @@ include $(REPO_ROOT)/common.mk
 #
 # Go.
 #
-GO_VERSION ?= 1.26.7
+GO_VERSION ?= 1.26.8
 
 # Ensure correct toolchain is used
 GOTOOLCHAIN = go$(GO_VERSION)
@@ -317,7 +317,7 @@ delete-kind-cluster:
 	kind delete cluster --name $(KIND_CLUSTER_NAME)
 
 cluster-api: ## Clone cluster-api repository for tilt use.
-	git clone --branch v1.14.2 --depth 1 https://github.com/kubernetes-sigs/cluster-api.git
+	git clone --branch v1.14.3 --depth 1 https://github.com/kubernetes-sigs/cluster-api.git
 
 cluster-api/tilt-settings.json: hack/tilt-settings.json cluster-api
 	cp ./hack/tilt-settings.json cluster-api
