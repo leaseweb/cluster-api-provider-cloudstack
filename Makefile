@@ -19,7 +19,7 @@ include $(REPO_ROOT)/common.mk
 #
 # Go.
 #
-GO_VERSION ?= 1.26.8
+GO_VERSION ?= 1.26.10
 
 # Ensure correct toolchain is used
 GOTOOLCHAIN = go$(GO_VERSION)
